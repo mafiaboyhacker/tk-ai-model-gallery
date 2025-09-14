@@ -1,0 +1,51 @@
+{
+  "name": "ai-model-gallery",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "dev:backend": "next dev --hostname 0.0.0.0 --port 3001",
+    "dev:local": "next dev --port 3000",
+    "build": "prisma generate && next build",
+    "start": "next start --hostname 0.0.0.0 --port 3000",
+    "start:backend": "next start --hostname 0.0.0.0 --port 3001",
+    "start:local": "next start --port 3000",
+    "lint": "eslint",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.10.0",
+    "@aws-sdk/client-s3": "^3.879.0",
+    "@aws-sdk/s3-request-presigner": "^3.879.0",
+    "@prisma/client": "^6.15.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "@tanstack/react-query": "^5.85.9",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/mime-types": "^3.0.1",
+    "@types/uuid": "^10.0.0",
+    "@vercel/blob": "^1.1.1",
+    "bcryptjs": "^3.0.2",
+    "framer-motion": "^12.23.12",
+    "mime-types": "^3.0.1",
+    "next": "15.5.2",
+    "next-auth": "^4.24.11",
+    "prisma": "^6.15.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-responsive-masonry": "^2.7.1",
+    "sharp": "^0.34.3",
+    "uuid": "^13.0.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
