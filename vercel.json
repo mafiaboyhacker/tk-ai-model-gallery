@@ -8,9 +8,5 @@
     "app/**/*": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "NEXTAUTH_URL": "https://ai-model-gallery.vercel.app",
-    "NEXTAUTH_SECRET": "@nextauth-secret"
   }
 }
