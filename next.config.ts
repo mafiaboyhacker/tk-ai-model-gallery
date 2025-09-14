@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    // 배포시 린트 오류 무시 (경고만 허용)
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {

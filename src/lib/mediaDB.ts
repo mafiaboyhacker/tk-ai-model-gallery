@@ -21,6 +21,7 @@ interface MediaData {
 }
 
 // 하위 호환성을 위한 ImageData 타입 별칭
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface ImageData extends MediaData {}
 
 class MediaDB {
