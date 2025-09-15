@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useMediaStore } from '@/store/imageStore'
-import { uploadToSupabaseStorage } from '@/lib/supabaseStorage'
+import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
 
 interface AdminUploadProps {
   isVisible: boolean
@@ -12,7 +11,7 @@ interface AdminUploadProps {
 export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const addMedia = useMediaStore((state) => state.addMedia)
+  const { addMedia } = useSupabaseMediaStore()
 
   const generateRandomSize = () => {
     // Midjourney style random sizes
@@ -42,43 +41,11 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
 
       console.log(`🚀 Supabase Storage에 미디어 업로드 시작: ${fileArray.length}개 (이미지: ${images}, 비디오: ${videos})`)
 
-      // 각 파일을 Supabase Storage에 업로드
-      const uploadPromises = fileArray.map(async (file) => {
-        try {
-          const { width, height } = generateRandomSize()
-          return await uploadToSupabaseStorage(file, {
-            id: '', // API에서 생성됨
-            fileName: file.name,
-            url: '', // API에서 생성됨
-            originalUrl: '', // API에서 생성됨
-            type: file.type.startsWith('image/') ? 'image' : 'video',
-            width,
-            height,
-            fileSize: file.size,
-            bucketPath: '', // API에서 생성됨
-            uploadedAt: new Date().toISOString()
-          })
-        } catch (error) {
-          console.error(`❌ ${file.name} 업로드 실패:`, error)
-          throw error
-        }
-      })
+      // Supabase Store의 addMedia 함수를 사용하여 업로드
+      // Store가 내부적으로 Supabase Storage 업로드와 상태 관리를 처리
+      await addMedia(fileArray)
 
-      const uploadResults = await Promise.allSettled(uploadPromises)
-
-      const successful = uploadResults.filter(result => result.status === 'fulfilled').length
-      const failed = uploadResults.filter(result => result.status === 'rejected').length
-
-      console.log(`✅ Supabase 업로드 완료: 성공 ${successful}개, 실패 ${failed}개`)
-
-      if (successful > 0) {
-        // 업로드 성공 시 로컬 MediaDB도 업데이트
-        await addMedia(fileArray)
-      }
-
-      if (failed > 0) {
-        alert(`${successful}개 파일 업로드 성공, ${failed}개 파일 업로드 실패`)
-      }
+      console.log(`✅ Supabase 업로드 완료: ${fileArray.length}개 파일`)
 
       setUploading(false)
       onClose()

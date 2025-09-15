@@ -6,28 +6,33 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase 프로젝트 설정 (환경변수에서 가져오기)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-// 환경변수 유효성 검사
+// 환경변수 유효성 검사 (에러 대신 경고로 변경)
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Supabase 환경변수가 누락되었습니다:', {
+  console.warn('⚠️ Supabase 환경변수가 누락되었습니다:', {
     url: !!supabaseUrl,
-    anonKey: !!supabaseAnonKey
+    anonKey: !!supabaseAnonKey,
+    environment: typeof window !== 'undefined' ? 'client' : 'server'
   })
 }
 
-// 클라이언트 사이드용 (Public 작업)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// 클라이언트 사이드용 (Public 작업) - 안전한 초기화
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createClient('https://example.supabase.co', 'dummy-key') // 더미 클라이언트
 
 // 서버 사이드용 (Admin 작업 - 파일 업로드/삭제)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
+export const supabaseAdmin = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : createClient('https://example.supabase.co', 'dummy-key') // 더미 클라이언트
 
 // 환경변수 검증
 export function validateSupabaseConfig() {

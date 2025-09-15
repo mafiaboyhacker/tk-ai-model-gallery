@@ -28,6 +28,7 @@ interface SupabaseMediaStore {
   addMedia: (files: File[]) => Promise<void>
   removeMedia: (id: string) => Promise<void>
   clearMedia: () => Promise<void>
+  updateCustomName: (id: string, newName: string) => Promise<void>
   refreshStorageUsage: () => Promise<void>
 
   // 통계
@@ -287,6 +288,25 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
       images,
       videos,
       totalSize: formatFileSize(totalSize)
+    }
+  },
+
+  // 미디어 이름 업데이트
+  updateCustomName: async (id: string, newName: string) => {
+    try {
+      console.log(`✏️ 미디어 이름 업데이트: ${id} -> ${newName}`)
+
+      // 로컬 상태 업데이트 (Supabase는 메타데이터만 저장하므로 로컬에서만 관리)
+      set((state) => ({
+        media: state.media.map(item =>
+          item.id === id ? { ...item, fileName: newName } : item
+        )
+      }))
+
+      console.log(`✅ 미디어 이름 업데이트 완료: ${id}`)
+    } catch (error) {
+      console.error('❌ 미디어 이름 업데이트 실패:', error)
+      throw error
     }
   },
 

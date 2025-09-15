@@ -1,22 +1,22 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useImageStore } from '@/store/imageStore'
+import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
 import AdminModelCard from '@/components/AdminModelCard'
 
 export default function VideosTab() {
   const [uploading, setUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const { media, addMedia, removeMedia, loadMedia, updateCustomName } = useImageStore()
+  const { media, addMedia, removeMedia, loadMedia, updateCustomName } = useSupabaseMediaStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
     const initializeMedia = async () => {
       try {
-        console.log('🔄 비디오 탭: IndexedDB에서 미디어 로드 중...')
+        console.log('🔄 비디오 탭: Supabase에서 미디어 로드 중...')
         await loadMedia()
       } catch (error) {
-        console.error('❌ 비디오 탭: IndexedDB 로드 실패:', error)
+        console.error('❌ 비디오 탭: Supabase 로드 실패:', error)
       }
     }
 

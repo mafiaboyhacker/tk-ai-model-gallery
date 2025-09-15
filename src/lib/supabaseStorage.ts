@@ -1,9 +1,16 @@
 /**
- * 정적 파일 저장소 통합 관리 (Public/Uploads)
- * 로컬 정적 파일 시스템 사용 (Supabase 대안)
+ * Supabase Storage 통합 관리 시스템
+ * 이미지, 비디오, 썸네일 버킷 관리 및 파일 업로드/다운로드
  */
 
-import { supabaseAdmin, validateSupabaseConfig } from './supabase'
+import { supabase, supabaseAdmin, validateSupabaseConfig } from './supabase'
+
+// Storage 버킷 이름 상수
+export const STORAGE_BUCKETS = {
+  IMAGES: 'images',
+  VIDEOS: 'videos',
+  THUMBNAILS: 'thumbnails'
+} as const
 
 export interface SupabaseMedia {
   id: string
@@ -21,6 +28,7 @@ export interface SupabaseMedia {
   metadata?: Record<string, any>
 }
 
+// 메인 버킷 설정 - images, videos, thumbnails 모두 'media' 버킷에 폴더별로 구분
 const BUCKET_NAME = 'media'
 
 /**
@@ -70,62 +78,73 @@ export async function initializeSupabaseStorage(): Promise<boolean> {
 }
 
 /**
- * 파일을 정적 저장소에 업로드 (API 엔드포인트 사용)
+ * Supabase Storage에 파일 직접 업로드
  */
 export async function uploadToSupabaseStorage(
   file: File,
   metadata: Partial<SupabaseMedia>
 ): Promise<SupabaseMedia> {
   try {
-    console.log(`🔄 정적 파일 업로드 시작: ${file.name}`)
+    validateSupabaseConfig()
+    console.log(`🔄 Supabase Storage 파일 업로드 시작: ${file.name}`)
 
-    // FormData 생성
-    const formData = new FormData()
-    formData.append('files', file)
+    // 파일 타입에 따른 폴더 결정
+    const isVideo = file.type.startsWith('video/')
+    const folder = isVideo ? 'videos' : 'images'
 
-    // API 엔드포인트로 업로드
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    })
+    // 고유 파일명 생성 (UUID + 확장자)
+    const fileExtension = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg')
+    const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const fileName = `${uniqueId}.${fileExtension}`
+    const filePath = `${folder}/${fileName}`
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP ${response.status}`)
+    // Supabase Storage에 파일 업로드
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, file, {
+        contentType: file.type,
+        upsert: false
+      })
+
+    if (uploadError) {
+      console.error('❌ Supabase 업로드 실패:', uploadError)
+      throw new Error(`업로드 실패: ${uploadError.message}`)
     }
 
-    const result = await response.json()
+    // 공개 URL 생성
+    const { data: urlData } = supabaseAdmin.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(filePath)
 
-    if (!result.success || !result.files || result.files.length === 0) {
-      throw new Error('업로드 결과가 비어있습니다.')
-    }
-
-    // API 응답을 SupabaseMedia 형식으로 변환
-    const uploadedFile = result.files[0]
+    // SupabaseMedia 객체 생성
     const uploadedMedia: SupabaseMedia = {
-      id: uploadedFile.id,
-      fileName: uploadedFile.fileName,
-      url: uploadedFile.url, // 예: /uploads/uuid.jpg
-      originalUrl: uploadedFile.originalUrl || uploadedFile.url,
-      type: uploadedFile.type,
-      width: uploadedFile.width || metadata.width || 800,
-      height: uploadedFile.height || metadata.height || 600,
-      fileSize: uploadedFile.size,
-      bucketPath: uploadedFile.path, // 예: uploads/uuid.jpg
-      uploadedAt: uploadedFile.uploadedAt,
-      duration: uploadedFile.duration,
-      resolution: metadata.resolution,
+      id: uniqueId,
+      fileName: file.name,
+      url: urlData.publicUrl,
+      originalUrl: urlData.publicUrl,
+      type: isVideo ? 'video' : 'image',
+      width: metadata.width || (isVideo ? 1920 : 800),
+      height: metadata.height || (isVideo ? 1080 : 600),
+      fileSize: file.size,
+      bucketPath: filePath,
+      uploadedAt: new Date().toISOString(),
+      duration: isVideo ? metadata.duration : undefined,
+      resolution: isVideo ? metadata.resolution || '1920x1080' : undefined,
       metadata: {
-        originalType: uploadedFile.mimeType,
-        uploadedAt: Date.parse(uploadedFile.uploadedAt),
-        fileName: uploadedFile.fileName
+        originalType: file.type,
+        uploadedAt: Date.now(),
+        fileName: file.name,
+        ...metadata.metadata
       }
     }
 
-    console.log(`✅ 정적 파일 업로드 완료: ${file.name}`)
+    // 메타데이터 JSON 파일로 저장
+    await saveMediaMetadata(uploadedMedia)
+
+    console.log(`✅ Supabase Storage 파일 업로드 완료: ${file.name}`)
     return uploadedMedia
   } catch (error) {
-    console.error('❌ 정적 파일 업로드 실패:', error)
+    console.error('❌ Supabase Storage 파일 업로드 실패:', error)
     throw error
   }
 }
@@ -156,75 +175,79 @@ async function saveMediaMetadata(media: SupabaseMedia) {
 }
 
 /**
- * 모든 업로드된 미디어 목록 가져오기 (Zustand store에서 조회)
- * 정적 파일 시스템에서는 브라우저 localStorage를 통해 관리
+ * 모든 업로드된 미디어 목록 가져오기
  */
 export async function getAllSupabaseMedia(): Promise<SupabaseMedia[]> {
   try {
+    validateSupabaseConfig()
     console.log('🔄 Supabase Storage에서 미디어 목록 조회 중...')
 
-    // 모든 미디어 파일을 가져오기 (images, videos 폴더)
     const allMedia: SupabaseMedia[] = []
+    const folders = ['images', 'videos']
 
-    // 1. images 폴더에서 이미지 파일들 가져오기
-    const { data: imageFiles, error: imageError } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .list('images', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } })
+    for (const folder of folders) {
+      const { data: files, error } = await supabaseAdmin.storage
+        .from(BUCKET_NAME)
+        .list(folder, {
+          limit: 1000,
+          sortBy: { column: 'created_at', order: 'desc' }
+        })
 
-    if (!imageError && imageFiles) {
-      for (const file of imageFiles) {
-        if (file.name && file.name !== '.emptyFolderPlaceholder') {
-          const { data: urlData } = supabaseAdmin.storage
-            .from(BUCKET_NAME)
-            .getPublicUrl(`images/${file.name}`)
-
-          const media: SupabaseMedia = {
-            id: file.name.split('.')[0], // UUID from filename
-            fileName: file.name,
-            url: urlData.publicUrl,
-            originalUrl: urlData.publicUrl,
-            type: 'image',
-            width: 800, // Default values - could enhance to get actual dimensions
-            height: 600,
-            fileSize: file.metadata?.size || 0,
-            bucketPath: `images/${file.name}`,
-            uploadedAt: file.created_at || new Date().toISOString(),
-            metadata: file.metadata
-          }
-          allMedia.push(media)
-        }
+      if (error) {
+        console.warn(`⚠️ ${folder} 폴더 조회 실패:`, error.message)
+        continue
       }
-    }
 
-    // 2. videos 폴더에서 비디오 파일들 가져오기
-    const { data: videoFiles, error: videoError } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .list('videos', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } })
+      if (!files) continue
 
-    if (!videoError && videoFiles) {
-      for (const file of videoFiles) {
-        if (file.name && file.name !== '.emptyFolderPlaceholder') {
-          const { data: urlData } = supabaseAdmin.storage
+      for (const file of files) {
+        if (!file.name || file.name === '.emptyFolderPlaceholder') continue
+
+        // 공개 URL 생성
+        const filePath = `${folder}/${file.name}`
+        const { data: urlData } = supabaseAdmin.storage
+          .from(BUCKET_NAME)
+          .getPublicUrl(filePath)
+
+        // 메타데이터 파일 시도 로드
+        const metadataPath = `metadata/${file.name.split('.')[0]}.json`
+        let savedMetadata = null
+        try {
+          const { data: metadataFile } = await supabaseAdmin.storage
             .from(BUCKET_NAME)
-            .getPublicUrl(`videos/${file.name}`)
+            .download(metadataPath)
 
-          const media: SupabaseMedia = {
-            id: file.name.split('.')[0], // UUID from filename
-            fileName: file.name,
-            url: urlData.publicUrl,
-            originalUrl: urlData.publicUrl,
-            type: 'video',
-            width: 1920, // Default values
-            height: 1080,
-            duration: 30, // Default duration
-            resolution: '1920x1080',
-            fileSize: file.metadata?.size || 0,
-            bucketPath: `videos/${file.name}`,
-            uploadedAt: file.created_at || new Date().toISOString(),
-            metadata: file.metadata
+          if (metadataFile) {
+            const metadataText = await metadataFile.text()
+            savedMetadata = JSON.parse(metadataText)
           }
-          allMedia.push(media)
+        } catch (metaError) {
+          // 메타데이터 파일이 없으면 기본값 사용
         }
+
+        const isVideo = folder === 'videos'
+        const fileId = file.name.split('.')[0]
+
+        const media: SupabaseMedia = {
+          id: fileId,
+          fileName: savedMetadata?.fileName || file.name,
+          url: urlData.publicUrl,
+          originalUrl: urlData.publicUrl,
+          type: isVideo ? 'video' : 'image',
+          width: savedMetadata?.width || (isVideo ? 1920 : 800),
+          height: savedMetadata?.height || (isVideo ? 1080 : 600),
+          fileSize: file.metadata?.size || savedMetadata?.fileSize || 0,
+          bucketPath: filePath,
+          uploadedAt: file.created_at || new Date().toISOString(),
+          duration: isVideo ? savedMetadata?.duration : undefined,
+          resolution: isVideo ? savedMetadata?.resolution || '1920x1080' : undefined,
+          metadata: {
+            ...file.metadata,
+            ...savedMetadata?.metadata
+          }
+        }
+
+        allMedia.push(media)
       }
     }
 
@@ -246,13 +269,14 @@ export async function getAllSupabaseMedia(): Promise<SupabaseMedia[]> {
 }
 
 /**
- * 미디어 파일 삭제 (API 엔드포인트 사용)
+ * 미디어 파일 삭제
  */
 export async function deleteSupabaseMedia(mediaId: string): Promise<boolean> {
   try {
+    validateSupabaseConfig()
     console.log(`🗑️ Supabase 파일 삭제 중: ${mediaId}`)
 
-    // 먼저 현재 미디어 목록에서 파일 정보 찾기
+    // 현재 미디어 목록에서 파일 정보 찾기
     const mediaList = await getAllSupabaseMedia()
     const targetMedia = mediaList.find(m => m.id === mediaId)
 
@@ -261,32 +285,32 @@ export async function deleteSupabaseMedia(mediaId: string): Promise<boolean> {
       return false
     }
 
-    // bucketPath를 사용하거나 없으면 파일명으로 경로 구성
-    let filePath = targetMedia.bucketPath
+    const filePath = targetMedia.bucketPath
     if (!filePath) {
-      // bucketPath가 없으면 type과 fileName으로 경로 구성
-      const folder = targetMedia.type === 'image' ? 'images' : 'videos'
-      filePath = `${folder}/${targetMedia.fileName || `${mediaId}.${targetMedia.type === 'image' ? 'png' : 'mp4'}`}`
+      console.error('❌ 파일 경로가 없습니다:', mediaId)
+      return false
     }
 
     console.log(`🗑️ 삭제할 파일 경로: ${filePath}`)
 
-    // API 엔드포인트로 삭제 요청 (path 파라미터 사용)
-    const response = await fetch(`/api/upload?path=${encodeURIComponent(filePath)}`, {
-      method: 'DELETE'
-    })
+    // Supabase Storage에서 파일 삭제
+    const { error: deleteError } = await supabaseAdmin.storage
+      .from(BUCKET_NAME)
+      .remove([filePath])
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('❌ API 삭제 실패:', errorData)
+    if (deleteError) {
+      console.error('❌ Supabase 파일 삭제 실패:', deleteError)
       return false
     }
 
-    const result = await response.json()
+    // 메타데이터 파일도 삭제
+    const metadataPath = `metadata/${mediaId}.json`
+    const { error: metaDeleteError } = await supabaseAdmin.storage
+      .from(BUCKET_NAME)
+      .remove([metadataPath])
 
-    if (!result.success) {
-      console.error('❌ 삭제 결과 실패:', result)
-      return false
+    if (metaDeleteError) {
+      console.warn('⚠️ 메타데이터 파일 삭제 실패:', metaDeleteError.message)
     }
 
     console.log(`✅ Supabase 파일 삭제 완료: ${mediaId} (${filePath})`)
@@ -302,54 +326,122 @@ export async function deleteSupabaseMedia(mediaId: string): Promise<boolean> {
  */
 export async function getSupabaseStorageUsage() {
   try {
-    const { data: usage, error } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .list('', { limit: 1000 })
+    validateSupabaseConfig()
 
-    if (error) {
-      // HTML 응답이나 네트워크 오류 체크
-      if (typeof error === 'object' && error.message) {
-        const errorMessage = error.message.toString()
-        if (errorMessage.includes('Unexpected token') || errorMessage.includes('<html>')) {
-          console.error('❌ 사용량 조회 실패: Supabase API가 HTML을 반환했습니다 (서비스 장애 가능성)', error)
-        } else {
-          console.error('❌ 사용량 조회 실패:', error)
-        }
-      } else {
-        console.error('❌ 사용량 조회 실패:', error)
+    let totalFiles = 0
+    let mediaCount = 0
+    let estimatedSize = 0
+
+    const folders = ['images', 'videos', 'metadata']
+
+    for (const folder of folders) {
+      const { data: files, error } = await supabaseAdmin.storage
+        .from(BUCKET_NAME)
+        .list(folder, { limit: 1000 })
+
+      if (error) {
+        console.warn(`⚠️ ${folder} 폴더 사용량 조회 실패:`, error.message)
+        continue
       }
 
-      return {
-        totalFiles: 0,
-        totalSize: 0,
-        usagePercent: 0,
-        mediaCount: 0
+      if (files) {
+        totalFiles += files.length
+
+        // 실제 미디어 파일만 카운트 (메타데이터 제외)
+        if (folder !== 'metadata') {
+          const mediaFiles = files.filter(file =>
+            file.name && file.name !== '.emptyFolderPlaceholder'
+          )
+          mediaCount += mediaFiles.length
+
+          // 파일 크기 추정 (메타데이터에서 가져올 수 있으면 사용)
+          estimatedSize += mediaFiles.reduce((sum, file) => {
+            return sum + (file.metadata?.size || 0)
+          }, 0)
+        }
       }
     }
 
-    const totalFiles = usage?.length || 0
-    const mediaFiles = usage?.filter(file =>
-      !file.name.startsWith('metadata/') &&
-      !file.name.startsWith('.emptyFolderPlaceholder')
-    ) || []
-
-    // 1GB = 1,073,741,824 bytes (무료 한도)
+    // 1GB = 1,073,741,824 bytes (Supabase 무료 한도)
     const freeLimit = 1 * 1024 * 1024 * 1024
+    const usagePercent = estimatedSize > 0 ? (estimatedSize / freeLimit) * 100 : 0
 
     return {
       totalFiles,
-      mediaCount: mediaFiles.length,
-      totalSize: 0, // Supabase에서 직접 용량 정보 제공 안함
-      usagePercent: 0, // 실제 사용량은 Dashboard에서 확인
-      freeLimit
+      mediaCount,
+      totalSize: estimatedSize,
+      usagePercent: Math.min(usagePercent, 100),
+      freeLimit,
+      breakdown: {
+        images: 0, // 개별 폴더별 상세 정보는 필요시 구현
+        videos: 0,
+        metadata: 0
+      }
     }
   } catch (error) {
     console.error('❌ 사용량 조회 실패:', error)
     return {
       totalFiles: 0,
+      mediaCount: 0,
       totalSize: 0,
       usagePercent: 0,
-      mediaCount: 0
+      freeLimit: 1024 * 1024 * 1024
+    }
+  }
+}
+
+/**
+ * Storage 버킷 상태 확인
+ */
+export async function checkSupabaseStorageStatus() {
+  try {
+    validateSupabaseConfig()
+
+    // 버킷 존재 확인
+    const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets()
+
+    if (listError) {
+      return {
+        isConnected: false,
+        bucketExists: false,
+        error: listError.message
+      }
+    }
+
+    const bucketExists = buckets?.some(bucket => bucket.name === BUCKET_NAME) || false
+
+    if (!bucketExists) {
+      return {
+        isConnected: true,
+        bucketExists: false,
+        error: `버킷 '${BUCKET_NAME}'이 존재하지 않습니다`
+      }
+    }
+
+    // 폴더 구조 확인
+    const requiredFolders = ['images', 'videos', 'metadata']
+    const folderStatus: Record<string, boolean> = {}
+
+    for (const folder of requiredFolders) {
+      const { data: files, error: folderError } = await supabaseAdmin.storage
+        .from(BUCKET_NAME)
+        .list(folder, { limit: 1 })
+
+      folderStatus[folder] = !folderError
+    }
+
+    return {
+      isConnected: true,
+      bucketExists: true,
+      bucketName: BUCKET_NAME,
+      folders: folderStatus,
+      error: null
+    }
+  } catch (error) {
+    return {
+      isConnected: false,
+      bucketExists: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 }

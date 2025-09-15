@@ -55,35 +55,41 @@ npx vercel env ls        # List environment variables
 - **State Management**: Zustand stores
 - **UI Components**: react-responsive-masonry for Midjourney-style layout
 
-### Storage Architecture (로컬 vs 배포)
+### Storage Architecture (Local vs Deployment)
 
-#### 🏠 로컬 개발 환경 (CURRENT ACTIVE)
-- **Primary Storage**: `useImageStore` - IndexedDB (로컬 브라우저 저장소)
-- **Database**: `mediaDB.ts` - IndexedDB 기반 미디어 관리
-- **File Processing**: 클라이언트 사이드 Canvas/Video API
-- **용량**: 브라우저 제한 없음 (수백 GB 가능)
-- **동기화**: 브라우저별 독립적
-- **사용 위치**:
-  - 메인 갤러리: `/`
-  - 모델 상세 페이지: `/model/[id]`
-  - 어드민 설정: `/admin/settings`
-  - 어드민 이미지/비디오 탭
+#### 🏠 Local Development Environment (CURRENT ACTIVE)
+- **Primary Storage**: `useImageStore` - IndexedDB (local browser storage)
+- **Database**: `mediaDB.ts` - IndexedDB-based media management
+- **File Processing**: Client-side Canvas/Video API
+- **File Upload**: Direct storage to local browser (images + videos)
+- **Capacity**: No browser limit (hundreds of GB possible)
+- **Synchronization**: Browser-specific isolation (no sharing between browsers)
+- **Advantages**: Fast development, network bandwidth savings, works without Supabase
+- **Usage Locations**:
+  - Main gallery: `/`
+  - Model detail pages: `/model/[id]`
+  - Admin overview: `/admin/overview`
+  - Admin image/video tabs: `/admin/images`, `/admin/videos`
+  - Admin settings: `/admin/settings`
 
-#### 🚀 배포 환경 (DEPLOYMENT READY)
+#### 🚀 Deployment Environment (DEPLOYMENT READY)
 - **Primary Storage**: `useSupabaseMediaStore` - Supabase Storage
 - **Database**: Supabase PostgreSQL + Prisma ORM v6
 - **Authentication**: NextAuth.js v4
 - **File Storage**: Supabase Storage with Sharp.js processing
+- **File Upload**: Server-side transmission then cloud storage (images + videos)
 - **Deployment**: Vercel with automated security validation
-- **용량**: 1GB 무료 (Supabase)
-- **동기화**: 클라우드 기반 실시간 동기화
-- **사용 위치**:
-  - 배포시 모든 컴포넌트 교체 필요
+- **Capacity**: 1GB free tier (Supabase)
+- **Synchronization**: Cloud-based real-time sync (shared across all users)
+- **Advantages**: Scalability, stability, security, backup
+- **Usage Locations**:
+  - All components use `useSupabaseMediaStore` in deployment
+  - Replace existing `useImageStore` usage with `useSupabaseMediaStore`
 
 #### 🔄 Blob Storage (ALTERNATIVE)
 - **Alternative Storage**: `useBlobMediaStore` - Vercel Blob
-- **용량**: 별도 요금제
-- **사용 목적**: Supabase 대안
+- **Capacity**: Separate pricing plan
+- **Use Case**: Supabase alternative or high-capacity projects
 
 ### Key System Components
 
@@ -163,6 +169,34 @@ Not a user-generated content platform - only administrators can upload content t
   - "deploy changes"
 - Always commit changes locally, but wait for user approval before pushing
 - Ask for confirmation before any push operation
+
+### GitHub Repository Roles
+
+#### 📂 Repository Structure
+- **Main Branch**: `main` - Production-ready code with automated Vercel deployment
+- **Development**: Local development with IndexedDB, no direct deployment
+- **Version Control**: Git for code versioning, GitHub for remote collaboration
+- **Issue Tracking**: GitHub Issues for bug reports and feature requests
+- **Documentation**: README.md, CLAUDE.md, and technical documentation in repository
+
+#### 🔄 Development Workflow
+1. **Local Development**: Work with IndexedDB storage (`useImageStore`)
+2. **Git Commit**: Commit changes locally with descriptive messages
+3. **User Approval**: Always ask before pushing to GitHub
+4. **GitHub Push**: Push to remote repository only with explicit user permission
+5. **Deployment**: Vercel automatically deploys from GitHub main branch
+
+#### 🚀 Deployment Process
+- **Local → GitHub**: Manual push with user approval
+- **GitHub → Vercel**: Automatic deployment on main branch changes
+- **Storage Switch**: Deployment automatically uses `useSupabaseMediaStore`
+- **Environment Variables**: Managed in Vercel Dashboard for production
+
+#### 📋 Repository Management
+- **Code Backup**: GitHub serves as primary code backup and version history
+- **Collaboration**: Multiple developers can work on the project via GitHub
+- **Release Management**: GitHub releases for version tracking
+- **Security**: GitHub security features for dependency scanning and secrets management
 
 ### Development Server Rules
 **IMPORTANT**: Development server operations are strictly controlled:

@@ -2,19 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useImageStore } from '@/store/imageStore'
+import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
 import SettingsTab from '@/components/admin/tabs/SettingsTab'
 
 export default function AdminSettingsPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useImageStore()
+  const { media, loadMedia } = useSupabaseMediaStore()
 
   useEffect(() => {
     const initializeMedia = async () => {
       try {
         await loadMedia()
       } catch (error) {
-        console.error('로컬 미디어 로드 실패:', error)
+        console.error('Supabase 미디어 로드 실패:', error)
       } finally {
         setIsLoaded(true)
       }
@@ -44,7 +44,7 @@ export default function AdminSettingsPage() {
               <div className="text-sm text-gray-300 text-right">
                 <div className="font-medium">{media.length} total files</div>
                 <div className="text-xs text-gray-400">
-                  Local storage
+                  Supabase Storage
                 </div>
               </div>
             )}

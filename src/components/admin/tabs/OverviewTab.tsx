@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useImageStore } from '@/store/imageStore'
+import { useMediaStore } from '@/store/imageStore'
 import AdminUpload from '@/components/AdminUpload'
 import AdminMasonryGallery from '@/components/AdminMasonryGallery'
 
 export default function OverviewTab() {
   const [showUpload, setShowUpload] = useState(false)
   const [storageStats, setStorageStats] = useState({ count: 0, estimatedSize: '0 MB', images: 0, videos: 0 })
-  const { media, clearMedia, loadMedia, getStorageStats, updateCustomName } = useImageStore()
+  const { media, clearMedia, loadMedia, getStorageStats } = useMediaStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
@@ -16,26 +16,16 @@ export default function OverviewTab() {
       try {
         console.log('🔄 오버뷰 탭: 로컬 미디어 로드 중...')
 
-        // IndexedDB 직접 확인
-        const dbRequest = indexedDB.open('tk-gallery-media-db', 2)
-        dbRequest.onsuccess = () => {
-          const db = dbRequest.result
-          const transaction = db.transaction(['media'], 'readonly')
-          const store = transaction.objectStore('media')
-          const getAllRequest = store.getAll()
-
-          getAllRequest.onsuccess = () => {
-            const rawData = getAllRequest.result
-            console.log('📦 IndexedDB 직접 조회 결과:', rawData.length, '개 파일')
-            console.log('📦 IndexedDB 데이터 샘플:', rawData.slice(0, 2))
-          }
-        }
-
         await loadMedia()
 
         // 스토리지 통계 업데이트
         const stats = await getStorageStats()
-        setStorageStats(stats)
+        setStorageStats({
+          count: stats.count,
+          estimatedSize: stats.estimatedSize,
+          images: stats.images,
+          videos: stats.videos
+        })
         console.log('📊 스토리지 통계:', stats)
       } catch (error) {
         console.error('❌ 오버뷰 탭: 로컬 미디어 로드 실패:', error)
@@ -43,20 +33,20 @@ export default function OverviewTab() {
     }
 
     initializeMedia()
-  }, [loadMedia, getStorageStats])
+  }, [loadMedia])
 
   // 미디어 상태 변화 감지하여 통계 실시간 업데이트
   useEffect(() => {
     const updateStats = async () => {
-      try {
-        const stats = await getStorageStats()
-        setStorageStats(stats)
-        console.log('📊 실시간 통계 업데이트:', stats)
-      } catch (error) {
-        console.error('❌ 통계 업데이트 실패:', error)
-      }
+      const stats = await getStorageStats()
+      setStorageStats({
+        count: stats.count,
+        estimatedSize: stats.estimatedSize,
+        images: stats.images,
+        videos: stats.videos
+      })
+      console.log('📊 실시간 통계 업데이트:', stats)
     }
-
     updateStats()
   }, [media, getStorageStats]) // media가 변경될 때마다 통계 재계산
 
@@ -64,10 +54,10 @@ export default function OverviewTab() {
   const modelsForGallery = media.map((mediaItem, index) => {
     return {
       id: mediaItem.id,
-      name: mediaItem.customName || `${mediaItem.type === 'video' ? 'Video' : 'Model'} #${index + 1}`,
+      name: mediaItem.fileName || `${mediaItem.type === 'video' ? 'Video' : 'Model'} #${index + 1}`,
       imageUrl: mediaItem.url,
       originalUrl: mediaItem.originalUrl,
-      imageAlt: `${mediaItem.type === 'video' ? 'Video' : 'Image'}: ${mediaItem.customName || mediaItem.fileName}`,
+      imageAlt: `${mediaItem.type === 'video' ? 'Video' : 'Image'}: ${mediaItem.fileName}`,
       category: 'uploaded',
       width: mediaItem.width || 400,
       height: mediaItem.height || 400,
@@ -77,14 +67,20 @@ export default function OverviewTab() {
     }
   })
 
-  // 이름 업데이트 핸들러
+  // 이름 업데이트 핸들러 (로컬 스토리지에서는 커스텀 이름 수정 가능)
   const handleUpdateName = async (id: string, newName: string) => {
     try {
-      await updateCustomName(id, newName)
-      console.log('✅ 오버뷰 탭: 이름 업데이트 완료:', id, newName)
+      // updateCustomName이 있는지 확인하고 사용
+      const store = useMediaStore.getState()
+      if (store.updateCustomName) {
+        await store.updateCustomName(id, newName)
+        console.log('✅ 커스텀 이름 업데이트 완료:', id, newName)
+      } else {
+        console.log('⚠️ 커스텀 이름 업데이트 기능이 없습니다:', id, newName)
+      }
     } catch (error) {
-      console.error('❌ 오버뷰 탭: 이름 업데이트 실패:', error)
-      throw error // AdminModelCard에서 에러 처리
+      console.error('❌ 이름 업데이트 실패:', error)
+      throw error
     }
   }
 

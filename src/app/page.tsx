@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
-import { useImageStore } from '@/store/imageStore'
+import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useImageStore()
+  const { media, loadMedia } = useSupabaseMediaStore()
 
   // GalleryMediaData를 MasonryGallery가 기대하는 Media 형태로 변환
   const convertedMedia = media.map(item => ({
@@ -30,7 +30,7 @@ export default function Home() {
       try {
         await loadMedia()
       } catch (error) {
-        console.error('로컬 미디어 로드 실패:', error)
+        console.error('Supabase 미디어 로드 실패:', error)
       } finally {
         setIsLoaded(true)
       }
@@ -48,7 +48,7 @@ export default function Home() {
           <MasonryGallery models={convertedMedia} />
         ) : (
           <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-gray-500">Loading media...</div>
+            <div className="text-gray-500">Loading Supabase media...</div>
           </div>
         )}
       </main>

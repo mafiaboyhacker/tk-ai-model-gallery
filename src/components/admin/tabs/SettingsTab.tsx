@@ -1,22 +1,27 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useImageStore } from '@/store/imageStore'
+import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
 
 export default function SettingsTab() {
   const [isClearing, setIsClearing] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
-  const { media, clearMedia, removeMedia, getStorageStats } = useImageStore()
+  const { media, clearMedia, removeMedia, getStats } = useSupabaseMediaStore()
   const [storageStats, setStorageStats] = useState<{count: number; estimatedSize: string; images: number; videos: number} | null>(null)
 
   const refreshStats = useCallback(async () => {
     try {
-      const stats = await getStorageStats()
-      setStorageStats(stats)
+      const stats = getStats()
+      setStorageStats({
+        count: stats.total,
+        estimatedSize: stats.totalSize,
+        images: stats.images,
+        videos: stats.videos
+      })
     } catch (error) {
       console.error('통계 새로고침 실패:', error)
     }
-  }, [getStorageStats])
+  }, [getStats])
 
   // 컴포넌트 마운트 시와 media 배열 변경 시 통계 새로고침
   useEffect(() => {
@@ -299,7 +304,7 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Storage Type:</span>
-            <span className="font-medium">IndexedDB (Browser)</span>
+            <span className="font-medium">Supabase Storage (Cloud)</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Supported Image Formats:</span>
@@ -336,8 +341,8 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
       <div className="bg-blue-50 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-blue-900 mb-3">💡 Tips</h3>
         <ul className="space-y-2 text-sm text-blue-800">
-          <li>• All media is stored locally in your browser's IndexedDB</li>
-          <li>• Clearing browser data will remove all uploaded media</li>
+          <li>• All media is stored in Supabase cloud storage</li>
+          <li>• Data is synced across all devices and browsers</li>
           <li>• Use separate image/video tabs for organized uploads</li>
           <li>• Press Ctrl+U anywhere for quick upload access</li>
           <li>• Large files are automatically optimized for performance</li>

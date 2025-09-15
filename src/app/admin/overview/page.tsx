@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useImageStore } from '@/store/imageStore'
+import { useMediaStore } from '@/store/imageStore'
 import OverviewTab from '@/components/admin/tabs/OverviewTab'
 
 export default function AdminOverviewPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useImageStore()
+  const { media, loadMedia } = useMediaStore()
 
   useEffect(() => {
     const initializeMedia = async () => {
@@ -44,7 +44,7 @@ export default function AdminOverviewPage() {
               <div className="text-sm text-gray-300 text-right">
                 <div className="font-medium">{media.length} total files</div>
                 <div className="text-xs text-gray-400">
-                  Local storage
+                  Local Storage
                 </div>
               </div>
             )}
