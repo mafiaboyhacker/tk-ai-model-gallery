@@ -7,8 +7,11 @@ import { createClient } from '@supabase/supabase-js'
 
 // Supabase 프로젝트 설정 (환경변수에서 가져오기)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+// 서버 사이드에서만 SERVICE_ROLE_KEY 접근
+const isServer = typeof window === 'undefined'
+const supabaseServiceKey = isServer ? (process.env.SUPABASE_SERVICE_ROLE_KEY || '') : ''
 
 // 환경 변수 디버깅 로그
 console.log('🔍 Supabase 환경 변수 디버깅:', {
@@ -16,6 +19,7 @@ console.log('🔍 Supabase 환경 변수 디버깅:', {
   hasAnonKey: !!supabaseAnonKey,
   hasServiceKey: !!supabaseServiceKey,
   nodeEnv: process.env.NODE_ENV,
+  isServer,
   allEnvKeys: Object.keys(process.env).filter(key => key.includes('SUPABASE'))
 })
 

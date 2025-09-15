@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Masonry from 'react-responsive-masonry'
 import ModelCard from './ModelCard'
-import { useImageStore } from '@/store/imageStore'
+// import { useImageStore } from '@/store/imageStore' // 더 이상 사용하지 않음
 
 interface Media {
   id: string
@@ -27,64 +27,37 @@ interface MasonryGalleryProps {
 export default function MasonryGallery({ models, loading = false }: MasonryGalleryProps) {
   const [columnsCount, setColumnsCount] = useState(2)
   const [mounted, setMounted] = useState(false)
-  const { media: uploadedMedia, isLoading, loadMedia } = useImageStore()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // IndexedDB에서 미디어 로드
-  useEffect(() => {
-    if (mounted) {
-      const initializeMedia = async () => {
-        try {
-          console.log('🔄 메인 갤러리: IndexedDB에서 미디어 로드 중...')
-          await loadMedia()
-        } catch (error) {
-          console.error('❌ 메인 갤러리: IndexedDB 로드 실패:', error)
-        }
-      }
-
-      initializeMedia()
-    }
-  }, [mounted, loadMedia])
-
-  // 오직 업로드된 미디어만 표시 (models prop 무시)
+  // props로 받은 models 사용 (store 직접 호출 제거)
   const allMedia = useMemo(() => {
     if (!mounted) {
       console.log('메인 갤러리: Not mounted yet, showing empty')
       return []
     }
 
+    // props로 받은 models 사용
+    console.log('메인 갤러리: Using props models -', models.length, 'items')
+
     // 현재 페이지에 따라 미디어 타입 필터링
     const isModelPage = typeof window !== 'undefined' && window.location.pathname === '/model'
     const isVideoPage = typeof window !== 'undefined' && window.location.pathname === '/video'
 
-    let filteredMedia = uploadedMedia
+    let filteredMedia = models
     if (isModelPage) {
-      filteredMedia = uploadedMedia.filter(media => media.type === 'image')
+      filteredMedia = models.filter(media => media.type === 'image')
     } else if (isVideoPage) {
-      filteredMedia = uploadedMedia.filter(media => media.type === 'video')
+      filteredMedia = models.filter(media => media.type === 'video')
     }
 
-    const uploadedModels = filteredMedia.map((media, index) => ({
-      id: media.id,
-      name: media.fileName || `Uploaded ${media.type === 'video' ? 'Video' : 'Image'} ${index + 1}`,
-      imageUrl: media.url,           // 갤러리에는 썸네일 (비디오도 썸네일 이미지)
-      originalUrl: media.originalUrl, // 모달에는 원본
-      imageAlt: `Uploaded: ${media.fileName}`,
-      category: 'uploaded',
-      width: media.width,
-      height: media.height,
-      type: media.type,
-      duration: media.duration,
-      resolution: media.resolution
-    }))
+    console.log('메인 갤러리: Filtered to', filteredMedia.length, 'media items')
 
-    console.log('메인 갤러리: Showing only', uploadedModels.length, 'uploaded media (ignoring demo models)')
-    // 오직 업로드된 미디어만 표시 (최신순)
-    return uploadedModels.reverse()
-  }, [uploadedMedia, mounted])
+    // models는 이미 Media 형태로 변환되어 전달됨
+    return filteredMedia
+  }, [models, mounted])
 
   // 반응형 컬럼 설정 (Midjourney 스타일) - 디바운스 최적화
   const updateColumns = useCallback(() => {

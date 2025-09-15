@@ -43,6 +43,13 @@ export default function Home() {
     initializeMedia()
   }, [loadMedia, isInitialized, usingSupabase])
 
+  // 미디어 로드 완료 시 추가 로깅
+  useEffect(() => {
+    if (media.length > 0) {
+      console.log(`🎯 메인 페이지: ${media.length}개 미디어 감지됨, 갤러리 업데이트`)
+    }
+  }, [media])
+
   return (
     <div className="min-h-screen bg-white">
       <Header />

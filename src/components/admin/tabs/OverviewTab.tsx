@@ -8,7 +8,7 @@ import AdminMasonryGallery from '@/components/AdminMasonryGallery'
 export default function OverviewTab() {
   const [showUpload, setShowUpload] = useState(false)
   const [storageStats, setStorageStats] = useState({ count: 0, estimatedSize: '0 MB', images: 0, videos: 0 })
-  const { media, clearMedia, loadMedia, getStorageStats, isInitialized, usingSupabase } = useEnvironmentStore()
+  const { media, clearMedia, loadMedia, getStorageStats, updateCustomName, isInitialized, usingSupabase } = useEnvironmentStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
@@ -69,19 +69,18 @@ export default function OverviewTab() {
     }
   })
 
-  // 이름 업데이트 핸들러 (로컬 스토리지에서는 커스텀 이름 수정 가능)
+  // 이름 업데이트 핸들러 (환경별 자동 스토리지에서 커스텀 이름 수정)
   const handleUpdateName = async (id: string, newName: string) => {
     try {
-      // updateCustomName이 있는지 확인하고 사용
-      const store = useMediaStore.getState()
-      if (store.updateCustomName) {
-        await store.updateCustomName(id, newName)
-        console.log('✅ 커스텀 이름 업데이트 완료:', id, newName)
+      // 환경별 자동 선택된 스토어의 updateCustomName 사용
+      if (updateCustomName) {
+        await updateCustomName(id, newName)
+        console.log(`✅ ${usingSupabase ? 'Supabase' : 'Local'} 커스텀 이름 업데이트 완료:`, id, newName)
       } else {
         console.log('⚠️ 커스텀 이름 업데이트 기능이 없습니다:', id, newName)
       }
     } catch (error) {
-      console.error('❌ 이름 업데이트 실패:', error)
+      console.error(`❌ ${usingSupabase ? 'Supabase' : 'Local'} 이름 업데이트 실패:`, error)
       throw error
     }
   }

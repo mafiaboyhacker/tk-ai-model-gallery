@@ -39,6 +39,14 @@ interface SupabaseMediaStore {
     totalSize: string
   }
 
+  // 호환성을 위한 getStorageStats 메소드
+  getStorageStats: () => Promise<{
+    count: number
+    estimatedSize: string
+    images: number
+    videos: number
+  }>
+
   // 하위 호환성을 위한 메서드들 (기존 imageStore 인터페이스 유지)
   get images(): SupabaseMedia[]
   addImages: (files: File[]) => Promise<void>
@@ -118,25 +126,36 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
     try {
       set({ isLoading: true })
 
+      // API Route를 통한 Storage 초기화
       if (!get().isInitialized) {
         console.log('🔄 Supabase Storage 초기화 중...')
-        const initialized = await initializeSupabaseStorage()
-        if (!initialized) {
-          throw new Error('Supabase Storage 초기화 실패')
+        const initResponse = await fetch('/api/supabase/storage?action=init')
+        const initResult = await initResponse.json()
+
+        if (!initResult.success) {
+          throw new Error(`Storage 초기화 실패: ${initResult.error}`)
         }
         set({ isInitialized: true })
+        console.log('✅ Storage 초기화 성공:', initResult.message)
       }
 
-      console.log('🔄 Supabase에서 미디어 로딩 중...')
-      const mediaList = await getAllSupabaseMedia()
+      console.log('🔄 API Route를 통해 Supabase 미디어 로딩 중...')
+      const response = await fetch('/api/supabase/storage?action=list')
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(`API 요청 실패: ${result.error}`)
+      }
+
+      const mediaList = result.data
 
       set({
         media: mediaList,
         isLoading: false
       })
 
-      const images = mediaList.filter(m => m.type === 'image').length
-      const videos = mediaList.filter(m => m.type === 'video').length
+      const images = mediaList.filter((m: any) => m.type === 'image').length
+      const videos = mediaList.filter((m: any) => m.type === 'video').length
       console.log(`✅ Supabase 미디어 로드 완료: ${mediaList.length}개 (이미지: ${images}, 비디오: ${videos})`)
 
       // 저장공간 사용량도 함께 업데이트
@@ -288,6 +307,21 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
       images,
       videos,
       totalSize: formatFileSize(totalSize)
+    }
+  },
+
+  // 호환성을 위한 getStorageStats 메소드
+  getStorageStats: async () => {
+    const { media } = get()
+    const images = media.filter(m => m.type === 'image').length
+    const videos = media.filter(m => m.type === 'video').length
+    const totalSize = media.reduce((sum, m) => sum + m.fileSize, 0)
+
+    return {
+      count: media.length,
+      estimatedSize: formatFileSize(totalSize),
+      images,
+      videos
     }
   },
 

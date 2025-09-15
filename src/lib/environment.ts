@@ -29,6 +29,12 @@ export const hasSupabaseConfig = () => {
 
 // 환경별 스토어 선택 로직
 export const shouldUseSupabase = () => {
+  // 🧪 임시 테스트: URL 파라미터로 강제 Supabase 사용 가능
+  if (typeof window !== 'undefined' && window.location.search.includes('force-supabase')) {
+    console.log('🧪 강제 Supabase 모드: URL 파라미터 감지')
+    return hasSupabaseConfig()
+  }
+
   // 로컬 개발 환경에서는 무조건 IndexedDB 사용
   if (!isProduction()) {
     console.log('🏠 로컬 환경 감지: IndexedDB 사용')
