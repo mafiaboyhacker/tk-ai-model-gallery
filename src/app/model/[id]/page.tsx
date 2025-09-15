@@ -6,40 +6,104 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
 import { useImageStore } from '@/store/imageStore'
-
-// 데모 데이터 제거됨 - 실제 업로드된 이미지만 사용
-const createDemoModels = () => []
+import VideoPlayer from '@/components/VideoPlayer'
 
 export default function ModelDetailPage() {
   const params = useParams()
   const modelId = params.id as string
   const [model, setModel] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
-  const uploadedImages = useImageStore((state) => state.images)
+  // 이름 편집 기능은 어드민 페이지에서만 가능 (보안상 메인 페이지에서 제거)
+  const [userInteracted, setUserInteracted] = useState(false)
+  const { media: uploadedMedia, loadMedia } = useImageStore()
+  // updateCustomName은 어드민 페이지에서만 사용 (메인 페이지에서 제거)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // 사용자 인터랙션 감지
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setUserInteracted(true)
+      console.log('🎵 사용자 인터랙션 감지됨 - 오디오 재생 가능')
+    }
+
+    // 다양한 사용자 이벤트 감지
+    const events = ['click', 'touchstart', 'keydown', 'scroll']
+    events.forEach(event => {
+      document.addEventListener(event, handleUserInteraction, { once: true })
+    })
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleUserInteraction)
+      })
+    }
+  }, [])
+
+  // 미디어 데이터 로드
   useEffect(() => {
     if (!mounted) return
 
-    // 업로드된 이미지에서 찾기
-    const uploadedModel = uploadedImages.find(img => img.id === modelId)
-    
+    const initializeMedia = async () => {
+      try {
+        console.log('🔄 모델 상세 페이지: IndexedDB에서 미디어 로드 중...')
+        await loadMedia()
+      } catch (error) {
+        console.error('❌ 모델 상세 페이지: 미디어 로드 실패:', error)
+      }
+    }
+
+    initializeMedia()
+  }, [mounted, loadMedia])
+
+  useEffect(() => {
+    if (!mounted || !uploadedMedia.length) return
+
+    // 로컬 업로드된 미디어에서 찾기
+    const uploadedModel = uploadedMedia.find(media => media.id === modelId)
+
+    console.log('🔍 모델 상세 페이지: 검색 중...', { modelId, totalMedia: uploadedMedia.length })
+
     if (uploadedModel) {
+      console.log('🔍 Found local media data:', uploadedModel)
+
+      // 비디오 URL 디버깅
+      if (uploadedModel.type === 'video') {
+        console.log('🎬 비디오 URL 디버깅:', {
+          thumbnailUrl: uploadedModel.url?.substring(0, 50) + '...',
+          originalUrl: uploadedModel.originalUrl?.substring(0, 50) + '...',
+          hasOriginalUrl: !!uploadedModel.originalUrl
+        })
+      }
+
+      // 파일명에서 확장자 제거
+      const getCleanFileName = (fileName: string) => {
+        return fileName.replace(/\.(mp4|mov|avi|png|jpg|jpeg|webp)$/i, '')
+      }
+
       setModel({
         id: uploadedModel.id,
-        name: uploadedModel.fileName || 'Uploaded Image',
-        imageUrl: uploadedModel.url,
-        imageAlt: `Uploaded: ${uploadedModel.fileName}`,
-        category: 'uploaded',
+        name: uploadedModel.customName || (uploadedModel.type === 'video' ? 'Video #1' : 'Model #1'),
+        originalFileName: uploadedModel.fileName,
+        mediaUrl: uploadedModel.type === 'video' ? uploadedModel.originalUrl : uploadedModel.url,
+        type: uploadedModel.type || 'image',
+        category: (uploadedModel.type === 'video') ? 'Video' : 'Image',
         width: uploadedModel.width,
         height: uploadedModel.height,
-        description: 'User uploaded AI model'
+        duration: uploadedModel.duration, // 실제 비디오 재생시간 (초)
+        resolution: `${uploadedModel.width} × ${uploadedModel.height}`,
+        description: (uploadedModel.type === 'video')
+          ? `High-quality video content generated using TKLABEL Persona-ver.02 AI model.`
+          : `High-resolution image content generated using TKLABEL Persona-ver.02 AI model.`,
+        aiModelDescription: `TKLABEL Persona-ver.02 represents a breakthrough in AI-driven persona generation and realistic character implementation. This advanced model follows a sophisticated two-stage process: first generating detailed personas with unique characteristics, backgrounds, and personalities, then training specialized image synthesis algorithms to bring these personas to life through photorealistic visual representations. The result is an unprecedented level of authenticity and emotional depth in AI-generated content, making each character feel genuinely human and relatable.`
       })
     }
-  }, [modelId, uploadedImages, mounted])
+  }, [modelId, uploadedMedia, mounted])
+
+  // 이름 편집 관련 함수들은 보안상 어드민 페이지에서만 제공
+  // 메인 페이지에서는 읽기 전용으로만 제공
 
   if (!mounted) {
     return (
@@ -88,51 +152,111 @@ export default function ModelDetailPage() {
 
           {/* Model Details */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Image */}
+            {/* Media Display - Image or Video */}
             <div className="relative">
-              <Image
-                src={model.imageUrl}
-                alt={model.imageAlt}
-                width={model.width}
-                height={model.height}
-                className="w-full h-auto rounded-lg shadow-lg"
-                priority
-              />
+              {model.type === 'video' ? (
+                <VideoPlayer
+                  src={model.mediaUrl}
+                  width={model.width}
+                  height={model.height}
+                  className="w-full h-auto rounded-lg shadow-lg"
+                  controls
+                  autoPlay={true}
+                  muted={!userInteracted}
+                  playsInline
+                />
+              ) : (
+                <Image
+                  src={model.mediaUrl}
+                  alt={model.name}
+                  width={model.width}
+                  height={model.height}
+                  className="w-full h-auto rounded-lg shadow-lg"
+                  priority
+                />
+              )}
             </div>
 
             {/* Information */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2 font-serif">
-                  {model.name}
-                </h1>
-                <span className="inline-block bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700">
+                {/* 메인 페이지에서는 읽기 전용 - 편집은 어드민 페이지에서만 가능 */}
+                <div className="mb-2">
+                  <h1 className="text-3xl font-bold text-gray-900 font-serif">
+                    {model.name}
+                  </h1>
+                </div>
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                  model.category === 'Video'
+                    ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                    : 'bg-green-100 text-green-700 border border-green-200'
+                }`}>
                   {model.category}
                 </span>
+
               </div>
 
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-                <p className="text-gray-700">{model.description}</p>
+                <p className="text-gray-700 mb-3">{model.description}</p>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h4 className="text-md font-semibold text-blue-900 mb-2 flex items-center">
+                    <span className="mr-2">🤖</span>
+                    About TKLABEL Persona-ver.02
+                  </h4>
+                  <p className="text-blue-800 text-sm leading-relaxed">
+                    {model.aiModelDescription}
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-semibold text-gray-900">Width:</span>
-                  <span className="ml-2 text-gray-600">{model.width}px</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-900">Height:</span>
-                  <span className="ml-2 text-gray-600">{model.height}px</span>
+              {/* Media Information Grid */}
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Media Information</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  {/* AI Model */}
+                  <div className="md:col-span-2 mb-2 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center mb-2">
+                      <span className="font-semibold text-purple-900">AI Model:</span>
+                      <span className="ml-2 text-purple-700 font-bold">TKLABEL Persona-ver.02</span>
+                      <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">Advanced</span>
+                    </div>
+                    <p className="text-purple-600 text-xs">
+                      Specialized in persona generation and realistic character implementation
+                    </p>
+                  </div>
+
+                  {/* Media Type */}
+                  <div>
+                    <span className="font-semibold text-gray-900">Type:</span>
+                    <span className="ml-2 text-gray-600 capitalize">
+                      {model.type === 'video' ? 'Video' : 'Image'}
+                    </span>
+                  </div>
+
+                  {/* Quality Level */}
+                  <div>
+                    <span className="font-semibold text-gray-900">Quality:</span>
+                    <span className="ml-2 text-gray-600">Professional Grade</span>
+                  </div>
+
+                  {/* Generation Method */}
+                  <div className="whitespace-nowrap">
+                    <span className="font-semibold text-gray-900">Generation:</span>
+                    <span className="ml-2 text-gray-600">Persona-based AI Training</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Contact Button */}
-              <div className="pt-4">
+              {/* Contact Button - Media Information 아래에 배치 */}
+              <div>
                 <button className="w-full bg-black text-white px-6 py-3 rounded hover:bg-gray-800 transition-colors">
                   Contact for Licensing
                 </button>
               </div>
+
             </div>
           </div>
         </div>

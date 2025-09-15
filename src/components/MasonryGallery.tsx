@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Masonry from 'react-responsive-masonry'
 import ModelCard from './ModelCard'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useImageStore } from '@/store/imageStore'
 
 interface Media {
   id: string
@@ -27,21 +27,21 @@ interface MasonryGalleryProps {
 export default function MasonryGallery({ models, loading = false }: MasonryGalleryProps) {
   const [columnsCount, setColumnsCount] = useState(2)
   const [mounted, setMounted] = useState(false)
-  const { media: uploadedMedia, isLoading, loadMedia } = useSupabaseMediaStore()
+  const { media: uploadedMedia, isLoading, loadMedia } = useImageStore()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Supabase에서 미디어 로드
+  // IndexedDB에서 미디어 로드
   useEffect(() => {
     if (mounted) {
       const initializeMedia = async () => {
         try {
-          console.log('🔄 메인 갤러리: Supabase에서 미디어 로드 중...')
+          console.log('🔄 메인 갤러리: IndexedDB에서 미디어 로드 중...')
           await loadMedia()
         } catch (error) {
-          console.error('❌ 메인 갤러리: Supabase 로드 실패:', error)
+          console.error('❌ 메인 갤러리: IndexedDB 로드 실패:', error)
         }
       }
 

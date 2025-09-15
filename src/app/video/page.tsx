@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
-import { useMediaStore } from '@/store/imageStore'
+import { useImageStore } from '@/store/imageStore'
 
 export default function VideoPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useMediaStore()
+  const { media, loadMedia } = useImageStore()
 
   // 비디오만 필터링
   const videoModels = media.filter(item => item.type === 'video').map(video => ({

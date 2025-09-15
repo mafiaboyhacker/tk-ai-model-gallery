@@ -2,9 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Communication Language
+
+**IMPORTANT: Always respond in Korean (한국어) when working with this project.** All explanations, comments, and communication should be in Korean unless specifically requested otherwise by the user.
+
 ## Project Overview
 
-**TK AI 모델 갤러리** - An AI model gallery website combining BlurBlur.ai's design identity with Midjourney's masonry layout system. Currently in active development with a functional Next.js implementation featuring demo data and optimized components.
+**TK AI 모델 갤러리** - An AI model gallery website combining BlurBlur.ai's design identity with Midjourney's masonry layout system. Currently in production deployment with Supabase integration and complete security hardening.
 
 ## Development Commands
 
@@ -21,10 +25,22 @@ npm start
 # Lint code
 npm run lint
 
+# Security and deployment
+npm run security-check   # Run automated security validation
+npm run pre-deploy       # Complete pre-deployment check (security + lint + build)
+
 # Database operations
 npx prisma generate      # Generate Prisma client after schema changes
 npx prisma db push       # Push schema changes to database
 npx prisma studio        # Open Prisma Studio for database management
+
+# Supabase operations
+npx supabase start       # Start local Supabase (requires Docker)
+npx supabase status      # Check local Supabase status
+
+# Deployment commands
+npx vercel --prod        # Deploy to production
+npx vercel env ls        # List environment variables
 ```
 
 ## Core Architecture
@@ -32,11 +48,38 @@ npx prisma studio        # Open Prisma Studio for database management
 ### Technology Stack
 - **Framework**: Next.js 15.5.2 (App Router + React 19)
 - **Styling**: Tailwind CSS v4 with custom Google Fonts (Libre Bodoni + Jost)
-- **Database**: PostgreSQL + Prisma ORM v6
-- **Authentication**: NextAuth.js v4
-- **State Management**: Zustand + React Query
-- **File Storage**: AWS S3 integration with Sharp.js processing
+- **State Management**: Zustand stores
 - **UI Components**: react-responsive-masonry for Midjourney-style layout
+
+### Storage Architecture (로컬 vs 배포)
+
+#### 🏠 로컬 개발 환경 (CURRENT ACTIVE)
+- **Primary Storage**: `useImageStore` - IndexedDB (로컬 브라우저 저장소)
+- **Database**: `mediaDB.ts` - IndexedDB 기반 미디어 관리
+- **File Processing**: 클라이언트 사이드 Canvas/Video API
+- **용량**: 브라우저 제한 없음 (수백 GB 가능)
+- **동기화**: 브라우저별 독립적
+- **사용 위치**:
+  - 메인 갤러리: `/`
+  - 모델 상세 페이지: `/model/[id]`
+  - 어드민 설정: `/admin/settings`
+  - 어드민 이미지/비디오 탭
+
+#### 🚀 배포 환경 (DEPLOYMENT READY)
+- **Primary Storage**: `useSupabaseMediaStore` - Supabase Storage
+- **Database**: Supabase PostgreSQL + Prisma ORM v6
+- **Authentication**: NextAuth.js v4
+- **File Storage**: Supabase Storage with Sharp.js processing
+- **Deployment**: Vercel with automated security validation
+- **용량**: 1GB 무료 (Supabase)
+- **동기화**: 클라우드 기반 실시간 동기화
+- **사용 위치**:
+  - 배포시 모든 컴포넌트 교체 필요
+
+#### 🔄 Blob Storage (ALTERNATIVE)
+- **Alternative Storage**: `useBlobMediaStore` - Vercel Blob
+- **용량**: 별도 요금제
+- **사용 목적**: Supabase 대안
 
 ### Key System Components
 
@@ -56,11 +99,17 @@ Real user data-driven parsing system based on 601 file analysis:
 - **Inquiry**: 4-step customer inquiry system
 - **UploadBatch**: Bulk file processing tracking
 
+#### Storage Architecture
+- **`src/store/supabaseMediaStore.ts`**: Primary store for Supabase Storage integration
+- **`src/store/imageStore.ts`**: Legacy IndexedDB store (maintained for compatibility)
+- **`src/store/blobMediaStore.ts`**: Vercel Blob storage integration
+- **`src/lib/supabaseStorage.ts`**: Core Supabase file operations and metadata handling
+
 #### Component Architecture
 - **MasonryGallery**: Responsive masonry grid with performance optimizations
-- **ModelCard**: Individual model display with loading states
+- **ModelCard**: Individual model display with loading states (supports both images and videos)
 - **Header**: BlurBlur.ai-inspired navigation with IAXAI branding
-- **Demo System**: Placeholder system using generated demo images
+- **Admin Components**: Complete admin interface with batch upload and management
 
 ### File Processing Pipeline
 
@@ -123,20 +172,29 @@ Based on real data analysis:
 - 83% PNG images, 16% MP4 videos, 1% JPEG
 - Batch processing for 600+ files
 - 40% storage savings through WebP conversion
-- AWS S3 cost optimization (~$0.12/month)
+- Supabase Storage cost optimization (~$0.12/month)
+
+### Security Implementation
+- **Environment Security**: Automated credential validation via `scripts/security-check.js`
+- **Deployment Security**: Pre-deployment validation with `npm run pre-deploy`
+- **Git Security**: Enhanced .gitignore preventing credential exposure
+- **Documentation**: `SECURE_DEPLOYMENT_CHECKLIST.md` and `VERCEL_ENV_SETUP_GUIDE.md`
 
 ### Architecture References
 - **Frontend**: Custom implementation following BlurBlur.ai exactly
 - **Backend**: Civitai-inspired patterns (database schema, file processing)
+- **Storage**: Supabase-first with fallback to other providers
 - **Never copy**: Civitai's UI design (only reference backend logic)
 
 ## Development Context
 
-The codebase is well-optimized with:
+The codebase is production-ready with:
 - TypeScript strict mode with custom type declarations
-- Performance-optimized React components
-- Clean dependency structure (17 core files)
-- Comprehensive database schema ready for production
-- Demo system for development and testing
+- Performance-optimized React components with video support
+- Clean dependency structure with security hardening
+- Comprehensive Supabase integration with real-time synchronization
+- Complete admin interface for media management
+- Automated security validation and deployment pipeline
+- Multiple storage backend support (Supabase, IndexedDB, Vercel Blob)
 
-Current state: Ready for backend API implementation and real data integration.
+Current state: **Production deployment ready** with complete Supabase integration and security hardening.

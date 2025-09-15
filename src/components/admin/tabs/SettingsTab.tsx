@@ -1,12 +1,27 @@
 'use client'
 
-import { useState } from 'react'
-import { useMediaStore } from '@/store/imageStore'
+import { useState, useEffect, useCallback } from 'react'
+import { useImageStore } from '@/store/imageStore'
 
 export default function SettingsTab() {
   const [isClearing, setIsClearing] = useState(false)
-  const { media, clearMedia, getStorageStats } = useMediaStore()
+  const [isValidating, setIsValidating] = useState(false)
+  const { media, clearMedia, removeMedia, getStorageStats, validateAndCleanData } = useImageStore()
   const [storageStats, setStorageStats] = useState<{count: number; estimatedSize: string; images: number; videos: number} | null>(null)
+
+  const refreshStats = useCallback(async () => {
+    try {
+      const stats = await getStorageStats()
+      setStorageStats(stats)
+    } catch (error) {
+      console.error('통계 새로고침 실패:', error)
+    }
+  }, [getStorageStats])
+
+  // 컴포넌트 마운트 시와 media 배열 변경 시 통계 새로고침
+  useEffect(() => {
+    refreshStats()
+  }, [media.length, refreshStats]) // media 배열의 길이가 변경될 때마다 실행
 
   const handleClearAllMedia = async () => {
     if (confirm('⚠️ WARNING: This will delete ALL uploaded media (images and videos). This action cannot be undone. Are you sure?')) {
@@ -15,6 +30,10 @@ export default function SettingsTab() {
         console.log('🗑️ 모든 미디어 삭제 중...')
         await clearMedia()
         console.log('✅ 모든 미디어 삭제 완료')
+
+        // 통계 새로고침
+        await refreshStats()
+
         alert('All media has been successfully deleted.')
       } catch (error) {
         console.error('❌ 미디어 삭제 실패:', error)
@@ -25,14 +44,47 @@ export default function SettingsTab() {
     }
   }
 
+  const handleValidateData = async () => {
+    if (confirm('데이터 정합성 검증을 시작하시겠습니까? 손상된 데이터는 자동으로 정리됩니다.')) {
+      setIsValidating(true)
+      try {
+        console.log('🔍 데이터 검증 시작...')
+        const result = await validateAndCleanData()
+
+        // 통계 새로고침
+        await refreshStats()
+
+        const message = `
+데이터 검증 완료:
+• 검사된 항목: ${result.checkedCount}개
+• 문제가 있었던 항목: ${result.repairedCount}개
+• 삭제된 항목: ${result.removedCount}개
+• 발견된 문제: ${result.issues.length}개
+
+${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).join('\n') + (result.issues.length > 10 ? '\n... 등' : '') : ''}
+        `
+        alert(message)
+      } catch (error) {
+        console.error('❌ 데이터 검증 실패:', error)
+        alert('데이터 검증 중 오류가 발생했습니다.')
+      } finally {
+        setIsValidating(false)
+      }
+    }
+  }
+
   const handleClearImages = async () => {
     if (confirm('Delete all images? Videos will be kept. This cannot be undone.')) {
       setIsClearing(true)
       try {
         const imageIds = media.filter(m => m.type === 'image').map(m => m.id)
         for (const id of imageIds) {
-          await useMediaStore.getState().removeMedia(id)
+          await removeMedia(id)
         }
+
+        // 통계 새로고침
+        await refreshStats()
+
         alert('All images have been deleted.')
       } catch (error) {
         console.error('❌ 이미지 삭제 실패:', error)
@@ -49,8 +101,12 @@ export default function SettingsTab() {
       try {
         const videoIds = media.filter(m => m.type === 'video').map(m => m.id)
         for (const id of videoIds) {
-          await useMediaStore.getState().removeMedia(id)
+          await removeMedia(id)
         }
+
+        // 통계 새로고침
+        await refreshStats()
+
         alert('All videos have been deleted.')
       } catch (error) {
         console.error('❌ 비디오 삭제 실패:', error)
@@ -58,15 +114,6 @@ export default function SettingsTab() {
       } finally {
         setIsClearing(false)
       }
-    }
-  }
-
-  const refreshStats = async () => {
-    try {
-      const stats = await getStorageStats()
-      setStorageStats(stats)
-    } catch (error) {
-      console.error('통계 새로고침 실패:', error)
     }
   }
 
@@ -202,6 +249,37 @@ export default function SettingsTab() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
                 <span>Clear Videos</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Data Validation */}
+          <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-medium text-blue-900">데이터 정합성 검증</h4>
+                <p className="text-sm text-blue-700 mt-1">
+                  저장된 데이터의 무결성을 검사하고 손상된 데이터를 자동으로 정리합니다.
+                </p>
+              </div>
+              <button
+                onClick={handleValidateData}
+                disabled={isValidating || media.length === 0}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+              >
+                {isValidating ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <span>검증 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>검증 시작</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

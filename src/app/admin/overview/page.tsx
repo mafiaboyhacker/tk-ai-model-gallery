@@ -2,32 +2,26 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useMediaStore } from '@/store/imageStore'
+import { useImageStore } from '@/store/imageStore'
 import OverviewTab from '@/components/admin/tabs/OverviewTab'
 
 export default function AdminOverviewPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, getStorageStats } = useMediaStore()
-  const [storageStats, setStorageStats] = useState<{count: number; estimatedSize: string; images: number; videos: number} | null>(null)
+  const { media, loadMedia } = useImageStore()
 
   useEffect(() => {
-    setIsLoaded(true)
-    loadStorageStats()
-  }, [])
-
-  useEffect(() => {
-    // 미디어가 변경될 때마다 통계 업데이트
-    loadStorageStats()
-  }, [media])
-
-  const loadStorageStats = async () => {
-    try {
-      const stats = await getStorageStats()
-      setStorageStats(stats)
-    } catch (error) {
-      console.error('저장소 통계 로드 실패:', error)
+    const initializeMedia = async () => {
+      try {
+        await loadMedia()
+      } catch (error) {
+        console.error('로컬 미디어 로드 실패:', error)
+      } finally {
+        setIsLoaded(true)
+      }
     }
-  }
+
+    initializeMedia()
+  }, [loadMedia])
 
   // 탭별 미디어 카운트 계산
   const imageCount = media.filter(m => m.type === 'image').length
@@ -46,10 +40,12 @@ export default function AdminOverviewPage() {
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            {storageStats && (
+            {media.length > 0 && (
               <div className="text-sm text-gray-300 text-right">
-                <div className="font-medium">{storageStats.count} total files</div>
-                <div className="text-xs text-gray-400">{storageStats.estimatedSize}</div>
+                <div className="font-medium">{media.length} total files</div>
+                <div className="text-xs text-gray-400">
+                  {(media.reduce((total, item) => total + (item.size || 0), 0) / (1024 * 1024)).toFixed(2)} MB
+                </div>
               </div>
             )}
             <Link
@@ -115,7 +111,7 @@ export default function AdminOverviewPage() {
       {/* Tab Content */}
       <main className="max-w-7xl mx-auto p-6">
         {isLoaded ? (
-          <OverviewTab storageStats={storageStats} />
+          <OverviewTab />
         ) : (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-gray-500">Loading admin panel...</div>

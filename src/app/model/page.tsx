@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
-import { useMediaStore } from '@/store/imageStore'
+import { useImageStore } from '@/store/imageStore'
 
 export default function ModelPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useMediaStore()
+  const { media, loadMedia } = useImageStore()
 
   // 이미지만 필터링 (모델 카테고리는 이미지만)
   const imageModels = media.filter(item => item.type === 'image').map(image => ({

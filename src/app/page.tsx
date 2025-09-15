@@ -4,26 +4,25 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useImageStore } from '@/store/imageStore'
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useSupabaseMediaStore()
+  const { media, loadMedia } = useImageStore()
 
   useEffect(() => {
-    // Supabase Storage에서 실제 업로드된 미디어 로드
     const initializeMedia = async () => {
       try {
         await loadMedia()
       } catch (error) {
-        console.error('Supabase 미디어 로드 실패:', error)
+        console.error('로컬 미디어 로드 실패:', error)
       } finally {
         setIsLoaded(true)
       }
     }
 
     initializeMedia()
-  }, [])
+  }, [loadMedia])
 
   return (
     <div className="min-h-screen bg-white">
@@ -31,7 +30,7 @@ export default function Home() {
       
       <main className="pt-20">
         {isLoaded ? (
-          <MasonryGallery models={[]} />
+          <MasonryGallery models={media} />
         ) : (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-gray-500">Loading media...</div>

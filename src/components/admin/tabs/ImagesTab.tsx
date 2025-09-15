@@ -1,22 +1,22 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useImageStore } from '@/store/imageStore'
 import AdminModelCard from '@/components/AdminModelCard'
 
 export default function ImagesTab() {
   const [uploading, setUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const { media, addMedia, removeMedia, loadMedia } = useSupabaseMediaStore()
+  const { media, addMedia, removeMedia, loadMedia, updateCustomName } = useImageStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
     const initializeMedia = async () => {
       try {
-        console.log('🔄 이미지 탭: Supabase에서 미디어 로드 중...')
+        console.log('🔄 이미지 탭: IndexedDB에서 미디어 로드 중...')
         await loadMedia()
       } catch (error) {
-        console.error('❌ 이미지 탭: Supabase 로드 실패:', error)
+        console.error('❌ 이미지 탭: IndexedDB 로드 실패:', error)
       }
     }
 
@@ -104,6 +104,16 @@ export default function ImagesTab() {
         console.error('❌ 이미지 삭제 실패:', error)
         alert('Failed to delete image. Please try again.')
       }
+    }
+  }
+
+  const handleUpdateImageName = async (id: string, newName: string) => {
+    try {
+      await updateCustomName(id, newName)
+      console.log('✅ 이미지 이름 업데이트 완료:', id, newName)
+    } catch (error) {
+      console.error('❌ 이미지 이름 업데이트 실패:', error)
+      throw error // AdminModelCard에서 에러 처리
     }
   }
 
@@ -217,6 +227,7 @@ export default function ImagesTab() {
                 height={imageModel.height}
                 type={imageModel.type}
                 onDelete={handleDeleteImage}
+                onNameUpdate={handleUpdateImageName}
                 isUploaded={true}
               />
             ))}

@@ -1,51 +1,115 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useImageStore } from '@/store/imageStore'
 import AdminUpload from '@/components/AdminUpload'
 import AdminMasonryGallery from '@/components/AdminMasonryGallery'
 
-interface OverviewTabProps {
-  storageStats: {
-    count: number
-    estimatedSize: string
-    images: number
-    videos: number
-  } | null
-}
-
-export default function OverviewTab({ storageStats }: OverviewTabProps) {
+export default function OverviewTab() {
   const [showUpload, setShowUpload] = useState(false)
-  const { media, clearMedia, loadMedia } = useSupabaseMediaStore()
+  const [storageStats, setStorageStats] = useState({ count: 0, estimatedSize: '0 MB', images: 0, videos: 0 })
+  const { media, clearMedia, loadMedia, getStorageStats, updateCustomName } = useImageStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
     const initializeMedia = async () => {
       try {
-        console.log('🔄 오버뷰 탭: Supabase에서 미디어 로드 중...')
+        console.log('🔄 오버뷰 탭: 로컬 미디어 로드 중...')
+
+        // IndexedDB 직접 확인
+        const dbRequest = indexedDB.open('tk-gallery-media-db', 2)
+        dbRequest.onsuccess = () => {
+          const db = dbRequest.result
+          const transaction = db.transaction(['media'], 'readonly')
+          const store = transaction.objectStore('media')
+          const getAllRequest = store.getAll()
+
+          getAllRequest.onsuccess = () => {
+            const rawData = getAllRequest.result
+            console.log('📦 IndexedDB 직접 조회 결과:', rawData.length, '개 파일')
+            console.log('📦 IndexedDB 데이터 샘플:', rawData.slice(0, 2))
+          }
+        }
+
         await loadMedia()
+
+        // 스토리지 통계 업데이트
+        const stats = await getStorageStats()
+        setStorageStats(stats)
+        console.log('📊 스토리지 통계:', stats)
       } catch (error) {
-        console.error('❌ 오버뷰 탭: Supabase 로드 실패:', error)
+        console.error('❌ 오버뷰 탭: 로컬 미디어 로드 실패:', error)
       }
     }
 
     initializeMedia()
-  }, [loadMedia])
+  }, [loadMedia, getStorageStats])
+
+  // 미디어 상태 변화 감지하여 통계 실시간 업데이트
+  useEffect(() => {
+    const updateStats = async () => {
+      try {
+        const stats = await getStorageStats()
+        setStorageStats(stats)
+        console.log('📊 실시간 통계 업데이트:', stats)
+      } catch (error) {
+        console.error('❌ 통계 업데이트 실패:', error)
+      }
+    }
+
+    updateStats()
+  }, [media, getStorageStats]) // media가 변경될 때마다 통계 재계산
 
   // 미디어 데이터를 AdminMasonryGallery가 기대하는 형식으로 변환
-  const modelsForGallery = media.map((mediaItem, index) => ({
-    id: mediaItem.id,
-    name: mediaItem.fileName || `${mediaItem.type === 'video' ? 'Video' : 'Image'} ${index + 1}`,
-    imageUrl: mediaItem.url,
-    originalUrl: mediaItem.originalUrl,
-    imageAlt: `${mediaItem.type === 'video' ? 'Video' : 'Image'}: ${mediaItem.fileName}`,
-    category: 'uploaded',
-    width: mediaItem.width || 400,
-    height: mediaItem.height || 400,
-    type: mediaItem.type,
-    duration: mediaItem.duration,
-    resolution: mediaItem.resolution
-  }))
+  const modelsForGallery = media.map((mediaItem, index) => {
+    return {
+      id: mediaItem.id,
+      name: mediaItem.customName || `${mediaItem.type === 'video' ? 'Video' : 'Model'} #${index + 1}`,
+      imageUrl: mediaItem.url,
+      originalUrl: mediaItem.originalUrl,
+      imageAlt: `${mediaItem.type === 'video' ? 'Video' : 'Image'}: ${mediaItem.customName || mediaItem.fileName}`,
+      category: 'uploaded',
+      width: mediaItem.width || 400,
+      height: mediaItem.height || 400,
+      type: mediaItem.type,
+      duration: mediaItem.duration,
+      resolution: mediaItem.resolution
+    }
+  })
+
+  // 이름 업데이트 핸들러
+  const handleUpdateName = async (id: string, newName: string) => {
+    try {
+      await updateCustomName(id, newName)
+      console.log('✅ 오버뷰 탭: 이름 업데이트 완료:', id, newName)
+    } catch (error) {
+      console.error('❌ 오버뷰 탭: 이름 업데이트 실패:', error)
+      throw error // AdminModelCard에서 에러 처리
+    }
+  }
+
+  // 상세한 데이터 분석 로그
+  console.log('📊 어드민 오버뷰 탭 - 상세 데이터 분석:')
+  console.log(`   - 원본 media 배열 길이: ${media.length}`)
+  console.log(`   - 변환된 modelsForGallery 길이: ${modelsForGallery.length}`)
+  console.log(`   - storageStats:`, storageStats)
+
+  if (media.length > 0) {
+    const imageCount = media.filter(m => m.type === 'image').length
+    const videoCount = media.filter(m => m.type === 'video').length
+    console.log(`   - 실제 데이터 분포: 이미지 ${imageCount}개, 비디오 ${videoCount}개`)
+
+    // 비디오 데이터만 따로 분석
+    const videos = media.filter(m => m.type === 'video')
+    if (videos.length > 0) {
+      console.log(`   - 비디오 데이터 상세:`)
+      videos.forEach((video, index) => {
+        console.log(`     ${index + 1}. ${video.fileName} (type: ${video.type}, duration: ${video.duration})`)
+      })
+    } else {
+      console.log('   - ⚠️ 비디오 데이터가 없습니다!')
+    }
+  }
 
   const handleClearAll = async () => {
     if (confirm('Are you sure you want to delete ALL uploaded media (images & videos)? This cannot be undone.')) {
@@ -53,6 +117,7 @@ export default function OverviewTab({ storageStats }: OverviewTabProps) {
         console.log('🗑️ 모든 미디어 삭제 중...')
         await clearMedia()
         console.log('✅ 모든 미디어 삭제 완료')
+        alert('All media has been successfully deleted.')
       } catch (error) {
         console.error('❌ 미디어 삭제 실패:', error)
         alert('Failed to clear media. Please try again.')
@@ -97,7 +162,7 @@ export default function OverviewTab({ storageStats }: OverviewTabProps) {
       </div>
 
       {/* Statistics Dashboard */}
-      {storageStats && storageStats.count > 0 && (
+      {media.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center">
@@ -149,7 +214,9 @@ export default function OverviewTab({ storageStats }: OverviewTabProps) {
                 </svg>
               </div>
               <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">{storageStats.estimatedSize}</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {storageStats.estimatedSize}
+                </div>
                 <div className="text-sm text-gray-600">Storage Used</div>
               </div>
             </div>
@@ -174,7 +241,10 @@ export default function OverviewTab({ storageStats }: OverviewTabProps) {
         </div>
 
         {modelsForGallery.length > 0 ? (
-          <AdminMasonryGallery models={modelsForGallery} />
+          <AdminMasonryGallery
+            models={modelsForGallery}
+            onNameUpdate={handleUpdateName}
+          />
         ) : (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

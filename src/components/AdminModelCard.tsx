@@ -14,6 +14,7 @@ interface AdminModelCardProps {
   width: number
   height: number
   onDelete: (id: string) => void
+  onNameUpdate?: (id: string, newName: string) => Promise<void>  // 이름 편집 함수
   isUploaded?: boolean
   type?: 'image' | 'video'  // 미디어 타입
   duration?: number         // 비디오 재생시간
@@ -30,6 +31,7 @@ export default function AdminModelCard({
   width,
   height,
   onDelete,
+  onNameUpdate,
   isUploaded = false,
   type = 'image',
   duration,
@@ -37,6 +39,8 @@ export default function AdminModelCard({
 }: AdminModelCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(name)
 
   // 단순화된 이미지 URL (캐시 버스팅 제거)
   const cacheBustedImageUrl = useMemo(() => {
@@ -70,6 +74,31 @@ export default function AdminModelCard({
   
   const handleCloseModal = () => {
     setIsModalOpen(false)
+  }
+
+  // 이름 편집 관련 함수들
+  const handleEditStart = () => {
+    setEditName(name)
+    setIsEditing(true)
+  }
+
+  const handleEditSave = async () => {
+    if (editName.trim() && onNameUpdate) {
+      try {
+        await onNameUpdate(id, editName.trim())
+        setIsEditing(false)
+        console.log('✅ Name updated successfully')
+      } catch (error) {
+        console.error('❌ Failed to update name:', error)
+        // 실패시 원래 이름으로 복원
+        setEditName(name)
+      }
+    }
+  }
+
+  const handleEditCancel = () => {
+    setEditName(name)
+    setIsEditing(false)
   }
 
   // imageUrl이 빈 문자열이면 렌더링하지 않음
@@ -136,14 +165,14 @@ export default function AdminModelCard({
         <Link href={`/model/${id}`} className="block relative overflow-hidden bg-gray-50">
           {type === 'video' ? (
             <video
-              src={imageUrl}
+              src={originalUrl || imageUrl}
               width={width}
               height={height}
               className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
               muted
               playsInline
               onError={(e) => {
-                console.error('Video failed to load:', imageUrl, e)
+                console.error('Video failed to load:', originalUrl || imageUrl, e)
               }}
             >
               <div className="w-full h-32 bg-gray-200 flex items-center justify-center">
@@ -168,7 +197,50 @@ export default function AdminModelCard({
 
         {/* Media Info */}
         <div className="p-2">
-          <h3 className="text-sm font-medium text-gray-900 truncate">{name}</h3>
+          {/* 이름 편집 기능 (어드민 전용) */}
+          {isEditing ? (
+            <div className="flex items-center gap-1 mb-1">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded px-1 py-0.5 flex-1"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') handleEditSave()
+                  if (e.key === 'Escape') handleEditCancel()
+                }}
+                autoFocus
+                onBlur={handleEditCancel}
+              />
+              <button
+                onClick={handleEditSave}
+                className="text-green-600 hover:text-green-800 p-0.5"
+                title="Save"
+              >
+                ✓
+              </button>
+              <button
+                onClick={handleEditCancel}
+                className="text-gray-600 hover:text-gray-800 p-0.5"
+                title="Cancel"
+              >
+                ✗
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 mb-1">
+              <h3 className="text-sm font-medium text-gray-900 truncate flex-1">{name}</h3>
+              {onNameUpdate && (
+                <button
+                  onClick={handleEditStart}
+                  className="text-gray-400 hover:text-gray-600 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Edit name"
+                >
+                  ✏️
+                </button>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>{width}×{height}</span>
             {type === 'video' && resolution && (
@@ -176,7 +248,11 @@ export default function AdminModelCard({
             )}
           </div>
           {category && category !== 'uploaded' && (
-            <span className="inline-block bg-gray-100 px-2 py-0.5 rounded text-xs text-gray-600 mt-1">
+            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${
+              type === 'video'
+                ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                : 'bg-green-100 text-green-700 border border-green-200'
+            }`}>
               {category}
             </span>
           )}

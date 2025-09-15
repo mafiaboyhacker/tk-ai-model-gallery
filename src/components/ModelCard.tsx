@@ -40,8 +40,8 @@ export default function ModelCard({
     return null
   }
 
-  // 실제 미디어 타입 감지: base64 이미지 데이터는 항상 이미지로 처리
-  const isActuallyVideo = type === 'video' && !imageUrl.startsWith('data:image/')
+  // 실제 미디어 타입 감지: type 필드를 우선 신뢰, base64 비디오 데이터도 비디오로 처리
+  const isActuallyVideo = type === 'video'
 
   const handleImageClick = (e: React.MouseEvent) => {
     // 비디오인 경우 항상 모달 열기 (링크가 없으므로)
@@ -100,14 +100,14 @@ export default function ModelCard({
             // 메인 갤러리 모드: 비디오 자동재생
             <Link href={`/model/${id}`} className="block relative overflow-hidden bg-white">
               <video
-                src={imageUrl}
+                src={originalUrl || imageUrl}
                 autoPlay
                 loop
                 muted
                 playsInline
                 className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
-                  console.error('Video failed to load:', imageUrl, e)
+                  console.error('Video failed to load:', originalUrl || imageUrl, e)
                 }}
               >
                 비디오를 재생할 수 없습니다.

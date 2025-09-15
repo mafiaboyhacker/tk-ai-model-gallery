@@ -13,6 +13,7 @@ interface MediaData {
   thumbnailWidth: number // 썸네일 크기 (masonry용)
   thumbnailHeight: number
   fileName: string
+  customName?: string // 사용자 지정 이름 (Model #1, Video #1 등)
   uploadedAt: number
   fileSize: number // 원본 파일 크기
   // 비디오 전용 필드
@@ -290,6 +291,21 @@ class MediaDB {
     })
   }
 
+  // 순차적 이름 생성 (Model #1, Video #1 등)
+  private async generateSequentialName(type: 'image' | 'video'): Promise<string> {
+    if (!this.db) await this.init()
+
+    const transaction = this.db!.transaction([this.storeName], 'readonly')
+    const store = transaction.objectStore(this.storeName)
+    const allMedia = await store.getAll()
+
+    // 해당 타입의 미디어 개수 계산
+    const sameTypeMedia = allMedia.filter(media => media.type === type)
+    const nextNumber = sameTypeMedia.length + 1
+
+    return type === 'video' ? `Video #${nextNumber}` : `Model #${nextNumber}`
+  }
+
   // 여러 미디어 추가 (배치 처리) - 이미지와 비디오 모두 지원
   async addMedia(files: File[]): Promise<MediaData[]> {
     if (!this.db) await this.init()
@@ -311,6 +327,9 @@ class MediaDB {
         // 미디어 파일 처리 (이미지 또는 비디오)
         const processed = await this.processMedia(file)
 
+        // 순차적 이름 생성 (Model #1, Video #1 등)
+        const customName = await this.generateSequentialName(processed.type)
+
         const mediaData: MediaData = {
           id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           type: processed.type,
@@ -323,6 +342,7 @@ class MediaDB {
           thumbnailWidth: processed.thumbnail.width,
           thumbnailHeight: processed.thumbnail.height,
           fileName: file.name,
+          customName: customName,
           uploadedAt: Date.now(),
           fileSize: file.size,
           // 비디오 전용 필드
@@ -430,6 +450,37 @@ class MediaDB {
     })
   }
 
+  // 커스텀 이름 업데이트
+  async updateCustomName(id: string, customName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) return reject(new Error('DB not initialized'))
+
+      const transaction = this.db.transaction([this.storeName], 'readwrite')
+      const store = transaction.objectStore(this.storeName)
+
+      // 먼저 기존 데이터를 가져오기
+      const getRequest = store.get(id)
+
+      getRequest.onsuccess = () => {
+        const mediaData = getRequest.result
+        if (!mediaData) {
+          reject(new Error('Media not found'))
+          return
+        }
+
+        // customName 업데이트
+        mediaData.customName = customName
+
+        // 업데이트된 데이터 저장
+        const putRequest = store.put(mediaData)
+        putRequest.onsuccess = () => resolve()
+        putRequest.onerror = () => reject(putRequest.error)
+      }
+
+      getRequest.onerror = () => reject(getRequest.error)
+    })
+  }
+
   // 하위 호환성을 위한 메서드들
   async getAllImages(): Promise<ImageData[]> {
     return this.getAllMedia() as Promise<ImageData[]>
@@ -455,9 +506,24 @@ class MediaDB {
     const videos = allMedia.filter(m => m.type === 'video')
 
     const totalSize = allMedia.reduce((sum, media) => {
-      // Blob 크기 추정 (실제 크기는 더 정확할 수 있음)
-      return sum + (media.thumbnailBlob?.size || media.thumbnailUrl.length * 0.75) +
-                   (media.originalBlob?.size || media.originalUrl.length * 0.75)
+      // 1. 원본 파일 크기를 우선 사용 (가장 정확)
+      if (media.fileSize && media.fileSize > 0) {
+        return sum + media.fileSize
+      }
+
+      // 2. Blob 크기 사용 (정확한 크기)
+      const thumbnailSize = media.thumbnailBlob?.size || 0
+      const originalSize = media.originalBlob?.size || 0
+
+      if (thumbnailSize > 0 || originalSize > 0) {
+        return sum + thumbnailSize + originalSize
+      }
+
+      // 3. Base64 길이로 추정 (가장 부정확하지만 fallback)
+      const base64ThumbnailSize = media.thumbnailUrl ? media.thumbnailUrl.length * 0.75 : 0
+      const base64OriginalSize = media.originalUrl ? media.originalUrl.length * 0.75 : 0
+
+      return sum + base64ThumbnailSize + base64OriginalSize
     }, 0)
 
     return {
@@ -465,6 +531,99 @@ class MediaDB {
       estimatedSize: this.formatBytes(totalSize),
       images: images.length,
       videos: videos.length
+    }
+  }
+
+  // 데이터 정합성 검증 및 정리 함수
+  async validateAndCleanData(): Promise<{
+    checkedCount: number
+    repairedCount: number
+    removedCount: number
+    issues: string[]
+  }> {
+    const allMedia = await this.getAllMedia()
+    let repairedCount = 0
+    let removedCount = 0
+    const issues: string[] = []
+    const validMedia: MediaData[] = []
+
+    console.log(`🔍 데이터 정합성 검증 시작: ${allMedia.length}개 항목 검사`)
+
+    for (const media of allMedia) {
+      let shouldRemove = false
+      let hasIssues = false
+
+      // 1. 필수 필드 검증
+      if (!media.id || !media.type || !media.fileName) {
+        issues.push(`${media.id || 'Unknown'}: 필수 필드 누락`)
+        shouldRemove = true
+      }
+
+      // 2. 타입 검증
+      if (media.type && !['image', 'video'].includes(media.type)) {
+        issues.push(`${media.id}: 잘못된 타입 - ${media.type}`)
+        shouldRemove = true
+      }
+
+      // 3. URL 및 Blob 검증
+      if (!media.thumbnailUrl && !media.thumbnailBlob) {
+        issues.push(`${media.id}: 썸네일 데이터 누락`)
+        hasIssues = true
+      }
+
+      if (!media.originalUrl && !media.originalBlob) {
+        issues.push(`${media.id}: 원본 데이터 누락`)
+        hasIssues = true
+      }
+
+      // 4. 크기 정보 검증
+      if (!media.originalWidth || !media.originalHeight || media.originalWidth <= 0 || media.originalHeight <= 0) {
+        issues.push(`${media.id}: 잘못된 크기 정보`)
+        hasIssues = true
+      }
+
+      // 5. 비디오 필드 검증
+      if (media.type === 'video') {
+        if (!media.duration || media.duration <= 0) {
+          issues.push(`${media.id}: 비디오 재생시간 누락`)
+          hasIssues = true
+        }
+        if (!media.resolution) {
+          issues.push(`${media.id}: 비디오 해상도 정보 누락`)
+          hasIssues = true
+        }
+      }
+
+      // 6. 타임스탬프 검증
+      if (!media.uploadedAt || media.uploadedAt <= 0) {
+        issues.push(`${media.id}: 업로드 시간 정보 누락`)
+        hasIssues = true
+      }
+
+      if (shouldRemove) {
+        // 심각한 오류가 있는 데이터는 삭제
+        await this.removeMedia(media.id)
+        removedCount++
+        console.log(`🗑️ 손상된 데이터 삭제: ${media.id}`)
+      } else {
+        validMedia.push(media)
+        if (hasIssues) {
+          repairedCount++
+        }
+      }
+    }
+
+    console.log(`✅ 데이터 정합성 검증 완료:`)
+    console.log(`   - 검사된 항목: ${allMedia.length}개`)
+    console.log(`   - 문제가 있었던 항목: ${repairedCount}개`)
+    console.log(`   - 삭제된 항목: ${removedCount}개`)
+    console.log(`   - 최종 유효 항목: ${validMedia.length}개`)
+
+    return {
+      checkedCount: allMedia.length,
+      repairedCount,
+      removedCount,
+      issues
     }
   }
 

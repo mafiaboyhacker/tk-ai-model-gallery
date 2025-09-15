@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Masonry from 'react-responsive-masonry'
 import AdminModelCard from './AdminModelCard'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useImageStore } from '@/store/imageStore'
 
 interface Model {
   id: string
@@ -22,12 +22,13 @@ interface Model {
 interface AdminMasonryGalleryProps {
   models: Model[]
   loading?: boolean
+  onNameUpdate?: (id: string, newName: string) => Promise<void>
 }
 
-export default function AdminMasonryGallery({ models, loading = false }: AdminMasonryGalleryProps) {
+export default function AdminMasonryGallery({ models, loading = false, onNameUpdate }: AdminMasonryGalleryProps) {
   const [columnsCount, setColumnsCount] = useState(2)
   const [mounted, setMounted] = useState(false)
-  const { removeMedia } = useSupabaseMediaStore()
+  const { removeMedia } = useImageStore()
 
   useEffect(() => {
     setMounted(true)
@@ -144,6 +145,7 @@ export default function AdminMasonryGallery({ models, loading = false }: AdminMa
               width={model.width}
               height={model.height}
               onDelete={handleDeleteMedia}
+              onNameUpdate={onNameUpdate}
               isUploaded={model.category === 'uploaded'}
               type={model.type}
               duration={model.duration}
