@@ -47,10 +47,7 @@ export default function VideoPage() {
       <main className="pt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Video Gallery</h1>
-            <p className="text-gray-600">
-              업로드된 비디오 컬렉션 - {videoModels.length}개의 비디오
-            </p>
+            <h1 className="nav-text text-2xl text-black/90 mb-2 ml-4" style={{letterSpacing: '0.1em'}}>VIDEO GALLERY &lt;</h1>
           </div>
 
           {isLoaded ? (

@@ -45,10 +45,7 @@ export default function ModelPage() {
       <main className="pt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Model Gallery</h1>
-            <p className="text-gray-600">
-              AI 모델 이미지 컬렉션 - {imageModels.length}개의 모델 이미지
-            </p>
+            <h1 className="nav-text text-2xl text-black/90 mb-2 ml-4" style={{letterSpacing: '0.1em'}}>MODEL GALLERY &lt;</h1>
           </div>
 
           {isLoaded ? (

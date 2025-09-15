@@ -15,15 +15,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 # Development server with Turbopack
 npm run dev              # Always runs on http://localhost:3000
+npm run dev:backend      # Backend dev server on port 3001
+npm run dev:local        # Local dev server on port 3000
 
 # Production build with Turbopack
-npm run build
+npm run build            # Build with Prisma generation
 
 # Start production server
-npm start
+npm start                # Start on port 3000
+npm run start:backend    # Start backend on port 3001
+npm run start:local      # Start local on port 3000
 
-# Lint code
-npm run lint
+# Code quality
+npm run lint             # ESLint code checking
 
 # Security and deployment
 npm run security-check   # Run automated security validation
@@ -87,10 +91,11 @@ npx vercel env ls        # List environment variables
 Real user data-driven parsing system based on 601 file analysis:
 ```typescript
 // Recognizes patterns like:
-// u3934589919_prompt_uuid_0.png
-// social_u3934589919_prompt_uuid_1.mp4
-// generation-uuid.jpeg
+// u3934589919_prompt_uuid_0.png (83% of files)
+// social_u3934589919_prompt_uuid_1.mp4 (16% of files)
+// generation-uuid.jpeg (1% of files)
 // imgvnf_prompt_uuid_2.png
+// Auto-extracts: AI tool, prompt, series UUID, variation number
 ```
 
 #### Database Schema (`prisma/schema.prisma`)
@@ -108,8 +113,14 @@ Real user data-driven parsing system based on 601 file analysis:
 #### Component Architecture
 - **MasonryGallery**: Responsive masonry grid with performance optimizations
 - **ModelCard**: Individual model display with loading states (supports both images and videos)
+- **AdminModelCard**: Admin-specific card with inline editing and deletion capabilities
+- **VideoPlayer**: Custom video player component with autoplay and controls
 - **Header**: BlurBlur.ai-inspired navigation with IAXAI branding
-- **Admin Components**: Complete admin interface with batch upload and management
+- **Admin Interface**:
+  - Overview/Images/Videos/Settings tabs
+  - Batch upload with drag-and-drop
+  - Real-time IndexedDB storage statistics
+  - Name editing restricted to admin pages only
 
 ### File Processing Pipeline
 
