@@ -10,6 +10,21 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
   const { media, loadMedia } = useImageStore()
 
+  // GalleryMediaData를 MasonryGallery가 기대하는 Media 형태로 변환
+  const convertedMedia = media.map(item => ({
+    id: item.id,
+    name: item.fileName || `Media ${item.id}`,
+    imageUrl: item.url,
+    originalUrl: item.originalUrl,
+    imageAlt: `Media: ${item.fileName}`,
+    category: item.type,
+    width: item.width,
+    height: item.height,
+    type: item.type,
+    duration: item.duration,
+    resolution: item.resolution
+  }))
+
   useEffect(() => {
     const initializeMedia = async () => {
       try {
@@ -30,7 +45,7 @@ export default function Home() {
       
       <main className="pt-20">
         {isLoaded ? (
-          <MasonryGallery models={media} />
+          <MasonryGallery models={convertedMedia} />
         ) : (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-gray-500">Loading media...</div>
