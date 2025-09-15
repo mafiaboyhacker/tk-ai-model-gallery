@@ -49,7 +49,7 @@ export default function VideoPlayer({
         videoRef.current.play().catch(error => {
           console.warn('자동 재생 실패:', error)
           // 실패하면 음소거 상태로 재시도
-          if (!muted) {
+          if (!muted && videoRef.current) {
             videoRef.current.muted = true
             videoRef.current.play().catch(retryError => {
               console.warn('음소거 상태 자동 재생도 실패:', retryError)
