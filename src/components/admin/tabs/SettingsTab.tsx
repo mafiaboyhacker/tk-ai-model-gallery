@@ -50,7 +50,12 @@ export default function SettingsTab() {
       try {
         console.log('🔍 데이터 검증 시작...')
         // TODO: 데이터 검증 로직 구현
-        const result = { checkedCount: media.length, cleanedCount: 0, errors: [] }
+        const result = {
+          checkedCount: media.length,
+          repairedCount: 0,
+          removedCount: 0,
+          issues: []
+        }
 
         // 통계 새로고침
         await refreshStats()
