@@ -1,20 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useMediaStore } from '@/store/imageStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import AdminUpload from '@/components/AdminUpload'
 import AdminMasonryGallery from '@/components/AdminMasonryGallery'
 
 export default function OverviewTab() {
   const [showUpload, setShowUpload] = useState(false)
   const [storageStats, setStorageStats] = useState({ count: 0, estimatedSize: '0 MB', images: 0, videos: 0 })
-  const { media, clearMedia, loadMedia, getStorageStats } = useMediaStore()
+  const { media, clearMedia, loadMedia, getStorageStats, isInitialized, usingSupabase } = useEnvironmentStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
     const initializeMedia = async () => {
+      if (!isInitialized) return
+
       try {
-        console.log('🔄 오버뷰 탭: 로컬 미디어 로드 중...')
+        console.log(`🔄 오버뷰 탭: ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 중...`)
 
         await loadMedia()
 
@@ -26,14 +28,14 @@ export default function OverviewTab() {
           images: stats.images,
           videos: stats.videos
         })
-        console.log('📊 스토리지 통계:', stats)
+        console.log(`📊 ${usingSupabase ? 'Supabase' : 'Local'} 스토리지 통계:`, stats)
       } catch (error) {
-        console.error('❌ 오버뷰 탭: 로컬 미디어 로드 실패:', error)
+        console.error(`❌ 오버뷰 탭: ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 실패:`, error)
       }
     }
 
     initializeMedia()
-  }, [loadMedia])
+  }, [loadMedia, isInitialized, usingSupabase])
 
   // 미디어 상태 변화 감지하여 통계 실시간 업데이트
   useEffect(() => {
@@ -213,7 +215,9 @@ export default function OverviewTab() {
                 <div className="text-2xl font-bold text-gray-900">
                   {storageStats.estimatedSize}
                 </div>
-                <div className="text-sm text-gray-600">Storage Used</div>
+                <div className="text-sm text-gray-600">
+                  {usingSupabase ? 'Supabase Storage' : 'Local Storage'}
+                </div>
               </div>
             </div>
           </div>

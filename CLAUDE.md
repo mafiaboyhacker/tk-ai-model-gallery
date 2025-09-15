@@ -55,25 +55,33 @@ npx vercel env ls        # List environment variables
 - **State Management**: Zustand stores
 - **UI Components**: react-responsive-masonry for Midjourney-style layout
 
-### Storage Architecture (Local vs Deployment)
+### 🔄 Storage Architecture: Environment-Based Auto-Switching System
 
-#### 🏠 Local Development Environment (CURRENT ACTIVE)
-- **Primary Storage**: `useImageStore` - IndexedDB (local browser storage)
+**IMPORTANT**: The project now uses **automatic environment detection** to switch between storage systems. No manual code changes needed for deployment.
+
+#### Core Auto-Detection System
+- **Environment Detection**: `src/lib/environment.ts` - Detects localhost vs production
+- **Auto Store Selection**: `src/hooks/useEnvironmentStore.ts` - Automatically selects appropriate store
+- **Universal Components**: All pages/components use `useEnvironmentStore` for automatic switching
+
+#### 🏠 Local Development Environment (Auto-Selected on localhost)
+- **Primary Storage**: `useMediaStore` (IndexedDB) - Automatically selected
 - **Database**: `mediaDB.ts` - IndexedDB-based media management
 - **File Processing**: Client-side Canvas/Video API
 - **File Upload**: Direct storage to local browser (images + videos)
 - **Capacity**: No browser limit (hundreds of GB possible)
 - **Synchronization**: Browser-specific isolation (no sharing between browsers)
 - **Advantages**: Fast development, network bandwidth savings, works without Supabase
-- **Usage Locations**:
-  - Main gallery: `/`
-  - Model detail pages: `/model/[id]`
-  - Admin overview: `/admin/overview`
-  - Admin image/video tabs: `/admin/images`, `/admin/videos`
-  - Admin settings: `/admin/settings`
+- **Auto-Detection Logic**:
+  ```typescript
+  isProduction() = false (localhost, 127.0.0.1)
+  shouldUseSupabase() = false
+  → useMediaStore (IndexedDB) selected
+  → "Local Storage" displayed in UI
+  ```
 
-#### 🚀 Deployment Environment (DEPLOYMENT READY)
-- **Primary Storage**: `useSupabaseMediaStore` - Supabase Storage
+#### 🚀 Deployment Environment (Auto-Selected on Vercel)
+- **Primary Storage**: `useSupabaseMediaStore` (Supabase) - Automatically selected
 - **Database**: Supabase PostgreSQL + Prisma ORM v6
 - **Authentication**: NextAuth.js v4
 - **File Storage**: Supabase Storage with Sharp.js processing
@@ -82,14 +90,50 @@ npx vercel env ls        # List environment variables
 - **Capacity**: 1GB free tier (Supabase)
 - **Synchronization**: Cloud-based real-time sync (shared across all users)
 - **Advantages**: Scalability, stability, security, backup
-- **Usage Locations**:
-  - All components use `useSupabaseMediaStore` in deployment
-  - Replace existing `useImageStore` usage with `useSupabaseMediaStore`
+- **Auto-Detection Logic**:
+  ```typescript
+  isProduction() = true (*.vercel.app domains)
+  hasSupabaseConfig() = true (environment variables present)
+  shouldUseSupabase() = true
+  → useSupabaseMediaStore (Supabase) selected
+  → "Supabase Storage" displayed in UI
+  ```
 
-#### 🔄 Blob Storage (ALTERNATIVE)
-- **Alternative Storage**: `useBlobMediaStore` - Vercel Blob
-- **Capacity**: Separate pricing plan
-- **Use Case**: Supabase alternative or high-capacity projects
+#### 🔄 Environment-Aware Components
+All components automatically adapt to the environment:
+- **Main Gallery**: `/` - Uses `useEnvironmentStore` for auto-switching
+- **Admin Overview**: `/admin/overview` - Uses `useEnvironmentStore` for auto-switching
+- **Admin Tabs**: All admin components automatically detect environment
+- **Debug Panel**: Shows current environment and selected storage system
+
+#### 📱 Deployment Workflow: Fully Automatic
+```bash
+# Local development (uses IndexedDB automatically)
+npm run dev  # → localhost:3000 → IndexedDB selected
+
+# Deploy to production (uses Supabase automatically)
+git push origin main  # → Vercel deployment → Supabase selected
+```
+
+**No code changes required** - the system automatically detects environment and switches storage accordingly.
+
+#### 🔧 Environment Variables (One-time setup for deployment)
+Required in Vercel Dashboard for automatic Supabase selection:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DATABASE_URL=your-postgres-connection-string
+NEXTAUTH_SECRET=your-secret-key
+NEXTAUTH_URL=https://your-domain.vercel.app
+```
+
+#### 🎯 Auto-Switching Benefits
+- ✅ **Zero Configuration**: No manual code changes for deployment
+- ✅ **Environment Isolation**: Local data stays local, production data in cloud
+- ✅ **Seamless Development**: Switch between localhost and deployed version transparently
+- ✅ **Debugging**: Clear console logs showing which storage system is active
+- ✅ **UI Indicators**: Storage type displayed in admin interface
 
 ### Key System Components
 
@@ -233,13 +277,37 @@ Based on real data analysis:
 
 ## Development Context
 
-The codebase is production-ready with:
+The codebase is production-ready with **Environment-Based Auto-Switching System**:
+
+### Core Features
 - TypeScript strict mode with custom type declarations
 - Performance-optimized React components with video support
 - Clean dependency structure with security hardening
-- Comprehensive Supabase integration with real-time synchronization
+- **Automatic environment detection and storage switching**
 - Complete admin interface for media management
 - Automated security validation and deployment pipeline
-- Multiple storage backend support (Supabase, IndexedDB, Vercel Blob)
 
-Current state: **Production deployment ready** with complete Supabase integration and security hardening.
+### Storage System
+- **Auto-Detection**: `useEnvironmentStore` automatically selects storage based on environment
+- **Local Development**: Uses IndexedDB (`useMediaStore`) for localhost
+- **Production Deployment**: Uses Supabase (`useSupabaseMediaStore`) for Vercel
+- **Zero Configuration**: No manual code changes required for deployment
+- **Environment Isolation**: Local data stays local, production data in cloud
+
+### Deployment Workflow
+```bash
+# Local development - automatically uses IndexedDB
+npm run dev  # → localhost:3000 → IndexedDB
+
+# Production deployment - automatically uses Supabase
+git push origin main  # → Vercel → Supabase (with environment variables)
+```
+
+### Key Implementation Files
+- `src/lib/environment.ts` - Environment detection logic
+- `src/hooks/useEnvironmentStore.ts` - Automatic store selection
+- `src/app/page.tsx` - Main gallery with auto-switching
+- `src/app/admin/overview/page.tsx` - Admin pages with auto-switching
+- `src/components/admin/tabs/OverviewTab.tsx` - Admin components with auto-switching
+
+Current state: **Production deployment ready** with complete environment-based auto-switching system and Supabase integration.

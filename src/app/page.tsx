@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useSupabaseMediaStore()
+  const { media, loadMedia, isInitialized, usingSupabase, environmentInfo } = useEnvironmentStore()
 
   // GalleryMediaData를 MasonryGallery가 기대하는 Media 형태로 변환
   const convertedMedia = media.map(item => ({
@@ -27,17 +27,21 @@ export default function Home() {
 
   useEffect(() => {
     const initializeMedia = async () => {
+      // 환경 초기화가 완료될 때까지 대기
+      if (!isInitialized) return
+
       try {
         await loadMedia()
+        console.log(`✅ ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 성공:`, media.length, '개')
       } catch (error) {
-        console.error('Supabase 미디어 로드 실패:', error)
+        console.error(`❌ ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 실패:`, error)
       } finally {
         setIsLoaded(true)
       }
     }
 
     initializeMedia()
-  }, [loadMedia])
+  }, [loadMedia, isInitialized, usingSupabase])
 
   return (
     <div className="min-h-screen bg-white">
@@ -48,7 +52,10 @@ export default function Home() {
           <MasonryGallery models={convertedMedia} />
         ) : (
           <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-gray-500">Loading Supabase media...</div>
+            <div className="text-gray-500">
+              Loading {usingSupabase ? 'Supabase' : 'Local'} media...
+              {!isInitialized && ' (환경 감지 중...)'}
+            </div>
           </div>
         )}
       </main>

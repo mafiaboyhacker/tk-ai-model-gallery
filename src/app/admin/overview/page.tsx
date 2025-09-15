@@ -2,26 +2,29 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useMediaStore } from '@/store/imageStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import OverviewTab from '@/components/admin/tabs/OverviewTab'
 
 export default function AdminOverviewPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useMediaStore()
+  const { media, loadMedia, isInitialized, usingSupabase } = useEnvironmentStore()
 
   useEffect(() => {
     const initializeMedia = async () => {
+      if (!isInitialized) return
+
       try {
         await loadMedia()
+        console.log(`✅ Admin ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 성공:`, media.length, '개')
       } catch (error) {
-        console.error('로컬 미디어 로드 실패:', error)
+        console.error(`❌ Admin ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 실패:`, error)
       } finally {
         setIsLoaded(true)
       }
     }
 
     initializeMedia()
-  }, [loadMedia])
+  }, [loadMedia, isInitialized, usingSupabase])
 
   // 탭별 미디어 카운트 계산
   const imageCount = media.filter(m => m.type === 'image').length
