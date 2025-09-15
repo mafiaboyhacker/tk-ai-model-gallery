@@ -297,13 +297,18 @@ class MediaDB {
 
     const transaction = this.db!.transaction([this.storeName], 'readonly')
     const store = transaction.objectStore(this.storeName)
-    const allMedia = await store.getAll()
 
-    // 해당 타입의 미디어 개수 계산
-    const sameTypeMedia = allMedia.filter(media => media.type === type)
-    const nextNumber = sameTypeMedia.length + 1
-
-    return type === 'video' ? `Video #${nextNumber}` : `Model #${nextNumber}`
+    return new Promise((resolve, reject) => {
+      const request = store.getAll()
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const allMedia = request.result
+        // 해당 타입의 미디어 개수 계산
+        const sameTypeMedia = allMedia.filter(media => media.type === type)
+        const nextNumber = sameTypeMedia.length + 1
+        resolve(type === 'video' ? `Video #${nextNumber}` : `Model #${nextNumber}`)
+      }
+    })
   }
 
   // 여러 미디어 추가 (배치 처리) - 이미지와 비디오 모두 지원
