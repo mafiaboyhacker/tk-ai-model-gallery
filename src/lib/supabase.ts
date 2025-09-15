@@ -5,10 +5,10 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase 프로젝트 설정 (새 프로젝트 정보)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hjovusgefakpcwghoixk.supabase.co'
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_ROQAqeNFDTssrjZzV2zshg_FA2fXApm'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb3Z1c2dlZmFrcGN3Z2hvaXhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4MjEyODIsImV4cCI6MjA3MzM5NzI4Mn0.xTKEV7f3ac3dQU_pD48Sefy6QYQWU7bg1Ci-Q7Z-kvk'
+// Supabase 프로젝트 설정 (환경변수에서 가져오기)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // 환경변수 유효성 검사
 if (!supabaseUrl || !supabaseAnonKey) {
