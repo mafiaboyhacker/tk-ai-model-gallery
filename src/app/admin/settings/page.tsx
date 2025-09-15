@@ -44,7 +44,7 @@ export default function AdminSettingsPage() {
               <div className="text-sm text-gray-300 text-right">
                 <div className="font-medium">{media.length} total files</div>
                 <div className="text-xs text-gray-400">
-                  {(media.reduce((total, item) => total + (item.size || 0), 0) / (1024 * 1024)).toFixed(2)} MB
+                  Local storage
                 </div>
               </div>
             )}
