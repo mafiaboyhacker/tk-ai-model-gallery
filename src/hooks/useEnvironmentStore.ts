@@ -6,12 +6,19 @@
 
 import { useMediaStore } from '@/store/imageStore'
 import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
-import { shouldUseSupabase, getEnvironmentInfo } from '@/lib/environment'
+import { shouldUseSupabase, getEnvironmentInfo, type EnvironmentInfo } from '@/lib/environment'
 import { useEffect, useState } from 'react'
+import type { MediaStore, RatioConfig } from '@/types'
 
-export const useEnvironmentStore = () => {
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [usingSupabase, setUsingSupabase] = useState(false)
+interface EnvironmentStoreReturn extends MediaStore {
+  isInitialized: boolean
+  usingSupabase: boolean
+  environmentInfo: EnvironmentInfo
+}
+
+export const useEnvironmentStore = (): EnvironmentStoreReturn => {
+  const [isInitialized, setIsInitialized] = useState<boolean>(false)
+  const [usingSupabase, setUsingSupabase] = useState<boolean>(false)
 
   // 환경 감지
   useEffect(() => {
@@ -32,19 +39,26 @@ export const useEnvironmentStore = () => {
 
   const selectedStore = usingSupabase ? supabaseStore : localStore
 
+  // 기본값 및 타입 안전성 보장
+  const defaultRatioConfig: RatioConfig = {
+    videoRatio: 0.15,
+    topVideoCount: 3,
+    shuffleMode: 'ratio-based'
+  }
+
   return {
     ...selectedStore,
     isInitialized,
     usingSupabase,
     environmentInfo: getEnvironmentInfo(),
-    // 랜덤화 기능 추가
-    shuffleMedia: selectedStore.shuffleMedia || (() => {}),
-    getRandomMedia: selectedStore.getRandomMedia || (() => []),
-    getFeaturedMedia: selectedStore.getFeaturedMedia || (() => []),
-    // 비율 기반 배치 기능 추가
-    arrangeByRatio: selectedStore.arrangeByRatio || (() => {}),
-    shuffleByMode: selectedStore.shuffleByMode || (() => {}),
-    updateRatioConfig: selectedStore.updateRatioConfig || (() => {}),
-    ratioConfig: selectedStore.ratioConfig || { videoRatio: 0.15, topVideoCount: 3, shuffleMode: 'ratio-based' }
+    // 랜덤화 기능 - 타입 안전성 보장
+    shuffleMedia: selectedStore.shuffleMedia ?? (() => {}),
+    getRandomMedia: selectedStore.getRandomMedia ?? (() => []),
+    getFeaturedMedia: selectedStore.getFeaturedMedia ?? (() => []),
+    // 비율 기반 배치 기능 - 타입 안전성 보장
+    arrangeByRatio: selectedStore.arrangeByRatio ?? (() => {}),
+    shuffleByMode: selectedStore.shuffleByMode ?? (() => {}),
+    updateRatioConfig: selectedStore.updateRatioConfig ?? (() => {}),
+    ratioConfig: selectedStore.ratioConfig ?? defaultRatioConfig
   }
 }

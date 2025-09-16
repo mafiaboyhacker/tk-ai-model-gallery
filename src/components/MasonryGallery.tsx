@@ -1,9 +1,26 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import Masonry from 'react-responsive-masonry'
 import ModelCard from './ModelCard'
 // import { useImageStore } from '@/store/imageStore' // 더 이상 사용하지 않음
+
+// 🚀 Performance: Custom debounce hook
+const useDebounce = (callback: Function, delay: number) => {
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+
+  const debouncedCallback = useCallback((...args: any[]) => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    const newTimer = setTimeout(() => {
+      callback(...args);
+    }, delay);
+    setDebounceTimer(newTimer);
+  }, [callback, delay, debounceTimer]);
+
+  return debouncedCallback;
+};
 
 interface Media {
   id: string
@@ -24,7 +41,8 @@ interface MasonryGalleryProps {
   loading?: boolean
 }
 
-export default function MasonryGallery({ models, loading = false }: MasonryGalleryProps) {
+// 🚀 Performance: Memoized component to prevent unnecessary re-renders
+function MasonryGallery({ models, loading = false }: MasonryGalleryProps) {
   const [columnsCount, setColumnsCount] = useState(2)
   const [mounted, setMounted] = useState(false)
 
@@ -59,32 +77,31 @@ export default function MasonryGallery({ models, loading = false }: MasonryGalle
     return filteredMedia
   }, [models, mounted])
 
-  // 반응형 컬럼 설정 (Midjourney 스타일) - 디바운스 최적화
+  // 🚀 Performance: Optimized responsive column calculation
   const updateColumns = useCallback(() => {
     const width = window.innerWidth
-    if (width >= 1536) setColumnsCount(6)        // 2xl
-    else if (width >= 1280) setColumnsCount(5)   // xl  
-    else if (width >= 1024) setColumnsCount(4)   // lg
-    else if (width >= 768) setColumnsCount(3)    // md
-    else if (width >= 640) setColumnsCount(2)    // sm
-    else setColumnsCount(2)                      // mobile
+    let newColumnCount = 2 // default
+
+    if (width >= 1536) newColumnCount = 6        // 2xl
+    else if (width >= 1280) newColumnCount = 5   // xl
+    else if (width >= 1024) newColumnCount = 4   // lg
+    else if (width >= 768) newColumnCount = 3    // md
+    else if (width >= 640) newColumnCount = 2    // sm
+
+    // Only update if changed to prevent unnecessary re-renders
+    setColumnsCount(prevCount => prevCount !== newColumnCount ? newColumnCount : prevCount)
   }, [])
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout
-    
-    const debouncedUpdateColumns = () => {
-      clearTimeout(timeoutId)
-      timeoutId = setTimeout(updateColumns, 50) // 100ms → 50ms 반응성 개선
-    }
+  // 🚀 Performance: Debounced resize handler
+  const debouncedUpdateColumns = useDebounce(updateColumns, 150)
 
+  useEffect(() => {
     updateColumns() // 초기 실행
     window.addEventListener('resize', debouncedUpdateColumns)
     return () => {
       window.removeEventListener('resize', debouncedUpdateColumns)
-      clearTimeout(timeoutId)
     }
-  }, [updateColumns])
+  }, [updateColumns, debouncedUpdateColumns])
 
   if (loading) {
     return (
@@ -143,3 +160,13 @@ export default function MasonryGallery({ models, loading = false }: MasonryGalle
     </div>
   )
 }
+
+// 🚀 Performance: Export memoized component with shallow comparison
+export default memo(MasonryGallery, (prevProps, nextProps) => {
+  // Custom comparison for better performance
+  return (
+    prevProps.loading === nextProps.loading &&
+    prevProps.models.length === nextProps.models.length &&
+    prevProps.models.every((model, index) => model.id === nextProps.models[index]?.id)
+  )
+})

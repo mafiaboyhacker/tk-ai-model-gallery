@@ -3,6 +3,12 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 import mime from 'mime-types';
 
+// 🔒 Security Configuration
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.webm', '.mov'];
+
 // S3 Client Configuration
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-northeast-2',
@@ -29,6 +35,40 @@ export interface UploadResult {
 }
 
 /**
+ * 🔒 Security validation for file uploads
+ */
+function validateFileUpload(buffer: Buffer, filename: string): void {
+  // Check file size
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error(`파일 크기가 너무 큽니다. 최대 ${MAX_FILE_SIZE / 1024 / 1024}MB까지 업로드 가능합니다.`);
+  }
+
+  // Check file extension
+  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error(`지원하지 않는 파일 형식입니다. 허용된 확장자: ${ALLOWED_EXTENSIONS.join(', ')}`);
+  }
+
+  // Check MIME type
+  const mimeType = mime.lookup(filename);
+  if (!mimeType) {
+    throw new Error('파일 형식을 확인할 수 없습니다.');
+  }
+
+  const isAllowedType = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES].includes(mimeType);
+  if (!isAllowedType) {
+    throw new Error(`지원하지 않는 MIME 타입입니다: ${mimeType}`);
+  }
+
+  // Check for suspicious patterns in filename
+  const suspiciousPatterns = ['.php', '.js', '.html', '.exe', '.bat', '.sh', '<script', 'javascript:'];
+  const lowerFilename = filename.toLowerCase();
+  if (suspiciousPatterns.some(pattern => lowerFilename.includes(pattern))) {
+    throw new Error('보안상 위험한 파일명 패턴이 감지되었습니다.');
+  }
+}
+
+/**
  * Upload file to S3 with automatic image optimization
  */
 export async function uploadFile(
@@ -37,23 +77,46 @@ export async function uploadFile(
   directory: string = 'models',
   options: ImageProcessingOptions = {}
 ): Promise<UploadResult> {
-  const key = `${directory}/${Date.now()}-${filename}`;
+  // 🔒 Security validation
+  validateFileUpload(buffer, filename);
+
+  // Sanitize filename
+  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const key = `${directory}/${Date.now()}-${sanitizedFilename}`;
   const mimeType = mime.lookup(filename) || 'application/octet-stream';
   
   let processedBuffer = buffer;
   let finalMimeType = mimeType;
   
-  // Process images with Sharp
+  // 🚀 Optimized image processing with Sharp
   if (mimeType.startsWith('image/')) {
     const { quality = 85, format = 'webp' } = options;
-    
-    processedBuffer = await sharp(buffer)
+
+    // Create Sharp instance once for reuse
+    const sharpInstance = sharp(buffer, {
+      failOn: 'error',
+      limitInputPixels: 268402689, // Prevent DoS attacks (limit ~16K x 16K)
+    });
+
+    // Get metadata first for optimization decisions
+    const metadata = await sharpInstance.metadata();
+    const isLargeImage = (metadata.width || 0) * (metadata.height || 0) > 4000000; // >4MP
+
+    // Adaptive quality based on image size - 더 보수적인 품질 조정
+    const adaptiveQuality = isLargeImage ? Math.max(quality - 5, 80) : quality;
+
+    processedBuffer = await sharpInstance
       .rotate() // Auto-rotate based on EXIF
-      .resize(2048, 2048, { // Max dimensions
+      .resize(2048, 2048, {
         fit: 'inside',
-        withoutEnlargement: true
+        withoutEnlargement: true,
+        kernel: sharp.kernel.lanczos3 // High-quality resizing
       })
-      .toFormat(format, { quality })
+      .toFormat(format, {
+        quality: adaptiveQuality,
+        progressive: true, // Progressive JPEG/WebP for faster loading
+        effort: 4 // WebP compression effort (0-6, 4 is good balance)
+      })
       .toBuffer();
     
     // Update filename and mime type
@@ -72,18 +135,29 @@ export async function uploadFile(
       CacheControl: 'public, max-age=31536000', // 1 year
     }));
     
-    // Generate thumbnails if sizes specified
+    // 🚀 Optimized parallel thumbnail generation
     const thumbnails = [];
     if (options.sizes && options.sizes.length > 0) {
-      for (const size of options.sizes) {
-        const thumbnailBuffer = await sharp(buffer)
+      // Generate all thumbnails in parallel for better performance
+      const thumbnailPromises = options.sizes.map(async (size) => {
+        const thumbnailBuffer = await sharp(buffer, {
+          failOn: 'error',
+          limitInputPixels: 268402689
+        })
           .rotate()
-          .resize(size.width, size.height, { fit: 'cover' })
-          .toFormat(format, { quality: quality - 5 })
+          .resize(size.width, size.height, {
+            fit: 'cover',
+            kernel: sharp.kernel.lanczos3
+          })
+          .toFormat(format, {
+            quality: Math.max(adaptiveQuality - 3, 75), // 🎨 썸네일도 고품질 유지
+            progressive: true,
+            effort: 4 // 썸네일도 동일한 압축 효율성
+          })
           .toBuffer();
-        
-        const thumbnailKey = `${directory}/thumbs/${Date.now()}-${size.suffix}-${newFilename}`;
-        
+
+        const thumbnailKey = `${directory}/thumbs/${Date.now()}-${size.suffix}-${sanitizedFilename}`;
+
         await s3Client.send(new PutObjectCommand({
           Bucket: BUCKET_NAME,
           Key: thumbnailKey,
@@ -91,16 +165,20 @@ export async function uploadFile(
           ContentType: finalMimeType,
           CacheControl: 'public, max-age=31536000',
         }));
-        
+
         const thumbnailUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${thumbnailKey}`;
         const thumbnailCdnUrl = CLOUDFRONT_DOMAIN ? `https://${CLOUDFRONT_DOMAIN}/${thumbnailKey}` : undefined;
-        
-        thumbnails.push({
+
+        return {
           size: size.suffix,
           url: thumbnailUrl,
           cdnUrl: thumbnailCdnUrl,
-        });
-      }
+        };
+      });
+
+      // Wait for all thumbnails to complete in parallel
+      const thumbnailResults = await Promise.all(thumbnailPromises);
+      thumbnails.push(...thumbnailResults);
     }
     
     const url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${newKey}`;
@@ -229,27 +307,27 @@ export function getOptimalProcessingOptions(
   
   switch (extension) {
     case 'png':
-      // PNG with transparency - convert to WebP with higher quality
+      // PNG with transparency - convert to WebP with premium quality
       return {
         format: 'webp',
-        quality: 90,
+        quality: 95, // 🎨 최고급 품질 (거의 무손실)
         sizes: thumbnailSizes,
       };
-      
+
     case 'jpg':
     case 'jpeg':
-      // JPEG - convert to WebP with good quality
+      // JPEG - convert to WebP with premium quality
       return {
         format: 'webp',
-        quality: 85,
+        quality: 90, // 🎨 프리미엄 품질 (완전 무손실 체감)
         sizes: thumbnailSizes,
       };
-      
+
     case 'webp':
-      // Already WebP - just optimize
+      // Already WebP - optimize with premium quality
       return {
         format: 'webp',
-        quality: 85,
+        quality: 90, // 🎨 기존 WebP도 프리미엄 품질로
         sizes: thumbnailSizes,
       };
       

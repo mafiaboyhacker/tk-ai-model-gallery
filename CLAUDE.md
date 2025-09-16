@@ -384,3 +384,45 @@ Current state: **Production deployment verified and fully operational** (2025-01
 - **Database**: Supabase PostgreSQL connected
 - **Storage**: Supabase Storage API functional
 - **Build System**: Next.js 15.5.2 compiling successfully
+
+## 🚨 CRITICAL DEVELOPMENT RULES
+
+### File Creation Rules
+**NEVER create files unless explicitly requested by the user.**
+- Only create files when the user specifically asks to create them
+- NEVER proactively create documentation files (*.md, README, etc.)
+- NEVER create configuration files without explicit user instruction
+- NEVER create component files unless specifically requested
+- Always prefer editing existing files over creating new ones
+- Ask for confirmation before creating any new file
+
+### Git Operations Rules
+**NEVER perform git push operations unless explicitly requested by the user.**
+- Only execute `git push` when the user specifically asks for it
+- NEVER automatically push changes to GitHub
+- Always commit changes locally first, but wait for user approval before pushing
+- Ask for explicit confirmation before any git push operation
+- Commands that require user permission:
+  - `git push`
+  - `git push origin main`
+  - `git push origin [branch]`
+  - Any command that pushes to remote repository
+
+### User Permission Required
+The following actions require explicit user instruction:
+1. **Creating any new files** - Ask permission first
+2. **Git push operations** - Wait for user command
+3. **Installing new dependencies** - Confirm with user
+4. **Modifying package.json** - Get user approval
+5. **Creating new directories** - User must request
+6. **Deploying to production** - User instruction only
+
+### Safe Operations (No Permission Needed)
+- Reading existing files
+- Editing existing files when requested
+- Running build/test commands for verification
+- Git add and git commit (local operations)
+- Analyzing code and providing suggestions
+- Searching through codebase
+
+**Remember: When in doubt, ask the user for permission rather than proceeding automatically.**

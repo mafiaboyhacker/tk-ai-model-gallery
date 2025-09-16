@@ -3,9 +3,11 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
-import type { DefaultSession } from 'next-auth'
+import type { DefaultSession, NextAuthConfig } from 'next-auth'
+import type { JWT } from 'next-auth/jwt'
 import { UserRole } from '@prisma/client'
 
+// 🔒 Type-safe NextAuth module augmentation
 declare module 'next-auth' {
   interface Session {
     user: {
@@ -13,14 +15,24 @@ declare module 'next-auth' {
       role: UserRole
     } & DefaultSession['user']
   }
-  
+
   interface User {
+    id: string
+    email: string
+    name: string | null
     role: UserRole
   }
 }
 
-export const config = {
-  adapter: PrismaAdapter(prisma) as any,
+declare module 'next-auth/jwt' {
+  interface JWT {
+    role: UserRole
+    sub: string
+  }
+}
+
+export const config: NextAuthConfig = {
+  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -72,16 +84,18 @@ export const config = {
     strategy: "jwt" as const
   },
   callbacks: {
-    async jwt({ token, user }: { token: any; user: any }) {
+    // 🔒 Type-safe JWT callback
+    async jwt({ token, user }) {
       if (user) {
         token.role = user.role
       }
       return token
     },
-    async session({ session, token }: { session: any; token: any }) {
-      if (token) {
-        session.user.id = token.sub!
-        session.user.role = token.role as UserRole
+    // 🔒 Type-safe session callback
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.sub
+        session.user.role = token.role
       }
       return session
     }

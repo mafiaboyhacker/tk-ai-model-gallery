@@ -3,6 +3,25 @@
  * 로컬: IndexedDB, 배포: Supabase 자동 전환
  */
 
+// 🔒 Type definitions for environment configuration
+export interface EnvironmentInfo {
+  isProduction: boolean
+  hasSupabaseConfig: boolean
+  shouldUseSupabase: boolean
+  hostname: string
+  nodeEnv: string | undefined
+  vercelEnv: string | undefined
+  supabaseUrl: string | undefined
+}
+
+export type StorageType = 'indexeddb' | 'supabase'
+
+export interface StorageConfig {
+  type: StorageType
+  description: string
+  features: string[]
+}
+
 // 배포 환경 감지
 export const isProduction = () => {
   if (typeof window === 'undefined') {

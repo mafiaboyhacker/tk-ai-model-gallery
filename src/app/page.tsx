@@ -5,13 +5,14 @@ import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
 import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import type { Media } from '@/types'
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
   const { media, loadMedia, shuffleByMode, isInitialized, usingSupabase, environmentInfo } = useEnvironmentStore()
 
   // GalleryMediaData를 MasonryGallery가 기대하는 Media 형태로 변환
-  const convertedMedia = media.map(item => ({
+  const convertedMedia: Media[] = media.map(item => ({
     id: item.id,
     name: item.fileName || `Media ${item.id}`,
     imageUrl: item.url,
