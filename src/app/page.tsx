@@ -37,7 +37,7 @@ export default function Home() {
 
         // 📊 미디어 로드 후 비율 기반 자동 배치 (비디오 우선 상단, 비율 조절 가능)
         setTimeout(() => {
-          shuffleByMode()
+          shuffleByMode?.()
           console.log('📊 메인 페이지: 비율 기반 미디어 배치 완료 (비디오 15%, 상단 3개)')
         }, 100) // 약간의 지연을 주어 상태 업데이트 완료 보장
 

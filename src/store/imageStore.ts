@@ -21,12 +21,23 @@ interface MediaStore {
   media: GalleryMediaData[]   // 갤러리용 미디어 데이터
   isLoading: boolean
   isInitialized: boolean
+  error: string | null        // 에러 상태
+  selectedMedia: GalleryMediaData | null  // 선택된 미디어
+
+  // 기본 작업
   addMedia: (files: File[]) => Promise<void>
   removeMedia: (id: string) => Promise<void>
+  updateMedia: (id: string, updates: Partial<GalleryMediaData>) => Promise<void>
   clearMedia: () => Promise<void>
   loadMedia: () => Promise<void>
   updateCustomName: (id: string, customName: string) => Promise<void>
   getStorageStats: () => Promise<{ count: number; estimatedSize: string; images: number; videos: number }>
+
+  // 검색 및 필터링
+  searchMedia: (query: string) => GalleryMediaData[]
+  filterByType: (type: 'image' | 'video' | 'all') => GalleryMediaData[]
+  filterByCategory: (category: string) => GalleryMediaData[]
+  sortMedia: (by: 'createdAt' | 'fileName' | 'type' | 'size', order: 'asc' | 'desc') => void
 
   // 🎲 랜덤 배치 기능
   shuffleMedia: () => void
@@ -38,6 +49,9 @@ interface MediaStore {
   updateRatioConfig: (config: Partial<MediaRatioConfig>) => void
   arrangeByRatio: () => void
   shuffleByMode: () => void
+
+  // 통계
+  getStats: () => { total: number; images: number; videos: number; totalSize: number; averageSize: number; categories: Record<string, number> }
 
   // 하위 호환성을 위한 메서드들
   get images(): GalleryMediaData[]
@@ -51,6 +65,8 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
   media: [],
   isLoading: false,
   isInitialized: false,
+  error: null,
+  selectedMedia: null,
 
   // 📊 비율 기반 배치 설정 (기본값: 비디오 15%, 상단 3개)
   ratioConfig: {
@@ -336,6 +352,87 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
   loadImages: async () => {
     return get().loadMedia()
+  },
+
+  // 📋 누락된 필수 함수들 구현
+  updateMedia: async (id: string, updates: Partial<GalleryMediaData>) => {
+    try {
+      set((state) => ({
+        media: state.media.map(media =>
+          media.id === id ? { ...media, ...updates } : media
+        )
+      }))
+      console.log('✅ 미디어 업데이트 완료:', id)
+    } catch (error) {
+      console.error('❌ 미디어 업데이트 실패:', error)
+      set({ error: error instanceof Error ? error.message : '미디어 업데이트 실패' })
+    }
+  },
+
+  searchMedia: (query: string) => {
+    const media = get().media
+    if (!query.trim()) return media
+
+    return media.filter(item =>
+      item.fileName.toLowerCase().includes(query.toLowerCase()) ||
+      (item.customName && item.customName.toLowerCase().includes(query.toLowerCase()))
+    )
+  },
+
+  filterByType: (type: 'image' | 'video' | 'all') => {
+    const media = get().media
+    if (type === 'all') return media
+    return media.filter(item => item.type === type)
+  },
+
+  filterByCategory: (category: string) => {
+    const media = get().media
+    if (!category) return media
+    // 카테고리 기능이 구현되면 여기서 필터링
+    return media
+  },
+
+  sortMedia: (by: 'createdAt' | 'fileName' | 'type' | 'size', order: 'asc' | 'desc') => {
+    set((state) => ({
+      media: [...state.media].sort((a, b) => {
+        let comparison = 0
+
+        switch (by) {
+          case 'createdAt':
+            comparison = a.uploadedAt - b.uploadedAt
+            break
+          case 'fileName':
+            comparison = a.fileName.localeCompare(b.fileName)
+            break
+          case 'type':
+            comparison = a.type.localeCompare(b.type)
+            break
+          case 'size':
+            // 크기 정보가 없으므로 파일명으로 대체
+            comparison = a.fileName.localeCompare(b.fileName)
+            break
+          default:
+            return 0
+        }
+
+        return order === 'desc' ? -comparison : comparison
+      })
+    }))
+  },
+
+  getStats: () => {
+    const media = get().media
+    const images = media.filter(item => item.type === 'image')
+    const videos = media.filter(item => item.type === 'video')
+
+    return {
+      total: media.length,
+      images: images.length,
+      videos: videos.length,
+      totalSize: 0, // IndexedDB에서는 정확한 크기를 알기 어려움
+      averageSize: 0,
+      categories: {} // 카테고리 기능 미구현
+    }
   }
 }))
 

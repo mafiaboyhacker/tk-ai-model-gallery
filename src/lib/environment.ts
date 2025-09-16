@@ -5,7 +5,7 @@
 
 // 🔒 Type definitions for environment configuration
 export interface EnvironmentInfo {
-  isProduction: boolean
+  isProduction: boolean | undefined
   hasSupabaseConfig: boolean
   shouldUseSupabase: boolean
   hostname: string

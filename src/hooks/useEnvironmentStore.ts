@@ -14,6 +14,8 @@ interface EnvironmentStoreReturn extends MediaStore {
   isInitialized: boolean
   usingSupabase: boolean
   environmentInfo: EnvironmentInfo
+  updateCustomName: (id: string, newName: string) => Promise<void>
+  getStorageStats: () => Promise<{ count: number; estimatedSize: string; images: number; videos: number }>
 }
 
 export const useEnvironmentStore = (): EnvironmentStoreReturn => {
@@ -51,14 +53,14 @@ export const useEnvironmentStore = (): EnvironmentStoreReturn => {
     isInitialized,
     usingSupabase,
     environmentInfo: getEnvironmentInfo(),
-    // 랜덤화 기능 - 타입 안전성 보장
-    shuffleMedia: selectedStore.shuffleMedia ?? (() => {}),
-    getRandomMedia: selectedStore.getRandomMedia ?? (() => []),
-    getFeaturedMedia: selectedStore.getFeaturedMedia ?? (() => []),
-    // 비율 기반 배치 기능 - 타입 안전성 보장
-    arrangeByRatio: selectedStore.arrangeByRatio ?? (() => {}),
-    shuffleByMode: selectedStore.shuffleByMode ?? (() => {}),
-    updateRatioConfig: selectedStore.updateRatioConfig ?? (() => {}),
-    ratioConfig: selectedStore.ratioConfig ?? defaultRatioConfig
+    // 비율 기반 배치 기능 - 완전한 타입 안전성 (fallback 제거)
+    arrangeByRatio: selectedStore.arrangeByRatio,
+    shuffleByMode: selectedStore.shuffleByMode,
+    updateRatioConfig: selectedStore.updateRatioConfig,
+    ratioConfig: selectedStore.ratioConfig,
+    // 커스텀 네임 업데이트 기능 - 완전한 타입 안전성 (fallback 제거)
+    updateCustomName: selectedStore.updateCustomName,
+    // 스토리지 통계 기능 - 완전한 타입 안전성 (fallback 제거)
+    getStorageStats: selectedStore.getStorageStats
   }
 }

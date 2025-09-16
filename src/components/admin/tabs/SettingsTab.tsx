@@ -176,10 +176,10 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
             <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
               <input
                 type="radio"
-                checked={ratioConfig.shuffleMode === 'ratio-based'}
+                checked={ratioConfig?.shuffleMode === 'ratio-based'}
                 onChange={() => {
-                  updateRatioConfig({ shuffleMode: 'ratio-based' })
-                  setTimeout(() => shuffleByMode(), 100)
+                  updateRatioConfig?.({ shuffleMode: 'ratio-based' })
+                  setTimeout(() => shuffleByMode?.(), 100)
                 }}
                 className="mr-3"
               />
@@ -191,10 +191,10 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
             <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
               <input
                 type="radio"
-                checked={ratioConfig.shuffleMode === 'full'}
+                checked={ratioConfig?.shuffleMode === 'random'}
                 onChange={() => {
-                  updateRatioConfig({ shuffleMode: 'full' })
-                  setTimeout(() => shuffleByMode(), 100)
+                  updateRatioConfig?.({ shuffleMode: 'random' })
+                  setTimeout(() => shuffleByMode?.(), 100)
                 }}
                 className="mr-3"
               />
@@ -207,22 +207,22 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
         </div>
 
         {/* 비율 기반 모드일 때만 추가 설정 표시 */}
-        {ratioConfig.shuffleMode === 'ratio-based' && (
+        {ratioConfig?.shuffleMode === 'ratio-based' && (
           <div className="space-y-6 p-4 bg-gray-50 rounded-lg">
             {/* 비디오 비율 설정 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                비디오 비율: <span className="font-bold text-blue-600">{(ratioConfig.videoRatio * 100).toFixed(0)}%</span>
+                비디오 비율: <span className="font-bold text-blue-600">{((ratioConfig?.videoRatio || 0) * 100).toFixed(0)}%</span>
               </label>
               <input
                 type="range"
                 min="0.05"
                 max="0.5"
                 step="0.05"
-                value={ratioConfig.videoRatio}
+                value={ratioConfig?.videoRatio || 0}
                 onChange={(e) => {
-                  updateRatioConfig({ videoRatio: parseFloat(e.target.value) })
-                  setTimeout(() => shuffleByMode(), 100)
+                  updateRatioConfig?.({ videoRatio: parseFloat(e.target.value) })
+                  setTimeout(() => shuffleByMode?.(), 100)
                 }}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
@@ -238,17 +238,17 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
             {/* 상단 비디오 개수 설정 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                상단 우선 비디오: <span className="font-bold text-purple-600">{ratioConfig.topVideoCount}개</span>
+                상단 우선 비디오: <span className="font-bold text-purple-600">{ratioConfig?.topVideoCount || 0}개</span>
               </label>
               <input
                 type="range"
                 min="1"
                 max="10"
                 step="1"
-                value={ratioConfig.topVideoCount}
+                value={ratioConfig?.topVideoCount || 0}
                 onChange={(e) => {
-                  updateRatioConfig({ topVideoCount: parseInt(e.target.value) })
-                  setTimeout(() => shuffleByMode(), 100)
+                  updateRatioConfig?.({ topVideoCount: parseInt(e.target.value) })
+                  setTimeout(() => shuffleByMode?.(), 100)
                 }}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
@@ -264,8 +264,8 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
             {/* 현재 설정 요약 */}
             <div className="mt-4 p-3 bg-white border border-gray-200 rounded">
               <div className="text-sm text-gray-600">
-                <strong>현재 배치 설정:</strong> 상단 {ratioConfig.topVideoCount}개 비디오 고정,
-                하단에 {(ratioConfig.videoRatio * 100).toFixed(0)}% 비디오와 이미지 혼합 배치
+                <strong>현재 배치 설정:</strong> 상단 {ratioConfig?.topVideoCount || 0}개 비디오 고정,
+                하단에 {((ratioConfig?.videoRatio || 0) * 100).toFixed(0)}% 비디오와 이미지 혼합 배치
               </div>
             </div>
           </div>
@@ -274,7 +274,7 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
         {/* 즉시 적용 버튼 */}
         <div className="mt-6 pt-4 border-t border-gray-200">
           <button
-            onClick={() => shuffleByMode()}
+            onClick={() => shuffleByMode?.()}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -63,7 +63,7 @@ export interface MediaStore {
   selectedMedia: GalleryMediaData | null
 
   // 기본 작업
-  addMedia: (media: GalleryMediaData) => Promise<void>
+  addMedia: (files: File[]) => Promise<void>
   removeMedia: (id: string) => Promise<void>
   updateMedia: (id: string, updates: Partial<GalleryMediaData>) => Promise<void>
   loadMedia: () => Promise<void>
@@ -83,7 +83,7 @@ export interface MediaStore {
   // 비율 기반 배치
   arrangeByRatio?: () => void
   shuffleByMode?: () => void
-  updateRatioConfig?: (config: RatioConfig) => void
+  updateRatioConfig?: (config: Partial<RatioConfig>) => void
   ratioConfig?: RatioConfig
 
   // 통계

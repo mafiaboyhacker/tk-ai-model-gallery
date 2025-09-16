@@ -140,5 +140,5 @@ export function arrangeMediaByRatio<T extends { type: 'image' | 'video' }>(
 export interface MediaRatioConfig {
   videoRatio: number      // 전체 비디오 비율 (0.0 ~ 1.0)
   topVideoCount: number   // 상단 고정 비디오 개수
-  shuffleMode: 'full' | 'ratio-based' // 전체 셔플 vs 비율 기반 배치
+  shuffleMode: 'random' | 'ratio-based' | 'featured' // 셔플 모드
 }

@@ -13,11 +13,14 @@ import {
   type SupabaseMedia
 } from '@/lib/supabaseStorage'
 import { shuffleArray, getRandomElements, arrangeMediaByRatio, type MediaRatioConfig } from '@/utils/arrayUtils'
+import type { MediaStats } from '@/types'
 
 interface SupabaseMediaStore {
   media: SupabaseMedia[]
   isLoading: boolean
   isInitialized: boolean
+  error: string | null
+  selectedMedia: SupabaseMedia | null
   storageUsage: {
     totalFiles: number
     mediaCount: number
@@ -28,9 +31,16 @@ interface SupabaseMediaStore {
   loadMedia: () => Promise<void>
   addMedia: (files: File[]) => Promise<void>
   removeMedia: (id: string) => Promise<void>
+  updateMedia: (id: string, updates: Partial<SupabaseMedia>) => Promise<void>
   clearMedia: () => Promise<void>
   updateCustomName: (id: string, newName: string) => Promise<void>
   refreshStorageUsage: () => Promise<void>
+
+  // 검색 및 필터링
+  searchMedia: (query: string) => SupabaseMedia[]
+  filterByType: (type: 'image' | 'video' | 'all') => SupabaseMedia[]
+  filterByCategory: (category: string) => SupabaseMedia[]
+  sortMedia: (by: 'createdAt' | 'fileName' | 'type' | 'size', order: 'asc' | 'desc') => void
 
   // 🎲 랜덤 배치 기능
   shuffleMedia: () => void
@@ -44,12 +54,7 @@ interface SupabaseMediaStore {
   shuffleByMode: () => void
 
   // 통계
-  getStats: () => {
-    total: number
-    images: number
-    videos: number
-    totalSize: string
-  }
+  getStats: () => MediaStats
 
   // 호환성을 위한 getStorageStats 메소드
   getStorageStats: () => Promise<{
@@ -127,6 +132,8 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
   media: [],
   isLoading: false,
   isInitialized: false,
+  error: null,
+  selectedMedia: null,
   storageUsage: {
     totalFiles: 0,
     mediaCount: 0,
@@ -143,7 +150,7 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
   // 모든 미디어 로드
   loadMedia: async () => {
     try {
-      set({ isLoading: true })
+      set({ isLoading: true, error: null })
 
       // API Route를 통한 Storage 초기화
       if (!get().isInitialized) {
@@ -170,7 +177,8 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
 
       set({
         media: mediaList,
-        isLoading: false
+        isLoading: false,
+        error: null
       })
 
       const images = mediaList.filter((m: any) => m.type === 'image').length
@@ -182,7 +190,10 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
 
     } catch (error) {
       console.error('❌ Supabase 미디어 로드 실패:', error)
-      set({ isLoading: false })
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Supabase 미디어 로드 실패'
+      })
     }
   },
 
@@ -190,7 +201,7 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
   addMedia: async (files: File[]) => {
     console.log('🚀 Supabase 업로드 시작:', files.length, '개 파일')
     try {
-      set({ isLoading: true })
+      set({ isLoading: true, error: null })
 
       console.log('📊 Supabase 초기화 상태 확인:', { initialized: get().isInitialized })
       if (!get().isInitialized) {
@@ -228,7 +239,8 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
       // 스토어에 추가 (최신순 정렬)
       set((state) => ({
         media: [...newMediaList, ...state.media],
-        isLoading: false
+        isLoading: false,
+        error: null
       }))
 
       const images = newMediaList.filter(m => m.type === 'image').length
@@ -249,7 +261,10 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
         isSupabaseError: error instanceof Error && (error.message.includes('supabase') || error.message.includes('storage')),
         timestamp: new Date().toISOString()
       })
-      set({ isLoading: false })
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Supabase 파일 업로드 실패'
+      })
       throw error
     }
   },
@@ -406,7 +421,9 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
       total: media.length,
       images,
       videos,
-      totalSize: formatFileSize(totalSize)
+      totalSize,
+      averageSize: media.length > 0 ? totalSize / media.length : 0,
+      categories: {} // 카테고리 기능 미구현
     }
   },
 
@@ -425,7 +442,27 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
     }
   },
 
-  // 미디어 이름 업데이트
+  // 미디어 업데이트 (일반적인 속성 업데이트)
+  updateMedia: async (id: string, updates: Partial<SupabaseMedia>) => {
+    try {
+      console.log(`✏️ 미디어 업데이트: ${id}`, updates)
+
+      // 로컬 상태 업데이트
+      set((state) => ({
+        media: state.media.map(item =>
+          item.id === id ? { ...item, ...updates } : item
+        )
+      }))
+
+      console.log(`✅ 미디어 업데이트 완료: ${id}`)
+    } catch (error) {
+      console.error('❌ 미디어 업데이트 실패:', error)
+      set({ error: error instanceof Error ? error.message : '미디어 업데이트 실패' })
+      throw error
+    }
+  },
+
+  // 미디어 이름 업데이트 (하위 호환성)
   updateCustomName: async (id: string, newName: string) => {
     try {
       console.log(`✏️ 미디어 이름 업데이트: ${id} -> ${newName}`)
@@ -440,8 +477,62 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
       console.log(`✅ 미디어 이름 업데이트 완료: ${id}`)
     } catch (error) {
       console.error('❌ 미디어 이름 업데이트 실패:', error)
+      set({ error: error instanceof Error ? error.message : '미디어 이름 업데이트 실패' })
       throw error
     }
+  },
+
+  // 검색 기능
+  searchMedia: (query: string) => {
+    const media = get().media
+    if (!query.trim()) return media
+
+    return media.filter(item =>
+      item.fileName.toLowerCase().includes(query.toLowerCase())
+    )
+  },
+
+  // 타입별 필터링
+  filterByType: (type: 'image' | 'video' | 'all') => {
+    const media = get().media
+    if (type === 'all') return media
+    return media.filter(item => item.type === type)
+  },
+
+  // 카테고리별 필터링
+  filterByCategory: (category: string) => {
+    const media = get().media
+    if (!category) return media
+    // 추후 카테고리 기능 구현 시 확장
+    return media
+  },
+
+  // 정렬 기능
+  sortMedia: (by: 'createdAt' | 'fileName' | 'type' | 'size', order: 'asc' | 'desc') => {
+    set((state) => ({
+      media: [...state.media].sort((a, b) => {
+        let comparison = 0
+
+        switch (by) {
+          case 'createdAt':
+            comparison = new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
+            break
+          case 'fileName':
+            comparison = a.fileName.localeCompare(b.fileName)
+            break
+          case 'type':
+            comparison = a.type.localeCompare(b.type)
+            break
+          case 'size':
+            comparison = a.fileSize - b.fileSize
+            break
+          default:
+            return 0
+        }
+
+        return order === 'desc' ? -comparison : comparison
+      })
+    }))
   },
 
   // 하위 호환성을 위한 getter와 메서드들

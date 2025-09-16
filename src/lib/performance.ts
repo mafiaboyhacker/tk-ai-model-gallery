@@ -8,7 +8,7 @@ import { PERFORMANCE_CONFIG } from './constants'
 
 // 🎯 성능 메트릭 타입
 interface WebVitalsMetric {
-  name: 'CLS' | 'FID' | 'FCP' | 'LCP' | 'TTFB'
+  name: 'CLS' | 'FID' | 'FCP' | 'LCP' | 'TTFB' | 'Page Load Time'
   value: number
   rating: 'good' | 'needs-improvement' | 'poor'
   delta: number
@@ -151,60 +151,24 @@ class PerformanceMonitor {
     const vitals: WebVitalsMetric[] = []
 
     try {
-      // Web Vitals 라이브러리 동적 임포트
-      const { getCLS, getFID, getFCP, getLCP, getTTFB } = await import('web-vitals')
+      // Web Vitals 라이브러리가 없으므로 기본 성능 메트릭만 수집
+      console.warn('web-vitals library not available, collecting basic performance metrics')
 
-      getCLS((metric) => {
-        vitals.push({
-          name: 'CLS',
-          value: metric.value,
-          rating: metric.rating,
-          delta: metric.delta,
-          entries: metric.entries
-        })
-      })
+      // Performance API를 사용한 기본 메트릭
+      if (window.performance && window.performance.timing) {
+        const timing = window.performance.timing
+        const loadTime = timing.loadEventEnd - timing.navigationStart
 
-      getFID((metric) => {
         vitals.push({
-          name: 'FID',
-          value: metric.value,
-          rating: metric.rating,
-          delta: metric.delta,
-          entries: metric.entries
+          name: 'Page Load Time',
+          value: loadTime,
+          rating: loadTime < 3000 ? 'good' : loadTime < 5000 ? 'needs-improvement' : 'poor',
+          delta: 0,
+          entries: []
         })
-      })
-
-      getFCP((metric) => {
-        vitals.push({
-          name: 'FCP',
-          value: metric.value,
-          rating: metric.rating,
-          delta: metric.delta,
-          entries: metric.entries
-        })
-      })
-
-      getLCP((metric) => {
-        vitals.push({
-          name: 'LCP',
-          value: metric.value,
-          rating: metric.rating,
-          delta: metric.delta,
-          entries: metric.entries
-        })
-      })
-
-      getTTFB((metric) => {
-        vitals.push({
-          name: 'TTFB',
-          value: metric.value,
-          rating: metric.rating,
-          delta: metric.delta,
-          entries: metric.entries
-        })
-      })
+      }
     } catch (error) {
-      console.warn('Web Vitals collection failed:', error)
+      console.warn('Performance metrics collection failed:', error)
     }
 
     return vitals
@@ -242,8 +206,8 @@ class PerformanceMonitor {
     const memory = this.getMemoryInfo()
 
     const metrics: PerformanceMetrics = {
-      loadTime: navigation?.loadEventEnd - navigation?.navigationStart || 0,
-      renderTime: navigation?.domContentLoadedEventEnd - navigation?.navigationStart || 0,
+      loadTime: navigation?.loadEventEnd - navigation?.fetchStart || 0,
+      renderTime: navigation?.domContentLoadedEventEnd - navigation?.fetchStart || 0,
       imageLoadTime: this.getAverageImageLoadTime(),
       apiResponseTime: this.getAverageApiResponseTime(),
       memoryUsage: memory?.used || 0,
@@ -406,7 +370,7 @@ class PerformanceMonitor {
     if (this.metrics.length < 2) return 'Insufficient data'
 
     const recent = this.metrics.slice(-5)
-    const trend = recent[recent.length - 1].memoryUsage - recent[0].memoryUsage
+    const trend = (recent[recent.length - 1]?.memoryUsage || 0) - (recent[0]?.memoryUsage || 0)
 
     if (trend > 1024 * 1024) return 'Increasing'
     if (trend < -1024 * 1024) return 'Decreasing'

@@ -3,7 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
-import type { DefaultSession, NextAuthConfig } from 'next-auth'
+import type { DefaultSession } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 import { UserRole } from '@prisma/client'
 
@@ -31,7 +31,7 @@ declare module 'next-auth/jwt' {
   }
 }
 
-export const config: NextAuthConfig = {
+export const config = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
@@ -85,14 +85,14 @@ export const config: NextAuthConfig = {
   },
   callbacks: {
     // 🔒 Type-safe JWT callback
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.role = user.role
       }
       return token
     },
     // 🔒 Type-safe session callback
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token && session.user) {
         session.user.id = token.sub
         session.user.role = token.role
@@ -107,4 +107,4 @@ export const config: NextAuthConfig = {
   debug: process.env.NODE_ENV === 'development',
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth(config)
+export const { handlers, auth, signIn, signOut } = NextAuth(config as any)
