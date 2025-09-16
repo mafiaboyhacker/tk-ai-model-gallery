@@ -169,15 +169,19 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
 
   // 미디어 파일 업로드
   addMedia: async (files: File[]) => {
+    console.log('🚀 Supabase 업로드 시작:', files.length, '개 파일')
     try {
       set({ isLoading: true })
 
+      console.log('📊 Supabase 초기화 상태 확인:', { initialized: get().isInitialized })
       if (!get().isInitialized) {
+        console.log('🔧 Supabase Storage 초기화 중...')
         const initialized = await initializeSupabaseStorage()
         if (!initialized) {
           throw new Error('Supabase Storage 초기화 실패')
         }
         set({ isInitialized: true })
+        console.log('✅ Supabase Storage 초기화 완료')
       }
 
       console.log(`🔄 ${files.length}개 파일 Supabase 업로드 시작...`)
@@ -216,7 +220,16 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
       await get().refreshStorageUsage()
 
     } catch (error) {
-      console.error('❌ 파일 업로드 실패:', error)
+      console.error('❌ Supabase 파일 업로드 실패:', error)
+      console.error('❌ Supabase 업로드 Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        cause: error instanceof Error && 'cause' in error ? error.cause : undefined,
+        isNetworkError: error instanceof Error && error.message.includes('fetch'),
+        isSupabaseError: error instanceof Error && (error.message.includes('supabase') || error.message.includes('storage')),
+        timestamp: new Date().toISOString()
+      })
       set({ isLoading: false })
       throw error
     }
