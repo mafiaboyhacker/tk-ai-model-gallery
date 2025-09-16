@@ -356,7 +356,7 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
         storageUsage: {
           totalFiles: usage.totalFiles,
           mediaCount: usage.mediaCount,
-          usagePercent: usage.usagePercent
+          usagePercent: usage.usagePercent || 0
         }
       })
 

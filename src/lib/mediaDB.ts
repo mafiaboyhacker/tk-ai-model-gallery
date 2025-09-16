@@ -341,7 +341,7 @@ class MediaDB {
           // 미디어 파일 처리 (이미지 또는 비디오)
           console.log(`🛠️ processMedia 호출...`)
           const processed = await this.processMedia(file)
-          console.log(`✅ processMedia 완료:`, processed.id)
+          console.log(`✅ processMedia 완료:`, processed.type)
 
         // 순차적 이름 생성 (Model #1, Video #1 등)
         const customName = await this.generateSequentialName(processed.type)
