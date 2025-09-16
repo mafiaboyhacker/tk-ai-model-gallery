@@ -157,10 +157,15 @@ export async function DELETE(request: NextRequest) {
 
   try {
     // 먼저 미디어 목록에서 파일 정보 찾기
-    const listResponse = await GET(new NextRequest(`${request.url}?action=list`))
+    const baseUrl = new URL(request.url)
+    baseUrl.searchParams.delete('id') // 기존 id 파라미터 제거
+    baseUrl.searchParams.set('action', 'list') // action=list 설정
+
+    const listResponse = await GET(new NextRequest(baseUrl.toString()))
     const listData = await listResponse.json()
 
     if (!listData.success) {
+      console.error('❌ 미디어 목록 조회 실패:', listData.error)
       return NextResponse.json({
         success: false,
         error: 'Failed to get media list'
