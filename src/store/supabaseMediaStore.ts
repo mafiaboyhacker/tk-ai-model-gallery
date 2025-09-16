@@ -247,17 +247,85 @@ export const useSupabaseMediaStore = create<SupabaseMediaStore>((set, get) => ({
   },
 
   // 모든 미디어 삭제
+  // 강제 전체 삭제 (API Route를 통한 서버 사이드 실행)
+  forceDeleteAllStorage: async () => {
+    try {
+      console.log('🚨 API를 통한 강제 전체 삭제 시작...')
+
+      // 서버 사이드 API 호출
+      const response = await fetch('/api/supabase/storage?action=forceDeleteAll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(`API 요청 실패: ${result.error}`)
+      }
+
+      if (result.success) {
+        console.log(`✅ Storage 강제 삭제 완료: ${result.deletedCount}개 파일`)
+      } else {
+        console.warn(`⚠️ Storage 강제 삭제 부분 완료: ${result.deletedCount}개 파일, ${result.errors?.length || 0}개 오류`)
+        if (result.errors?.length > 0) {
+          console.warn('오류 목록:', result.errors)
+        }
+      }
+
+      // 스토어 상태 초기화 및 재로드
+      set({ media: [] })
+      await get().loadMedia()
+      await get().refreshStorageUsage()
+
+      return result
+    } catch (error) {
+      console.error('❌ 강제 Storage 삭제 실패:', error)
+      throw error
+    }
+  },
+
   clearMedia: async () => {
     try {
       console.log('🗑️ 모든 미디어 삭제 중...')
 
       const { media } = get()
-      const deletePromises = media.map(m => deleteSupabaseMedia(m.id))
 
-      await Promise.all(deletePromises)
+      // 병렬 삭제 대신 순차 삭제로 동시성 문제 방지
+      let successCount = 0
+      let failCount = 0
 
+      for (const mediaItem of media) {
+        try {
+          const result = await deleteSupabaseMedia(mediaItem.id)
+          if (result) {
+            successCount++
+          } else {
+            failCount++
+          }
+        } catch (error) {
+          console.error(`❌ 미디어 삭제 실패 (${mediaItem.id}):`, error)
+          failCount++
+        }
+      }
+
+      console.log(`📊 삭제 완료: 성공 ${successCount}개, 실패 ${failCount}개`)
+
+      // 로컬 스토어 초기화
       set({ media: [] })
-      console.log('✅ 모든 미디어 삭제 완료')
+
+      // 실제 데이터 상태 확인을 위해 다시 로드
+      console.log('🔄 삭제 후 실제 데이터 상태 확인 중...')
+      await get().loadMedia()
+
+      const { media: remainingMedia } = get()
+      if (remainingMedia.length > 0) {
+        console.warn(`⚠️ ${remainingMedia.length}개의 미디어가 여전히 남아있습니다. 수동 확인이 필요할 수 있습니다.`)
+      } else {
+        console.log('✅ 모든 미디어 삭제 완료 확인')
+      }
 
       // 저장공간 사용량 업데이트
       await get().refreshStorageUsage()

@@ -281,8 +281,8 @@ export async function deleteSupabaseMedia(mediaId: string): Promise<boolean> {
     const targetMedia = mediaList.find(m => m.id === mediaId)
 
     if (!targetMedia) {
-      console.error('❌ 삭제할 미디어를 찾을 수 없습니다:', mediaId)
-      return false
+      console.warn('⚠️ 이미 삭제된 미디어이거나 찾을 수 없습니다:', mediaId)
+      return true  // 이미 삭제된 것으로 간주하고 성공 처리
     }
 
     const filePath = targetMedia.bucketPath
@@ -442,6 +442,84 @@ export async function checkSupabaseStorageStatus() {
       isConnected: false,
       bucketExists: false,
       error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+/**
+ * 강제로 모든 Storage 파일 삭제 (수동 복구용)
+ */
+export async function forceDeleteAllStorageFiles(): Promise<{
+  success: boolean
+  deletedCount: number
+  errors: string[]
+}> {
+  try {
+    validateSupabaseConfig()
+    console.log('🚨 강제 전체 삭제 시작: Storage의 모든 파일 삭제')
+
+    const errors: string[] = []
+    let deletedCount = 0
+
+    // 각 폴더별로 모든 파일 나열 및 삭제
+    const folders = ['images', 'videos', 'metadata']
+
+    for (const folder of folders) {
+      console.log(`🗂️ ${folder} 폴더 정리 중...`)
+
+      // 폴더의 모든 파일 나열
+      const { data: files, error: listError } = await supabaseAdmin.storage
+        .from(BUCKET_NAME)
+        .list(folder, { limit: 1000 })
+
+      if (listError) {
+        console.warn(`⚠️ ${folder} 폴더 나열 실패:`, listError.message)
+        errors.push(`${folder} 폴더 나열 실패: ${listError.message}`)
+        continue
+      }
+
+      if (!files || files.length === 0) {
+        console.log(`✅ ${folder} 폴더가 이미 비어있습니다`)
+        continue
+      }
+
+      // 파일 경로 생성
+      const filePaths = files.map(file => `${folder}/${file.name}`)
+
+      console.log(`🗑️ ${folder} 폴더에서 ${filePaths.length}개 파일 삭제 중...`)
+
+      // 배치 삭제 (최대 100개씩)
+      const batchSize = 100
+      for (let i = 0; i < filePaths.length; i += batchSize) {
+        const batch = filePaths.slice(i, i + batchSize)
+
+        const { error: deleteError } = await supabaseAdmin.storage
+          .from(BUCKET_NAME)
+          .remove(batch)
+
+        if (deleteError) {
+          console.error(`❌ ${folder} 배치 삭제 실패:`, deleteError.message)
+          errors.push(`${folder} 배치 삭제 실패: ${deleteError.message}`)
+        } else {
+          deletedCount += batch.length
+          console.log(`✅ ${folder}에서 ${batch.length}개 파일 삭제 완료`)
+        }
+      }
+    }
+
+    console.log(`🎯 강제 삭제 완료: ${deletedCount}개 파일 삭제, ${errors.length}개 오류`)
+
+    return {
+      success: errors.length === 0,
+      deletedCount,
+      errors
+    }
+  } catch (error) {
+    console.error('❌ 강제 삭제 실패:', error)
+    return {
+      success: false,
+      deletedCount: 0,
+      errors: [error instanceof Error ? error.message : 'Unknown error']
     }
   }
 }

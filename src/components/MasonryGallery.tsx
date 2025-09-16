@@ -75,7 +75,7 @@ export default function MasonryGallery({ models, loading = false }: MasonryGalle
     
     const debouncedUpdateColumns = () => {
       clearTimeout(timeoutId)
-      timeoutId = setTimeout(updateColumns, 100)
+      timeoutId = setTimeout(updateColumns, 50) // 100ms → 50ms 반응성 개선
     }
 
     updateColumns() // 초기 실행

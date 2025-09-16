@@ -74,10 +74,10 @@ export default function ModelCard({
                 height={height}
                 className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
                 onError={(e) => {
                   console.error('Video thumbnail failed to load:', imageUrl, e)
                 }}
-                unoptimized
               />
 
               {/* 비디오 표시 아이콘 */}
@@ -124,10 +124,10 @@ export default function ModelCard({
               height={height}
               className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
               onError={(e) => {
                 console.error('Image failed to load:', imageUrl, e)
               }}
-              unoptimized
             />
           </Link>
         )}
@@ -169,7 +169,8 @@ export default function ModelCard({
                 width={width}
                 height={height}
                 className="max-w-full max-h-full object-contain"
-                unoptimized
+                sizes="100vw"
+                priority
               />
             )}
 
