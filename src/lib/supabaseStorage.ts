@@ -94,6 +94,15 @@ export async function uploadToSupabaseStorage(
       lastModified: file.lastModified
     })
 
+    // Supabase 클라이언트 상태 확인
+    console.log('🔍 Supabase 클라이언트 상태 확인:', {
+      supabaseAdminExists: !!supabaseAdmin,
+      supabaseAdminUrl: supabaseAdmin.supabaseUrl,
+      supabaseAdminKey: supabaseAdmin.supabaseKey ? 'PRESENT' : 'MISSING',
+      shouldUseSupabase: shouldUseSupabase(),
+      environment: typeof window === 'undefined' ? 'server' : 'client'
+    })
+
     validateSupabaseConfig()
     console.log('✅ Supabase 설정 검증 완료')
 
