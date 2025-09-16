@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Masonry from 'react-responsive-masonry'
 import AdminModelCard from './AdminModelCard'
-import { useImageStore } from '@/store/imageStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 
 interface Model {
   id: string
@@ -28,7 +28,7 @@ interface AdminMasonryGalleryProps {
 export default function AdminMasonryGallery({ models, loading = false, onNameUpdate }: AdminMasonryGalleryProps) {
   const [columnsCount, setColumnsCount] = useState(2)
   const [mounted, setMounted] = useState(false)
-  const { removeMedia } = useImageStore()
+  const { removeMedia, usingSupabase } = useEnvironmentStore()
 
   useEffect(() => {
     setMounted(true)
@@ -37,12 +37,14 @@ export default function AdminMasonryGallery({ models, loading = false, onNameUpd
   // 미디어 삭제 핸들러
   const handleDeleteMedia = useCallback(async (mediaId: string) => {
     try {
-      console.log('🗑️ 미디어 삭제 중:', mediaId)
+      const storageType = usingSupabase ? 'Supabase' : 'IndexedDB'
+      console.log(`🗑️ ${storageType}를 통한 미디어 삭제 중:`, mediaId)
       await removeMedia(mediaId)
+      console.log(`✅ ${storageType} 미디어 삭제 완료:`, mediaId)
     } catch (error) {
       console.error('❌ 미디어 삭제 실패:', error)
     }
-  }, [removeMedia])
+  }, [removeMedia, usingSupabase])
 
   // props로 받은 models 데이터만 사용 (중복 제거)
   const allMedia = useMemo(() => {
