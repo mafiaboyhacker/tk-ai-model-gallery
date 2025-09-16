@@ -271,10 +271,25 @@ export async function POST(request: NextRequest) {
           .from(BUCKET_NAME)
           .getPublicUrl(filePath)
 
+        // 현재 저장된 미디어 개수 조회하여 자동 번호 생성
+        const listResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/supabase/storage?action=list`)
+        let autoNumber = 1
+
+        if (listResponse.ok) {
+          const listResult = await listResponse.json()
+          if (listResult.success) {
+            const existingMedia = listResult.data.filter((m: any) => m.type === (isVideo ? 'video' : 'image'))
+            autoNumber = existingMedia.length + 1
+          }
+        }
+
+        // 자동 제목 생성: MODEL #1, VIDEO #1 형식
+        const autoTitle = isVideo ? `VIDEO #${autoNumber}` : `MODEL #${autoNumber}`
+
         // 메타데이터 저장
         const mediaMetadata = {
           id: uniqueFileName.split('.')[0],
-          fileName: file.name,
+          fileName: autoTitle,
           originalFileName: file.name,
           url: urlData.publicUrl,
           originalUrl: urlData.publicUrl,
