@@ -85,7 +85,7 @@ export default function ModelDetailPage() {
 
       setModel({
         id: uploadedModel.id,
-        name: uploadedModel.customName || (uploadedModel.type === 'video' ? 'Video #1' : 'Model #1'),
+        name: (uploadedModel as any).customName || uploadedModel.fileName || (uploadedModel.type === 'video' ? 'Video #1' : 'Model #1'),
         originalFileName: uploadedModel.fileName,
         mediaUrl: uploadedModel.type === 'video' ? uploadedModel.originalUrl : uploadedModel.url,
         type: uploadedModel.type || 'image',
