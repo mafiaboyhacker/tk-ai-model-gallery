@@ -212,6 +212,99 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (action) {
+      case 'upload':
+        // 파일 업로드
+        const formData = await request.formData()
+        const file = formData.get('file') as File
+        const metadata = formData.get('metadata') ? JSON.parse(formData.get('metadata') as string) : {}
+
+        if (!file) {
+          return NextResponse.json({
+            success: false,
+            error: 'No file provided'
+          }, { status: 400 })
+        }
+
+        console.log(`🔄 API Route: 파일 업로드 시작 - ${file.name}`)
+
+        // 파일 타입별 폴더 결정
+        const isVideo = file.type.startsWith('video/')
+        const folder = isVideo ? 'videos' : 'images'
+
+        // 고유한 파일명 생성 (timestamp + random)
+        const timestamp = Date.now()
+        const randomId = Math.random().toString(36).substring(2, 8)
+        const fileExtension = file.name.split('.').pop()
+        const uniqueFileName = `${timestamp}-${randomId}.${fileExtension}`
+        const filePath = `${folder}/${uniqueFileName}`
+
+        console.log(`📁 업로드 경로: ${filePath}`)
+
+        // 파일을 ArrayBuffer로 변환
+        const arrayBuffer = await file.arrayBuffer()
+
+        // Supabase Storage에 업로드
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+          .from(BUCKET_NAME)
+          .upload(filePath, arrayBuffer, {
+            contentType: file.type,
+            cacheControl: '3600'
+          })
+
+        if (uploadError) {
+          console.error('❌ Supabase Storage 업로드 실패:', uploadError)
+          return NextResponse.json({
+            success: false,
+            error: uploadError.message
+          }, { status: 500 })
+        }
+
+        console.log(`✅ Supabase Storage 업로드 성공:`, uploadData.path)
+
+        // Public URL 생성
+        const { data: urlData } = supabaseAdmin.storage
+          .from(BUCKET_NAME)
+          .getPublicUrl(filePath)
+
+        // 메타데이터 저장
+        const mediaMetadata = {
+          id: uniqueFileName.split('.')[0],
+          fileName: file.name,
+          originalFileName: file.name,
+          url: urlData.publicUrl,
+          originalUrl: urlData.publicUrl,
+          type: isVideo ? 'video' : 'image',
+          fileSize: file.size,
+          mimeType: file.type,
+          bucketPath: filePath,
+          uploadedAt: new Date().toISOString(),
+          width: metadata.width || (isVideo ? 1920 : 800),
+          height: metadata.height || (isVideo ? 1080 : 600),
+          duration: isVideo ? metadata.duration : undefined,
+          resolution: isVideo ? metadata.resolution || '1920x1080' : undefined,
+          ...metadata
+        }
+
+        // 메타데이터를 별도 파일로 저장
+        const metadataPath = `metadata/${mediaMetadata.id}.json`
+        const { error: metaError } = await supabaseAdmin.storage
+          .from(BUCKET_NAME)
+          .upload(metadataPath, JSON.stringify(mediaMetadata, null, 2), {
+            contentType: 'application/json',
+            cacheControl: '3600'
+          })
+
+        if (metaError) {
+          console.warn('⚠️ 메타데이터 저장 실패:', metaError.message)
+        }
+
+        console.log(`✅ 파일 업로드 완료: ${file.name} → ${filePath}`)
+
+        return NextResponse.json({
+          success: true,
+          data: mediaMetadata
+        })
+
       case 'forceDeleteAll':
         // 강제 전체 삭제 (수동 복구용)
         console.log('🚨 API를 통한 강제 전체 삭제 시작')

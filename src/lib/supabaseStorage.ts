@@ -79,14 +79,14 @@ export async function initializeSupabaseStorage(): Promise<boolean> {
 }
 
 /**
- * Supabase Storage에 파일 직접 업로드
+ * API Route를 통한 Supabase Storage 파일 업로드
  */
 export async function uploadToSupabaseStorage(
   file: File,
   metadata: Partial<SupabaseMedia>
 ): Promise<SupabaseMedia> {
   try {
-    console.log(`🔄 Supabase Storage 파일 업로드 시작: ${file.name}`)
+    console.log(`🔄 API Route를 통한 Supabase 업로드 시작: ${file.name}`)
     console.log(`📊 파일 정보:`, {
       name: file.name,
       type: file.type,
@@ -94,100 +94,51 @@ export async function uploadToSupabaseStorage(
       lastModified: file.lastModified
     })
 
-    // Supabase 클라이언트 상태 확인
-    console.log('🔍 Supabase 클라이언트 상태 확인:', {
-      supabaseAdminExists: !!supabaseAdmin,
-      supabaseAdminUrl: supabaseAdmin.supabaseUrl,
-      supabaseAdminKey: supabaseAdmin.supabaseKey ? 'PRESENT' : 'MISSING',
-      shouldUseSupabase: shouldUseSupabase(),
-      environment: typeof window === 'undefined' ? 'server' : 'client'
+    // FormData 생성
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('metadata', JSON.stringify(metadata))
+
+    console.log(`📤 API Route로 업로드 요청 중...`)
+
+    // API Route를 통한 업로드
+    const response = await fetch('/api/supabase/storage?action=upload', {
+      method: 'POST',
+      body: formData
     })
 
-    validateSupabaseConfig()
-    console.log('✅ Supabase 설정 검증 완료')
+    console.log(`📡 API 응답 상태: ${response.status} ${response.statusText}`)
 
-    // 파일 타입에 따른 폴더 결정
-    const isVideo = file.type.startsWith('video/')
-    const folder = isVideo ? 'videos' : 'images'
-
-    // 고유 파일명 생성 (UUID + 확장자)
-    const fileExtension = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg')
-    const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const fileName = `${uniqueId}.${fileExtension}`
-    const filePath = `${folder}/${fileName}`
-
-    // Supabase Storage에 파일 업로드
-    console.log(`📤 Supabase에 업로드 중: ${filePath}`)
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .upload(filePath, file, {
-        contentType: file.type,
-        upsert: false
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ API 요청 실패:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
       })
+      throw new Error(`API 요청 실패: ${response.status} ${errorText}`)
+    }
 
-    if (uploadError) {
-      console.error('❌ Supabase Storage 업로드 실패:', {
-        error: uploadError,
-        filePath,
-        bucketName: BUCKET_NAME,
+    const result = await response.json()
+
+    if (!result.success) {
+      console.error('❌ API 응답 에러:', result.error)
+      throw new Error(`업로드 실패: ${result.error}`)
+    }
+
+    console.log(`✅ API Route 업로드 성공:`, result.data)
+    return result.data as SupabaseMedia
+
+  } catch (error) {
+    console.error('❌ uploadToSupabaseStorage 실패:', {
+        error: error instanceof Error ? error.message : String(error),
+        fileName: file.name,
         fileSize: file.size,
         contentType: file.type,
-        errorMessage: uploadError.message,
-        errorDetails: uploadError
+        timestamp: new Date().toISOString()
       })
-      throw new Error(`Supabase 업로드 실패: ${uploadError.message}`)
+      throw error
     }
-
-    console.log('✅ Supabase Storage 파일 업로드 성공:', uploadData)
-
-    // 공개 URL 생성
-    const { data: urlData } = supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filePath)
-
-    // SupabaseMedia 객체 생성
-    const uploadedMedia: SupabaseMedia = {
-      id: uniqueId,
-      fileName: file.name,
-      url: urlData.publicUrl,
-      originalUrl: urlData.publicUrl,
-      type: isVideo ? 'video' : 'image',
-      width: metadata.width || (isVideo ? 1920 : 800),
-      height: metadata.height || (isVideo ? 1080 : 600),
-      fileSize: file.size,
-      bucketPath: filePath,
-      uploadedAt: new Date().toISOString(),
-      duration: isVideo ? metadata.duration : undefined,
-      resolution: isVideo ? metadata.resolution || '1920x1080' : undefined,
-      metadata: {
-        originalType: file.type,
-        uploadedAt: Date.now(),
-        fileName: file.name,
-        ...metadata.metadata
-      }
-    }
-
-    // 메타데이터 JSON 파일로 저장
-    await saveMediaMetadata(uploadedMedia)
-
-    console.log(`✅ Supabase Storage 파일 업로드 완료: ${file.name}`)
-    return uploadedMedia
-  } catch (error) {
-    console.error('❌ Supabase Storage 파일 업로드 최종 실패:', {
-      error,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      errorName: error instanceof Error ? error.name : 'Unknown',
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'PRESENT' : 'MISSING',
-      supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING',
-      bucketName: BUCKET_NAME,
-      timestamp: new Date().toISOString()
-    })
-    throw error
-  }
 }
 
 /**
