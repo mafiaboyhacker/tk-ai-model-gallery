@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { mediaDB, type MediaData } from '@/lib/mediaDB'
+import { shuffleArray, getRandomElements, arrangeMediaByRatio, type MediaRatioConfig } from '@/utils/arrayUtils'
 
 // 갤러리 표시용 인터페이스 (미디어 통합)
 interface GalleryMediaData {
@@ -27,6 +28,17 @@ interface MediaStore {
   updateCustomName: (id: string, customName: string) => Promise<void>
   getStorageStats: () => Promise<{ count: number; estimatedSize: string; images: number; videos: number }>
 
+  // 🎲 랜덤 배치 기능
+  shuffleMedia: () => void
+  getRandomMedia: (count?: number) => GalleryMediaData[]
+  getFeaturedMedia: () => GalleryMediaData[]
+
+  // 📊 비율 기반 배치 기능
+  ratioConfig: MediaRatioConfig
+  updateRatioConfig: (config: Partial<MediaRatioConfig>) => void
+  arrangeByRatio: () => void
+  shuffleByMode: () => void
+
   // 하위 호환성을 위한 메서드들
   get images(): GalleryMediaData[]
   addImages: (files: File[]) => Promise<void>
@@ -39,6 +51,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
   media: [],
   isLoading: false,
   isInitialized: false,
+
+  // 📊 비율 기반 배치 설정 (기본값: 비디오 15%, 상단 3개)
+  ratioConfig: {
+    videoRatio: 0.15,
+    topVideoCount: 3,
+    shuffleMode: 'ratio-based'
+  },
 
   // MediaDB에서 미디어 로드 (갤러리용으로 변환)
   loadMedia: async () => {
@@ -239,6 +258,61 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     } catch (error) {
       console.error('❌ 데이터 검증 실패:', error)
       return { checkedCount: 0, repairedCount: 0, removedCount: 0, issues: [] }
+    }
+  },
+
+  // 🎲 랜덤 배치 기능 구현
+  shuffleMedia: () => {
+    set((state) => ({
+      media: shuffleArray(state.media)
+    }))
+    console.log('🎲 미디어 순서가 랜덤으로 섞였습니다')
+  },
+
+  getRandomMedia: (count?: number) => {
+    const currentMedia = get().media
+    if (!count || count >= currentMedia.length) {
+      return shuffleArray(currentMedia)
+    }
+    return getRandomElements(currentMedia, count)
+  },
+
+  getFeaturedMedia: () => {
+    const currentMedia = get().media
+    // 최대 8개의 랜덤 미디어를 피처드로 선택
+    const featuredCount = Math.min(8, currentMedia.length)
+    return getRandomElements(currentMedia, featuredCount)
+  },
+
+  // 📊 비율 기반 배치 기능 구현
+  updateRatioConfig: (config: Partial<MediaRatioConfig>) => {
+    set((state) => ({
+      ratioConfig: { ...state.ratioConfig, ...config }
+    }))
+    console.log('📊 비율 설정 업데이트:', get().ratioConfig)
+  },
+
+  arrangeByRatio: () => {
+    const currentMedia = get().media
+    const config = get().ratioConfig
+
+    const arrangedMedia = arrangeMediaByRatio(
+      currentMedia,
+      config.videoRatio,
+      config.topVideoCount
+    )
+
+    set({ media: arrangedMedia })
+    console.log(`📊 비율 기반 배치 완료: 비디오 ${config.videoRatio * 100}%, 상단 ${config.topVideoCount}개`)
+  },
+
+  shuffleByMode: () => {
+    const config = get().ratioConfig
+
+    if (config.shuffleMode === 'ratio-based') {
+      get().arrangeByRatio()
+    } else {
+      get().shuffleMedia()
     }
   },
 

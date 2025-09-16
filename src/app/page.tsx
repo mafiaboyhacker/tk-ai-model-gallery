@@ -8,7 +8,7 @@ import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia, isInitialized, usingSupabase, environmentInfo } = useEnvironmentStore()
+  const { media, loadMedia, shuffleByMode, isInitialized, usingSupabase, environmentInfo } = useEnvironmentStore()
 
   // GalleryMediaData를 MasonryGallery가 기대하는 Media 형태로 변환
   const convertedMedia = media.map(item => ({
@@ -33,6 +33,13 @@ export default function Home() {
       try {
         await loadMedia()
         console.log(`✅ ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 성공:`, media.length, '개')
+
+        // 📊 미디어 로드 후 비율 기반 자동 배치 (비디오 우선 상단, 비율 조절 가능)
+        setTimeout(() => {
+          shuffleByMode()
+          console.log('📊 메인 페이지: 비율 기반 미디어 배치 완료 (비디오 15%, 상단 3개)')
+        }, 100) // 약간의 지연을 주어 상태 업데이트 완료 보장
+
       } catch (error) {
         console.error(`❌ ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 실패:`, error)
       } finally {
@@ -66,7 +73,7 @@ export default function Home() {
           </div>
         )}
       </main>
-      
+
       {/* Development Debug Panel */}
       <DebugPanel />
     </div>

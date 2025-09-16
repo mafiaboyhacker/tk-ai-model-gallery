@@ -2,26 +2,30 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import ImagesTab from '@/components/admin/tabs/ImagesTab'
 
 export default function AdminImagesPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useSupabaseMediaStore()
+  const { media, loadMedia, isInitialized, usingSupabase } = useEnvironmentStore()
 
   useEffect(() => {
     const initializeMedia = async () => {
+      // 환경 초기화가 완료될 때까지 대기
+      if (!isInitialized) return
+
       try {
         await loadMedia()
+        console.log(`✅ 어드민 이미지: ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 성공:`, media.length, '개')
       } catch (error) {
-        console.error('Supabase 미디어 로드 실패:', error)
+        console.error(`❌ 어드민 이미지: ${usingSupabase ? 'Supabase' : 'Local'} 미디어 로드 실패:`, error)
       } finally {
         setIsLoaded(true)
       }
     }
 
     initializeMedia()
-  }, [loadMedia])
+  }, [loadMedia, isInitialized, usingSupabase])
 
   // 탭별 미디어 카운트 계산
   const imageCount = media.filter(m => m.type === 'image').length
@@ -44,7 +48,7 @@ export default function AdminImagesPage() {
               <div className="text-sm text-gray-300 text-right">
                 <div className="font-medium">{media.length} total files</div>
                 <div className="text-xs text-gray-400">
-                  Supabase Storage
+                  {usingSupabase ? 'Supabase Storage' : 'Local Storage'}
                 </div>
               </div>
             )}

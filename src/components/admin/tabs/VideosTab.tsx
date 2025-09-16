@@ -1,22 +1,22 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import AdminModelCard from '@/components/AdminModelCard'
 
 export default function VideosTab() {
   const [uploading, setUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const { media, addMedia, removeMedia, loadMedia, updateCustomName } = useSupabaseMediaStore()
+  const { media, addMedia, removeMedia, loadMedia, updateCustomName, usingSupabase } = useEnvironmentStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
     const initializeMedia = async () => {
       try {
-        console.log('🔄 비디오 탭: Supabase에서 미디어 로드 중...')
+        console.log(`🔄 비디오 탭: ${usingSupabase ? 'Supabase' : 'Local'}에서 미디어 로드 중...`)
         await loadMedia()
       } catch (error) {
-        console.error('❌ 비디오 탭: Supabase 로드 실패:', error)
+        console.error(`❌ 비디오 탭: ${usingSupabase ? 'Supabase' : 'Local'} 로드 실패:`, error)
       }
     }
 

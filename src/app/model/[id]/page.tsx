@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -15,12 +15,32 @@ export default function ModelDetailPage() {
   const [mounted, setMounted] = useState(false)
   // 이름 편집 기능은 어드민 페이지에서만 가능 (보안상 메인 페이지에서 제거)
   const [userInteracted, setUserInteracted] = useState(false)
+  const [isContactOpen, setIsContactOpen] = useState(false)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+  const contactRef = useRef<HTMLDivElement>(null)
   const { media: uploadedMedia, loadMedia } = useEnvironmentStore()
   // updateCustomName은 어드민 페이지에서만 사용 (메인 페이지에서 제거)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (contactRef.current && !contactRef.current.contains(event.target as Node)) {
+        setIsContactOpen(false)
+      }
+    }
+
+    if (isContactOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isContactOpen])
 
   // 사용자 인터랙션 감지
   useEffect(() => {
@@ -166,14 +186,19 @@ export default function ModelDetailPage() {
                   playsInline
                 />
               ) : (
-                <Image
-                  src={model.mediaUrl}
-                  alt={model.name}
-                  width={model.width}
-                  height={model.height}
-                  className="w-full h-auto rounded-lg shadow-lg"
-                  priority
-                />
+                <div
+                  className="cursor-pointer"
+                  onClick={() => setIsImageModalOpen(true)}
+                >
+                  <Image
+                    src={model.mediaUrl}
+                    alt={model.name}
+                    width={model.width}
+                    height={model.height}
+                    className="w-full h-auto rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300"
+                    priority
+                  />
+                </div>
               )}
             </div>
 
@@ -251,16 +276,87 @@ export default function ModelDetailPage() {
               </div>
 
               {/* Contact Button - Media Information 아래에 배치 */}
-              <div>
-                <button className="w-full bg-black text-white px-6 py-3 rounded hover:bg-gray-800 transition-colors">
+              <div className="relative" ref={contactRef}>
+                <button
+                  onClick={() => setIsContactOpen(!isContactOpen)}
+                  className="w-full bg-black text-white px-6 py-3 rounded hover:bg-gray-800 transition-colors"
+                >
                   Contact for Licensing
                 </button>
+
+                {/* 말풍선 스타일 드롭다운 - 위로 올라오도록 */}
+                {isContactOpen && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white/90 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-10">
+                    {/* 말풍선 화살표 - 아래쪽 */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white/90 backdrop-blur-xl border-r border-b border-gray-200 rotate-45"></div>
+
+                    {/* 내용 */}
+                    <div className="p-6 relative">
+                      {/* 닫기 버튼 */}
+                      <button
+                        onClick={() => setIsContactOpen(false)}
+                        className="absolute top-3 right-3 text-gray-700 hover:text-gray-900 transition-colors text-xl w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full"
+                      >
+                        ×
+                      </button>
+
+                      {/* Coming Soon 내용 */}
+                      <div className="text-center font-sans">
+                        <h3 className="text-lg font-bold text-gray-900 mb-3">
+                          COMING SOON
+                        </h3>
+                        <div className="text-sm text-gray-700">
+                          <p className="mb-2">문의는</p>
+                          <p className="font-semibold text-gray-800">김태은</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
           </div>
         </div>
       </main>
+
+      {/* 이미지 모달 */}
+      {model && model.type === 'image' && isImageModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-2 sm:p-4"
+          onClick={() => setIsImageModalOpen(false)}
+        >
+          <div
+            className="relative w-full h-full max-w-7xl max-h-full flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative flex items-center justify-center">
+              <Image
+                src={model.mediaUrl}
+                alt={`${model.name} (원본 크기)`}
+                width={model.width}
+                height={model.height}
+                className="max-w-full max-h-[80vh] object-contain"
+                sizes="100vw"
+                priority
+              />
+            </div>
+
+            {/* 글래스 디자인 닫기 버튼 - 이미지 아래 중앙 */}
+            <button
+              onClick={() => setIsImageModalOpen(false)}
+              className="mt-4 text-white text-sm hover:text-white/80 transition-all duration-300 z-50 bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/20 hover:scale-105 rounded-xl px-4 py-2 flex items-center justify-center space-x-2 shadow-lg"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span className="font-medium text-xs">Close</span>
+            </button>
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

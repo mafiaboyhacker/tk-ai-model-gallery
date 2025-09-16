@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
@@ -8,7 +8,9 @@ import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 
 export default function ModelPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useEnvironmentStore()
+  const [isContactOpen, setIsContactOpen] = useState(false)
+  const contactRef = useRef<HTMLDivElement>(null)
+  const { media, loadMedia, shuffleMedia } = useEnvironmentStore()
 
   // 이미지만 필터링 (모델 카테고리는 이미지만)
   const imageModels = media.filter(item => item.type === 'image').map(image => ({
@@ -23,11 +25,35 @@ export default function ModelPage() {
     type: image.type
   }))
 
+  // 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (contactRef.current && !contactRef.current.contains(event.target as Node)) {
+        setIsContactOpen(false)
+      }
+    }
+
+    if (isContactOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isContactOpen])
+
   useEffect(() => {
     // MediaDB에서 실제 업로드된 미디어 로드
     const initializeMedia = async () => {
       try {
         await loadMedia()
+
+        // 🎲 모델 이미지 로드 후 자동 랜덤화
+        setTimeout(() => {
+          shuffleMedia()
+          console.log('🎲 모델 페이지: 이미지 순서 자동 랜덤화 완료')
+        }, 100)
+
       } catch (error) {
         console.error('모델 이미지 로드 실패:', error)
       } finally {
@@ -44,8 +70,48 @@ export default function ModelPage() {
 
       <main className="pt-20">
         <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
+          <div className="mb-8 flex justify-between items-center">
             <h1 className="nav-text text-2xl text-black/90 mb-2 ml-4" style={{letterSpacing: '0.1em'}}>MODEL GALLERY &lt;</h1>
+
+            {/* Contact 버튼 */}
+            <div className="relative" ref={contactRef}>
+              <button
+                onClick={() => setIsContactOpen(!isContactOpen)}
+                className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 transition-colors"
+              >
+                Contact for Licensing
+              </button>
+
+              {/* 말풍선 스타일 드롭다운 - 위로 올라오도록 */}
+              {isContactOpen && (
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white/90 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-10">
+                  {/* 말풍선 화살표 - 아래쪽 */}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white/90 backdrop-blur-xl border-r border-b border-gray-200 rotate-45"></div>
+
+                  {/* 내용 */}
+                  <div className="p-6 relative">
+                    {/* 닫기 버튼 */}
+                    <button
+                      onClick={() => setIsContactOpen(false)}
+                      className="absolute top-3 right-3 text-gray-700 hover:text-gray-900 transition-colors text-xl w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full"
+                    >
+                      ×
+                    </button>
+
+                    {/* Coming Soon 내용 */}
+                    <div className="text-center font-sans">
+                      <h3 className="text-lg font-bold text-gray-900 mb-3">
+                        COMING SOON
+                      </h3>
+                      <div className="text-sm text-gray-700">
+                        <p className="mb-2">문의는</p>
+                        <p className="font-semibold text-gray-800">김태은</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {isLoaded ? (

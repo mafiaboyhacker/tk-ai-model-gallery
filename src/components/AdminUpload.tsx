@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useSupabaseMediaStore } from '@/store/supabaseMediaStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 
 interface AdminUploadProps {
   isVisible: boolean
@@ -11,7 +11,7 @@ interface AdminUploadProps {
 export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const { addMedia } = useSupabaseMediaStore()
+  const { addMedia, usingSupabase } = useEnvironmentStore()
 
   const generateRandomSize = () => {
     // Midjourney style random sizes
@@ -39,13 +39,12 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
       const images = fileArray.filter(file => file.type.startsWith('image/')).length
       const videos = fileArray.filter(file => file.type.startsWith('video/')).length
 
-      console.log(`🚀 Supabase Storage에 미디어 업로드 시작: ${fileArray.length}개 (이미지: ${images}, 비디오: ${videos})`)
+      console.log(`🚀 ${usingSupabase ? 'Supabase' : 'Local'} Storage에 미디어 업로드 시작: ${fileArray.length}개 (이미지: ${images}, 비디오: ${videos})`)
 
-      // Supabase Store의 addMedia 함수를 사용하여 업로드
-      // Store가 내부적으로 Supabase Storage 업로드와 상태 관리를 처리
+      // Environment Store가 자동으로 적절한 스토어 선택 (로컬: IndexedDB, 배포: Supabase)
       await addMedia(fileArray)
 
-      console.log(`✅ Supabase 업로드 완료: ${fileArray.length}개 파일`)
+      console.log(`✅ ${usingSupabase ? 'Supabase' : 'Local'} 업로드 완료: ${fileArray.length}개 파일`)
 
       setUploading(false)
       onClose()

@@ -36,6 +36,15 @@ export const useEnvironmentStore = () => {
     ...selectedStore,
     isInitialized,
     usingSupabase,
-    environmentInfo: getEnvironmentInfo()
+    environmentInfo: getEnvironmentInfo(),
+    // 랜덤화 기능 추가
+    shuffleMedia: selectedStore.shuffleMedia || (() => {}),
+    getRandomMedia: selectedStore.getRandomMedia || (() => []),
+    getFeaturedMedia: selectedStore.getFeaturedMedia || (() => []),
+    // 비율 기반 배치 기능 추가
+    arrangeByRatio: selectedStore.arrangeByRatio || (() => {}),
+    shuffleByMode: selectedStore.shuffleByMode || (() => {}),
+    updateRatioConfig: selectedStore.updateRatioConfig || (() => {}),
+    ratioConfig: selectedStore.ratioConfig || { videoRatio: 0.15, topVideoCount: 3, shuffleMode: 'ratio-based' }
   }
 }
