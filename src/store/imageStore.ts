@@ -80,16 +80,22 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
   // 여러 미디어 추가 (File[] 배열 처리)
   addMedia: async (files: File[]) => {
+    console.log('🔄 IndexedDB 미디어 추가 시작:', files.length, '개 파일')
     try {
       set({ isLoading: true })
 
+      console.log('📊 IndexedDB 초기화 확인...', { initialized: get().isInitialized })
       if (!get().isInitialized) {
+        console.log('🔧 MediaDB 초기화 중...')
         await mediaDB.init()
         set({ isInitialized: true })
+        console.log('✅ MediaDB 초기화 완료')
       }
 
+      console.log('💾 MediaDB에 파일 저장 시작...')
       // MediaDB에 저장 (이미지와 비디오 모두 처리)
       const processedMedia = await mediaDB.addMedia(files)
+      console.log('✅ MediaDB 저장 완료:', processedMedia.length, '개 처리됨')
 
       // 갤러리용 데이터로 변환
       const galleryMedia: GalleryMediaData[] = processedMedia.map((media) => ({
@@ -117,7 +123,12 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       console.log(`✅ 미디어 추가 완료: ${galleryMedia.length}개 (이미지: ${images}, 비디오: ${videos})`)
 
     } catch (error) {
-      console.error('❌ 미디어 추가 실패:', error)
+      console.error('❌ IndexedDB 미디어 추가 실패:', error)
+      console.error('❌ Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       set({ isLoading: false })
       throw error
     }

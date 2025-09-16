@@ -313,24 +313,35 @@ class MediaDB {
 
   // 여러 미디어 추가 (배치 처리) - 이미지와 비디오 모두 지원
   async addMedia(files: File[]): Promise<MediaData[]> {
-    if (!this.db) await this.init()
+    console.log('📂 MediaDB.addMedia 시작:', files.length, '개 파일')
 
-    const processedMedia: MediaData[] = []
-
-    // 배치 처리로 성능 최적화
-    for (const file of files) {
-      // 이미지와 비디오만 처리
-      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-        console.warn(`⚠️ 지원하지 않는 파일 형식: ${file.name} (${file.type})`)
-        continue
+    try {
+      if (!this.db) {
+        console.log('🔧 MediaDB 초기화 필요...')
+        await this.init()
       }
+      console.log('✅ MediaDB 준비 완료')
 
-      try {
-        const mediaType = file.type.startsWith('video/') ? '비디오' : '이미지'
-        console.log(`🔄 ${mediaType} 처리 중: ${file.name} (${this.formatBytes(file.size)})`)
+      const processedMedia: MediaData[] = []
 
-        // 미디어 파일 처리 (이미지 또는 비디오)
-        const processed = await this.processMedia(file)
+      // 배치 처리로 성능 최적화
+      for (const file of files) {
+        console.log(`📁 파일 처리 시작: ${file.name} (${file.type}, ${this.formatBytes(file.size)})`)
+
+        // 이미지와 비디오만 처리
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+          console.warn(`⚠️ 지원하지 않는 파일 형식: ${file.name} (${file.type})`)
+          continue
+        }
+
+        try {
+          const mediaType = file.type.startsWith('video/') ? '비디오' : '이미지'
+          console.log(`🔄 ${mediaType} 처리 시작: ${file.name} (${this.formatBytes(file.size)})`)
+
+          // 미디어 파일 처리 (이미지 또는 비디오)
+          console.log(`🛠️ processMedia 호출...`)
+          const processed = await this.processMedia(file)
+          console.log(`✅ processMedia 완료:`, processed.id)
 
         // 순차적 이름 생성 (Model #1, Video #1 등)
         const customName = await this.generateSequentialName(processed.type)
@@ -374,8 +385,18 @@ class MediaDB {
       }
     }
 
-    console.log(`✅ 총 ${processedMedia.length}개 미디어 파일 처리 완료`)
-    return processedMedia
+      console.log(`✅ 총 ${processedMedia.length}개 미디어 파일 처리 완료`)
+      return processedMedia
+
+    } catch (error) {
+      console.error('❌ MediaDB.addMedia 전체 실패:', error)
+      console.error('❌ Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      throw error
+    }
   }
 
   // 하위 호환성을 위한 addImages 메서드 (deprecated)
