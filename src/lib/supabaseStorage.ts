@@ -86,8 +86,16 @@ export async function uploadToSupabaseStorage(
   metadata: Partial<SupabaseMedia>
 ): Promise<SupabaseMedia> {
   try {
-    validateSupabaseConfig()
     console.log(`🔄 Supabase Storage 파일 업로드 시작: ${file.name}`)
+    console.log(`📊 파일 정보:`, {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    })
+
+    validateSupabaseConfig()
+    console.log('✅ Supabase 설정 검증 완료')
 
     // 파일 타입에 따른 폴더 결정
     const isVideo = file.type.startsWith('video/')
@@ -100,6 +108,7 @@ export async function uploadToSupabaseStorage(
     const filePath = `${folder}/${fileName}`
 
     // Supabase Storage에 파일 업로드
+    console.log(`📤 Supabase에 업로드 중: ${filePath}`)
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from(BUCKET_NAME)
       .upload(filePath, file, {
@@ -108,9 +117,19 @@ export async function uploadToSupabaseStorage(
       })
 
     if (uploadError) {
-      console.error('❌ Supabase 업로드 실패:', uploadError)
-      throw new Error(`업로드 실패: ${uploadError.message}`)
+      console.error('❌ Supabase Storage 업로드 실패:', {
+        error: uploadError,
+        filePath,
+        bucketName: BUCKET_NAME,
+        fileSize: file.size,
+        contentType: file.type,
+        errorMessage: uploadError.message,
+        errorDetails: uploadError
+      })
+      throw new Error(`Supabase 업로드 실패: ${uploadError.message}`)
     }
+
+    console.log('✅ Supabase Storage 파일 업로드 성공:', uploadData)
 
     // 공개 URL 생성
     const { data: urlData } = supabaseAdmin.storage
@@ -145,7 +164,19 @@ export async function uploadToSupabaseStorage(
     console.log(`✅ Supabase Storage 파일 업로드 완료: ${file.name}`)
     return uploadedMedia
   } catch (error) {
-    console.error('❌ Supabase Storage 파일 업로드 실패:', error)
+    console.error('❌ Supabase Storage 파일 업로드 최종 실패:', {
+      error,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      errorName: error instanceof Error ? error.name : 'Unknown',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'PRESENT' : 'MISSING',
+      supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING',
+      bucketName: BUCKET_NAME,
+      timestamp: new Date().toISOString()
+    })
     throw error
   }
 }
