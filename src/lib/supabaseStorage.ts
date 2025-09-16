@@ -4,6 +4,7 @@
  */
 
 import { supabase, supabaseAdmin, validateSupabaseConfig } from './supabase'
+import { shouldUseSupabase } from './environment'
 
 // Storage 버킷 이름 상수
 export const STORAGE_BUCKETS = {
@@ -178,6 +179,12 @@ async function saveMediaMetadata(media: SupabaseMedia) {
  * 모든 업로드된 미디어 목록 가져오기
  */
 export async function getAllSupabaseMedia(): Promise<SupabaseMedia[]> {
+  // 로컬 환경에서는 빈 배열 반환
+  if (!shouldUseSupabase()) {
+    console.log('🏠 로컬 환경: Supabase 미디어 목록 조회 생략')
+    return []
+  }
+
   try {
     validateSupabaseConfig()
     console.log('🔄 Supabase Storage에서 미디어 목록 조회 중...')
@@ -325,6 +332,18 @@ export async function deleteSupabaseMedia(mediaId: string): Promise<boolean> {
  * 저장공간 사용량 확인
  */
 export async function getSupabaseStorageUsage() {
+  // 로컬 환경에서는 빈 데이터 반환
+  if (!shouldUseSupabase()) {
+    console.log('🏠 로컬 환경: Supabase Storage 사용량 확인 생략')
+    return {
+      totalFiles: 0,
+      mediaCount: 0,
+      estimatedSize: 0,
+      sizeFormatted: '0 B',
+      folders: []
+    }
+  }
+
   try {
     validateSupabaseConfig()
 

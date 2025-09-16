@@ -75,15 +75,22 @@ export const supabaseAdmin = useSupabase && supabaseUrl && supabaseServiceKey
       }
     })()
 
-// 환경변수 검증
+// 환경변수 검증 (환경별 조건부)
 export function validateSupabaseConfig() {
+  // 로컬 환경에서는 Supabase 검증 생략
+  if (!useSupabase) {
+    console.log('🏠 로컬 환경: Supabase 설정 검증 생략 (IndexedDB 사용)')
+    return true
+  }
+
+  // 배포 환경에서만 Supabase 설정 검증
   if (!supabaseUrl) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL이 설정되지 않았습니다.')
   }
   if (!supabaseAnonKey) {
     throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY가 설정되지 않았습니다.')
   }
-  if (!supabaseServiceKey) {
+  if (isServer && !supabaseServiceKey) {
     console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다. 파일 업로드가 제한될 수 있습니다.')
   }
 
