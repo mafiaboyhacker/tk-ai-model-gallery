@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
-import { useImageStore } from '@/store/imageStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import VideoPlayer from '@/components/VideoPlayer'
 
 export default function ModelDetailPage() {
@@ -15,7 +15,7 @@ export default function ModelDetailPage() {
   const [mounted, setMounted] = useState(false)
   // 이름 편집 기능은 어드민 페이지에서만 가능 (보안상 메인 페이지에서 제거)
   const [userInteracted, setUserInteracted] = useState(false)
-  const { media: uploadedMedia, loadMedia } = useImageStore()
+  const { media: uploadedMedia, loadMedia } = useEnvironmentStore()
   // updateCustomName은 어드민 페이지에서만 사용 (메인 페이지에서 제거)
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function ModelDetailPage() {
 
     const initializeMedia = async () => {
       try {
-        console.log('🔄 모델 상세 페이지: IndexedDB에서 미디어 로드 중...')
+        console.log('🔄 모델 상세 페이지: 환경 감지 시스템으로 미디어 로드 중...')
         await loadMedia()
       } catch (error) {
         console.error('❌ 모델 상세 페이지: 미디어 로드 실패:', error)

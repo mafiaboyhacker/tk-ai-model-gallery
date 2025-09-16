@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
-import { useImageStore } from '@/store/imageStore'
+import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 
 export default function ModelPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia } = useImageStore()
+  const { media, loadMedia } = useEnvironmentStore()
 
   // 이미지만 필터링 (모델 카테고리는 이미지만)
   const imageModels = media.filter(item => item.type === 'image').map(image => ({
@@ -50,7 +50,7 @@ export default function ModelPage() {
 
           {isLoaded ? (
             imageModels.length > 0 ? (
-              <MasonryGallery models={[]} />
+              <MasonryGallery models={imageModels} />
             ) : (
               <div className="text-center py-16">
                 <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
