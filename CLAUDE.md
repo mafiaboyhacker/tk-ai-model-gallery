@@ -45,7 +45,51 @@ npx supabase status      # Check local Supabase status
 # Deployment commands
 npx vercel --prod        # Deploy to production
 npx vercel env ls        # List environment variables
+
+# Git operations
+git add .                # Stage all changes
+git commit -m "message"  # Commit with message
+git push origin main     # Push to GitHub (triggers auto-deploy)
 ```
+
+## GitHub Repository Information
+
+### 🔗 Repository Details
+- **Repository URL**: `https://github.com/mafiaboyhacker/tk-ai-model-gallery.git`
+- **GitHub Page**: https://github.com/mafiaboyhacker/tk-ai-model-gallery
+- **Branch**: `main` (default)
+- **Visibility**: Public repository
+- **Auto-Deploy**: Vercel automatically deploys from main branch
+
+### 📦 Repository Structure
+- **Main Project**: `ai-model-gallery/` - Contains the actual Next.js application code
+- **Parent Directory**: Contains documentation and planning files
+- **Git Configuration**: Each directory has its own .git repository
+  - Parent: `C:\Users\TK\Documents\llmcode\tkbm\tk_infl\.git` (no remote)
+  - Project: `C:\Users\TK\Documents\llmcode\tkbm\tk_infl\ai-model-gallery\.git` (connected to GitHub)
+
+### 🚀 Deployment Workflow
+```bash
+# Standard development workflow
+cd ai-model-gallery
+git add .
+git commit -m "feat: your changes description"
+git push origin main  # This triggers automatic Vercel deployment
+
+# Check repository status
+gh repo view  # View repository details
+git status    # Check local changes
+git log       # View commit history
+
+# Deploy directly to Vercel (optional, auto-deploy usually sufficient)
+npx vercel --prod
+```
+
+### 📊 Current Deployment Status
+- **Production URL**: https://ai-model-gallery-e18d3hbbd-tks-projects-ff84fc76.vercel.app
+- **Last Deploy**: Successfully deployed with Context7 performance optimizations
+- **Auto-Deploy**: Enabled via GitHub integration
+- **Environment**: Production with Supabase integration active
 
 ## Core Architecture
 
