@@ -267,54 +267,37 @@ export async function getAllSupabaseMedia(): Promise<SupabaseMedia[]> {
 }
 
 /**
- * 미디어 파일 삭제
+ * 미디어 파일 삭제 (API Route 사용)
  */
 export async function deleteSupabaseMedia(mediaId: string): Promise<boolean> {
   try {
-    validateSupabaseConfig()
-    console.log(`🗑️ Supabase 파일 삭제 중: ${mediaId}`)
+    console.log(`🗑️ API Route를 통한 Supabase 파일 삭제 중: ${mediaId}`)
 
-    // 현재 미디어 목록에서 파일 정보 찾기
-    const mediaList = await getAllSupabaseMedia()
-    const targetMedia = mediaList.find(m => m.id === mediaId)
+    // API Route를 통한 삭제 요청
+    const response = await fetch(`/api/supabase/storage?id=${mediaId}`, {
+      method: 'DELETE'
+    })
 
-    if (!targetMedia) {
-      console.warn('⚠️ 이미 삭제된 미디어이거나 찾을 수 없습니다:', mediaId)
-      return true  // 이미 삭제된 것으로 간주하고 성공 처리
-    }
+    console.log(`📡 삭제 API 응답 상태: ${response.status} ${response.statusText}`)
 
-    const filePath = targetMedia.bucketPath
-    if (!filePath) {
-      console.error('❌ 파일 경로가 없습니다:', mediaId)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`❌ API 삭제 요청 실패: ${response.status} ${errorText}`)
       return false
     }
 
-    console.log(`🗑️ 삭제할 파일 경로: ${filePath}`)
+    const result = await response.json()
 
-    // Supabase Storage에서 파일 삭제
-    const { error: deleteError } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .remove([filePath])
-
-    if (deleteError) {
-      console.error('❌ Supabase 파일 삭제 실패:', deleteError)
+    if (result.success) {
+      console.log(`✅ API Route 삭제 성공: ${mediaId}`)
+      return true
+    } else {
+      console.error(`❌ API 삭제 실패:`, result.error)
       return false
     }
 
-    // 메타데이터 파일도 삭제
-    const metadataPath = `metadata/${mediaId}.json`
-    const { error: metaDeleteError } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .remove([metadataPath])
-
-    if (metaDeleteError) {
-      console.warn('⚠️ 메타데이터 파일 삭제 실패:', metaDeleteError.message)
-    }
-
-    console.log(`✅ Supabase 파일 삭제 완료: ${mediaId} (${filePath})`)
-    return true
   } catch (error) {
-    console.error('❌ Supabase 파일 삭제 실패:', error)
+    console.error('❌ API Route 삭제 요청 실패:', error)
     return false
   }
 }
