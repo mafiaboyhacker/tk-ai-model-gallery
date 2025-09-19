@@ -11,3 +11,4 @@ test-image.txt
 test-upload/
 nul
 scripts/
+.playwright-mcp/*.png
