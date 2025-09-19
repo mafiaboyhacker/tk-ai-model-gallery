@@ -1,0 +1,42 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "services": [
+    {
+      "name": "ai-model-gallery",
+      "source": {
+        "repo": "mafiaboyhacker/tk-ai-model-gallery",
+        "branch": "main"
+      },
+      "variables": {
+        "NODE_ENV": "production",
+        "NEXTAUTH_URL": "${{RAILWAY_STATIC_URL}}",
+        "DATABASE_URL": "${{DATABASE_URL}}",
+        "NEXTAUTH_SECRET": "railway-prod-secret-ai-gallery-2025-secure-key-v2",
+        "RAILWAY_VOLUME_MOUNT_PATH": "/data",
+        "RAILWAY_ENVIRONMENT": "production",
+        "NEXT_TELEMETRY_DISABLED": "1",
+        "SKIP_VALIDATION": "false"
+      },
+      "volumes": [
+        {
+          "name": "uploads-volume",
+          "mountPath": "/data"
+        }
+      ],
+      "domains": [
+        {
+          "name": "tk-ai-gallery.railway.app"
+        }
+      ]
+    }
+  ],
+  "plugins": [
+    {
+      "name": "postgresql",
+      "plan": "hobby"
+    }
+  ]
+}

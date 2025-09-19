@@ -1,0 +1,18 @@
+[build]
+builder = "nixpacks"
+
+[phases.setup]
+nixPkgs = ["nodejs-20_x", "openssl", "libuuid"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"
+
+[variables]
+NODE_ENV = "production"
+NIXPACKS_NO_CACHE = "1"
