@@ -25,7 +25,7 @@ interface MediaStore {
   selectedMedia: GalleryMediaData | null  // 선택된 미디어
 
   // 기본 작업
-  addMedia: (files: File[]) => Promise<void>
+  addMedia: (files: File[], onProgress?: (progress: number, currentFile: string, processed: number) => void) => Promise<void>
   removeMedia: (id: string) => Promise<void>
   updateMedia: (id: string, updates: Partial<GalleryMediaData>) => Promise<void>
   clearMedia: () => Promise<void>
@@ -55,7 +55,7 @@ interface MediaStore {
 
   // 하위 호환성을 위한 메서드들
   get images(): GalleryMediaData[]
-  addImages: (files: File[]) => Promise<void>
+  addImages: (files: File[], onProgress?: (progress: number, currentFile: string, processed: number) => void) => Promise<void>
   removeImage: (id: string) => Promise<void>
   clearImages: () => Promise<void>
   loadImages: () => Promise<void>
