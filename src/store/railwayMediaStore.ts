@@ -33,7 +33,19 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       console.log('🔄 Railway: 미디어 목록 로드 시작')
 
       const response = await fetch('/api/railway/storage?action=list')
+      console.log('🔍 Railway: API 응답 상태:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
       const data = await response.json()
+      console.log('📊 Railway: API 응답 데이터:', data)
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to load media')
@@ -46,6 +58,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       }))
 
       console.log(`✅ Railway: ${convertedMedia.length}개 미디어 로드 성공`)
+      console.log('🔍 Railway: 첫 번째 미디어 샘플:', convertedMedia[0])
       set({ media: convertedMedia, isLoading: false })
 
     } catch (error) {

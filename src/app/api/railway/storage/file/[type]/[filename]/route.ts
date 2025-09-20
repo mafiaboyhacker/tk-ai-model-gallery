@@ -86,15 +86,25 @@ export async function GET(
         console.log(`   ${index + 1}. ${testPath}`)
       })
 
-      // 🚀 파일을 찾지 못한 경우 대체 이미지 제공 (깨진 이미지 방지)
-      const fallbackResponse = new NextResponse(
-        Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
-      )
-      fallbackResponse.headers.set('Content-Type', 'image/gif')
-      fallbackResponse.headers.set('Cache-Control', 'public, max-age=60') // 짧은 캐시
-      fallbackResponse.headers.set('X-File-Status', 'fallback-placeholder')
+      // 🚨 파일을 찾지 못한 경우 상세 디버깅 정보와 함께 404 반환
+      console.error(`❌ 파일 찾기 실패: ${type}/${filename}`)
+      console.error(`📁 RAILWAY_VOLUME_MOUNT_PATH: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
+      console.error(`📁 UPLOADS_DIR: ${UPLOADS_DIR}`)
+      console.error(`📁 최종 파일 경로 시도: ${filePath}`)
 
-      return fallbackResponse
+      return NextResponse.json({
+        success: false,
+        error: 'File not found in any location',
+        searchedPaths: possiblePaths,
+        debugInfo: {
+          type,
+          filename,
+          typeDir,
+          uploadsDir: UPLOADS_DIR,
+          volumePath: process.env.RAILWAY_VOLUME_MOUNT_PATH,
+          workingDir: process.cwd()
+        }
+      }, { status: 404 })
     }
 
     console.log(`✅ 최종 파일 경로: ${finalFilePath}`)
