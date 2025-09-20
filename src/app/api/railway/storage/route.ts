@@ -111,6 +111,25 @@ export async function GET(request: NextRequest) {
           message: 'Railway Volume initialized successfully'
         })
 
+      case 'env':
+        // 🔍 환경 변수 및 설정 정보 디버깅
+        return NextResponse.json({
+          success: true,
+          environment: {
+            NODE_ENV: process.env.NODE_ENV,
+            RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
+            RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID,
+            RAILWAY_SERVICE_ID: process.env.RAILWAY_SERVICE_ID,
+            RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
+            DATABASE_URL: process.env.DATABASE_URL ? '설정됨' : '없음',
+            NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+            workingDirectory: process.cwd(),
+            platform: process.platform,
+            arch: process.arch,
+            nodeVersion: process.version
+          }
+        })
+
       case 'debug':
         // 파일 시스템 상세 디버그 정보
         await ensureUploadDirs()
