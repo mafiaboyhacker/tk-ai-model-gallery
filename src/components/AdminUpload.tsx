@@ -76,34 +76,17 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
       console.log(`🔄 통합 미디어 API 사용 - 환경: ${usingRailway ? 'Railway' : 'Local'}`)
 
       if (usingRailway) {
-        console.log('🚂 Railway 환경: 통합 API를 통한 Railway Storage 사용')
+        console.log('🚂 Railway 환경: Railway Storage 진행률 콜백 사용')
 
-        // 통합 미디어 API를 사용하여 자동 라우팅
-        const formData = new FormData()
-        fileArray.forEach(file => formData.append('files', file))
-
-        const response = await fetch('/api/media', {
-          method: 'POST',
-          body: formData
+        // 🚀 Railway Store의 addMedia 함수 직접 호출 (진행률 콜백 포함)
+        await addMedia(fileArray, (progress, fileName, processed) => {
+          setUploadProgress(progress)
+          setCurrentFile(fileName)
+          setProcessedFiles(processed)
+          console.log(`📤 Railway 진행중 (${processed}/${fileArray.length}): ${fileName} - ${progress}%`)
         })
 
-        const data = await response.json()
-
-        if (!data.success) {
-          throw new Error(data.error || 'Upload failed')
-        }
-
-        // 진행률 시뮬레이션
-        for (let i = 0; i <= fileArray.length; i++) {
-          setUploadProgress(Math.round((i / fileArray.length) * 100))
-          setProcessedFiles(i)
-          if (i < fileArray.length) {
-            setCurrentFile(fileArray[i].name)
-            await new Promise(resolve => setTimeout(resolve, 100))
-          }
-        }
-
-        console.log(`✅ 통합 API 업로드 완료: ${fileArray.length}개 파일`)
+        console.log(`✅ Railway 업로드 완료: ${fileArray.length}개 파일`)
 
       } else {
         // 로컬 환경: 기존 addMedia 로직 사용

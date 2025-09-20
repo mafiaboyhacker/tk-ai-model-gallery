@@ -153,6 +153,63 @@ Reference these files in the parent directory for detailed specifications:
 - `blurblur-design-analysis.md` - BlurBlur.ai design system
 - `user-image-folder-analysis.md` - Real user data analysis
 
+## Railway CLI 연결 및 배포 관리 (중요!)
+
+### 🚀 Railway CLI 설정 및 연결
+```bash
+# Railway CLI 확인
+railway --version                    # 4.8.0 설치됨
+railway whoami                       # kim7804@gmail.com으로 로그인됨
+
+# 프로젝트 연결 (steadfast-dream)
+cd ai-model-gallery
+railway link --project steadfast-dream  # 프로젝트 연결
+railway status                       # 프로젝트 상태 확인
+
+# 실시간 로그 및 디버깅
+railway logs --service tk-ai-model-gallery  # 컨테이너 로그
+railway variables                    # 환경변수 확인
+railway deploy                       # 직접 배포
+```
+
+### 📡 배포된 Railway 정보
+- **실제 URL**: https://tk-ai-model-gallery-production.up.railway.app/
+- **프로젝트명**: steadfast-dream
+- **서비스명**: tk-ai-model-gallery
+- **환경**: production
+- **포트**: Railway 자동 할당 (보통 8080)
+
+### 🔧 Railway 배포 문제 해결 과정 (2025년 9월)
+1. **500 Internal Server Error**: `/api/media/route.ts`에서 fetch() → 직접 import로 수정
+2. **502 Application failed to respond**: `package.json`의 PORT 환경변수 지원 추가
+3. **nixpacks.toml 최적화**: npm ci → npm install --production=false로 변경
+4. **빌드 성공**: Node.js 22, 총 146초 빌드 시간
+
+### ⚠️ 중요: 모르는 것은 웹검색 필수!
+```
+Railway CLI, nixpacks, 환경변수 설정 등 모르는 내용이 있으면
+반드시 WebSearch 도구를 사용해서 최신 정보를 확인하세요!
+
+예시 검색어:
+- "Railway CLI project link non-interactive 2025"
+- "nixpacks.toml Node.js configuration 2025"
+- "Railway environment variables setup 2025"
+```
+
+### 🚀 업로드 진행률 표시 기능 (완성)
+```typescript
+// IndexedDB Store (imageStore.ts)
+addMedia: async (files: File[], onProgress?: (progress: number, fileName: string, processed: number) => void)
+
+// Railway Store (railwayMediaStore.ts) - 이미 지원
+addMedia: async (files: File[], onProgress?: (progress: number, fileName: string, processed: number) => void)
+
+// 사용법
+await store.addMedia(files, (progress, fileName, processed) => {
+  console.log(`${progress.toFixed(1)}% - ${fileName}`)
+})
+```
+
 ## Recent Updates
 
 ### 🚀 Deployment Version Management System (v1.0.0 - September 2025)
@@ -231,6 +288,45 @@ npm run pre-deploy         # Full security + quality check
 
 ## Troubleshooting
 
+### 🚨 Railway 배포 문제 해결
+
+#### Railway CLI 연결 문제
+```bash
+# 연결 상태 확인
+railway whoami                       # 로그인 확인
+railway list                         # 프로젝트 목록
+railway link --project steadfast-dream  # 재연결
+
+# 연결이 안될 때
+rm -rf .railway/                     # 로컬 설정 삭제
+railway login                        # 재로그인
+```
+
+#### Railway 배포 실패 (502/500 에러)
+```bash
+# 1. 로그 확인
+railway logs --service tk-ai-model-gallery
+
+# 2. 환경변수 확인
+railway variables
+
+# 3. PORT 문제 확인
+# package.json에 ${PORT:-3000} 환경변수 지원 있는지 확인
+
+# 4. 빌드 실패 시
+# nixpacks.toml에서 npm ci → npm install --production=false 변경
+```
+
+#### API fetch 에러 (Railway 내부)
+```typescript
+// ❌ 잘못된 방법 (Railway에서 실패)
+const response = await fetch('/api/railway/storage', {...})
+
+// ✅ 올바른 방법 (Railway에서 성공)
+const { GET: railwayStorageGET } = await import('../railway/storage/route')
+const response = await railwayStorageGET(request)
+```
+
 ### Common Issues
 
 #### Environment Switching Failed
@@ -259,6 +355,21 @@ RAILWAY_ENVIRONMENT=production
 2. Verify storage permissions (Railway Volume)
 3. Check file size limits and formats
 4. Ensure admin authentication active
+
+### 🔍 모르는 것은 반드시 웹검색!
+```bash
+# Railway CLI 문제 시
+WebSearch: "Railway CLI commands 2025"
+WebSearch: "Railway project link troubleshooting"
+
+# nixpacks 빌드 문제 시
+WebSearch: "nixpacks.toml Node.js configuration"
+WebSearch: "Railway nixpacks build failure"
+
+# 환경변수 문제 시
+WebSearch: "Railway environment variables setup"
+WebSearch: "Next.js PORT environment variable Railway"
+```
 
 ### Development Patterns
 

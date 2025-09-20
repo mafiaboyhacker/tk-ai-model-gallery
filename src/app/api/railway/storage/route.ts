@@ -398,6 +398,17 @@ export async function GET(request: NextRequest) {
           })
         }
 
+      case 'clear-cache':
+        // 🧹 캐시 강제 클리어
+        const pattern = searchParams.get('pattern')
+        invalidateCache(pattern || undefined)
+
+        return NextResponse.json({
+          success: true,
+          message: pattern ? `캐시 패턴 클리어: ${pattern}` : '전체 캐시 클리어',
+          timestamp: new Date().toISOString()
+        })
+
       default:
         return NextResponse.json({
           success: false,
