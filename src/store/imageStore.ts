@@ -115,7 +115,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
   },
 
   // 여러 미디어 추가 (File[] 배열 처리)
-  addMedia: async (files: File[]) => {
+  addMedia: async (files: File[], onProgress?: (progress: number, currentFile: string, processed: number) => void) => {
     console.log('🔄 IndexedDB 미디어 추가 시작:', files.length, '개 파일')
     try {
       set({ isLoading: true })
@@ -129,9 +129,30 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       }
 
       console.log('💾 MediaDB에 파일 저장 시작...')
-      // MediaDB에 저장 (이미지와 비디오 모두 처리)
-      const processedMedia = await mediaDB.addMedia(files)
-      console.log('✅ MediaDB 저장 완료:', processedMedia.length, '개 처리됨')
+
+      // 진행률 콜백이 있으면 파일별로 처리
+      if (onProgress) {
+        const processedMedia = []
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          const progress = ((i + 1) / files.length) * 100
+
+          // 개별 파일 처리
+          const result = await mediaDB.addMedia([file])
+          processedMedia.push(...result)
+
+          // 진행률 콜백 호출
+          onProgress(progress, file.name, i + 1)
+          console.log(`📊 진행률: ${progress.toFixed(1)}% - ${file.name}`)
+        }
+        console.log('✅ MediaDB 저장 완료:', processedMedia.length, '개 처리됨')
+        return processedMedia
+      } else {
+        // 진행률 콜백이 없으면 일괄 처리 (기존 방식)
+        const processedMedia = await mediaDB.addMedia(files)
+        console.log('✅ MediaDB 저장 완료:', processedMedia.length, '개 처리됨')
+        return processedMedia
+      }
 
       // 갤러리용 데이터로 변환
       const galleryMedia: GalleryMediaData[] = processedMedia.map((media) => ({
@@ -344,9 +365,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     return get().media // media를 images로도 접근 가능
   },
 
-  addImages: async (files: File[]) => {
+  addImages: async (files: File[], onProgress?: (progress: number, currentFile: string, processed: number) => void) => {
     console.warn('⚠️ addImages는 deprecated입니다. addMedia를 사용하세요.')
-    return get().addMedia(files)
+    return get().addMedia(files, onProgress)
   },
 
   removeImage: async (id: string) => {
