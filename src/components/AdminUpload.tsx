@@ -72,20 +72,58 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
 
       console.log(`🚀 ${usingRailway ? 'Railway' : 'Local'} Storage에 미디어 업로드 시작: ${fileArray.length}개 (이미지: ${images}, 비디오: ${videos})`)
 
-      // 🚀 진행률 콜백과 함께 업로드 실행
-      await addMedia(fileArray, (progress, fileName, processed) => {
-        setUploadProgress(progress)
-        setCurrentFile(fileName)
-        setProcessedFiles(processed)
-        console.log(`📤 진행중 (${processed + 1}/${fileArray.length}): ${fileName} - ${progress}%`)
-      })
+      // 🚀 통합 미디어 API 사용으로 환경별 자동 라우팅
+      console.log(`🔄 통합 미디어 API 사용 - 환경: ${usingRailway ? 'Railway' : 'Local'}`)
+
+      if (usingRailway) {
+        console.log('🚂 Railway 환경: 통합 API를 통한 Railway Storage 사용')
+
+        // 통합 미디어 API를 사용하여 자동 라우팅
+        const formData = new FormData()
+        fileArray.forEach(file => formData.append('files', file))
+
+        const response = await fetch('/api/media', {
+          method: 'POST',
+          body: formData
+        })
+
+        const data = await response.json()
+
+        if (!data.success) {
+          throw new Error(data.error || 'Upload failed')
+        }
+
+        // 진행률 시뮬레이션
+        for (let i = 0; i <= fileArray.length; i++) {
+          setUploadProgress(Math.round((i / fileArray.length) * 100))
+          setProcessedFiles(i)
+          if (i < fileArray.length) {
+            setCurrentFile(fileArray[i].name)
+            await new Promise(resolve => setTimeout(resolve, 100))
+          }
+        }
+
+        console.log(`✅ 통합 API 업로드 완료: ${fileArray.length}개 파일`)
+
+      } else {
+        // 로컬 환경: 기존 addMedia 로직 사용
+        console.log('💻 로컬 환경: addMedia 사용')
+
+        // 🚀 진행률 콜백과 함께 업로드 실행
+        await addMedia(fileArray, (progress, fileName, processed) => {
+          setUploadProgress(progress)
+          setCurrentFile(fileName)
+          setProcessedFiles(processed)
+          console.log(`📤 진행중 (${processed + 1}/${fileArray.length}): ${fileName} - ${progress}%`)
+        })
+
+        console.log(`✅ 로컬 업로드 완료: ${fileArray.length}개 파일`)
+      }
 
       // 완료 상태
       setUploadProgress(100)
       setProcessedFiles(fileArray.length)
       setCurrentFile('완료!')
-
-      console.log(`✅ ${usingRailway ? 'Railway' : 'Local'} 업로드 완료: ${fileArray.length}개 파일`)
 
       // 완료 후 잠시 대기
       await new Promise(resolve => setTimeout(resolve, 500))

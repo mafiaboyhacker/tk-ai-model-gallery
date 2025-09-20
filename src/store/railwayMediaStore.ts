@@ -32,7 +32,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     try {
       console.log('🔄 Railway: 미디어 목록 로드 시작')
 
-      const response = await fetch('/api/railway/storage?action=list')
+      const response = await fetch('/api/media?action=list')
       console.log('🔍 Railway: API 응답 상태:', {
         status: response.status,
         statusText: response.statusText,
@@ -143,8 +143,10 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     try {
       console.log(`🗑️ Railway: ${id} 삭제 시작`)
 
-      const response = await fetch(`/api/railway/storage?id=${id}`, {
-        method: 'DELETE'
+      const response = await fetch('/api/media', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
       })
 
       const data = await response.json()
@@ -178,7 +180,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       console.log(`🔄 Railway: ${id} 이름 변경: ${newName}`)
 
       // PostgreSQL에서 title 업데이트 API 호출
-      const response = await fetch('/api/railway/storage', {
+      const response = await fetch('/api/media', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, title: newName })

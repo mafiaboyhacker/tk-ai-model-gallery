@@ -9,9 +9,42 @@ import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 
-// Railway Volume 경로 또는 로컬 경로 사용
-// 🚀 Railway Volume Mount Path가 이미 uploads를 포함할 수 있으므로 중복 방지
-const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'uploads')
+// 🚀 Railway Volume 경로 설정 (업로드 API와 완전 동일)
+function getRailwayPaths() {
+  const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production' ||
+                    process.env.RAILWAY_VOLUME_MOUNT_PATH
+
+  if (isRailway) {
+    // Railway 환경: Volume 루트 직접 사용
+    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
+    return {
+      UPLOADS_DIR: volumeRoot,
+      IMAGES_DIR: path.join(volumeRoot, 'images'),
+      VIDEOS_DIR: path.join(volumeRoot, 'videos'),
+      isRailway: true
+    }
+  } else {
+    // 로컬 환경: 기존 구조 유지
+    const uploadsDir = path.join(process.cwd(), 'uploads')
+    return {
+      UPLOADS_DIR: uploadsDir,
+      IMAGES_DIR: path.join(uploadsDir, 'images'),
+      VIDEOS_DIR: path.join(uploadsDir, 'videos'),
+      isRailway: false
+    }
+  }
+}
+
+const { UPLOADS_DIR, IMAGES_DIR, VIDEOS_DIR, isRailway } = getRailwayPaths()
+
+console.log('🔧 파일 서빙 Railway 경로 설정:', {
+  isRailway,
+  UPLOADS_DIR,
+  IMAGES_DIR,
+  VIDEOS_DIR,
+  RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
+  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
+})
 
 export async function GET(
   request: NextRequest,
@@ -28,9 +61,10 @@ export async function GET(
       }, { status: 400 })
     }
 
-    // 파일 경로 구성 (Storage API와 동일한 구조)
+    // 파일 경로 구성 (Storage API와 완전 동일한 구조)
     const typeDir = type === 'image' ? 'images' : 'videos'
-    const filePath = path.join(UPLOADS_DIR, typeDir, filename)
+    const targetDir = type === 'image' ? IMAGES_DIR : VIDEOS_DIR
+    const filePath = path.join(targetDir, filename)
 
     console.log(`🔍 파일 서빙 요청: ${type}/${filename}`)
     console.log(`📁 UPLOADS_DIR: ${UPLOADS_DIR}`)
@@ -56,59 +90,50 @@ export async function GET(
       console.log(`❌ 디렉토리 구조 확인 실패:`, err)
     }
 
-    // 🚀 Railway Volume 경로 시스템 강화 - Railway 환경에 최적화된 경로들
-    const possiblePaths = [
-      filePath, // 기본 계산된 경로
-      path.join(UPLOADS_DIR, typeDir, filename), // UPLOADS_DIR 기반 경로
-      path.join('/app/uploads', typeDir, filename), // Railway 기본 경로
-      path.join('/data', typeDir, filename), // Railway Volume 루트
-      path.join('/opt/render/project/src/uploads', typeDir, filename), // Render 호환 경로
-      path.join(process.cwd(), 'uploads', typeDir, filename), // 현재 작업 디렉토리
-      path.join('/tmp/uploads', typeDir, filename), // 임시 경로
-    ]
+    // 🎯 정확한 파일 경로 확인 (업로드 API와 동일한 로직)
+    console.log(`🔍 파일 경로 확인: ${filePath}`)
+    console.log(`📂 파일 존재 여부: ${existsSync(filePath)}`)
 
-    let finalFilePath: string | null = null
-
-    for (const testPath of possiblePaths) {
-      console.log(`🔍 경로 확인: ${testPath}`)
-      if (existsSync(testPath)) {
-        finalFilePath = testPath
-        console.log(`✅ 파일 발견: ${testPath}`)
-        break
-      }
-    }
-
-    if (!finalFilePath) {
-      console.log(`❌ 파일 없음 - 모든 경로 확인 완료:`)
-      possiblePaths.forEach((testPath, index) => {
-        console.log(`   ${index + 1}. ${testPath}`)
-      })
-
-      // 🚨 파일을 찾지 못한 경우 상세 디버깅 정보와 함께 404 반환
+    if (!existsSync(filePath)) {
+      // 🔍 추가 디버깅 정보
       console.error(`❌ 파일 찾기 실패: ${type}/${filename}`)
+      console.error(`📁 타겟 디렉토리: ${targetDir}`)
+      console.error(`📁 파일 경로: ${filePath}`)
+      console.error(`🌍 Railway 환경: ${isRailway}`)
       console.error(`📁 RAILWAY_VOLUME_MOUNT_PATH: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
-      console.error(`📁 UPLOADS_DIR: ${UPLOADS_DIR}`)
-      console.error(`📁 최종 파일 경로 시도: ${filePath}`)
+
+      // 디렉토리 내용 확인
+      if (existsSync(targetDir)) {
+        try {
+          const { readdirSync } = require('fs')
+          const files = readdirSync(targetDir)
+          console.error(`📋 ${typeDir} 디렉토리 내용 (${files.length}개):`, files)
+        } catch (err) {
+          console.error(`❌ 디렉토리 읽기 실패:`, err)
+        }
+      } else {
+        console.error(`❌ 타겟 디렉토리가 존재하지 않음: ${targetDir}`)
+      }
 
       return NextResponse.json({
         success: false,
-        error: 'File not found in any location',
-        searchedPaths: possiblePaths,
+        error: 'File not found',
         debugInfo: {
           type,
           filename,
-          typeDir,
-          uploadsDir: UPLOADS_DIR,
+          filePath,
+          targetDir,
+          isRailway,
           volumePath: process.env.RAILWAY_VOLUME_MOUNT_PATH,
-          workingDir: process.cwd()
+          directoryExists: existsSync(targetDir)
         }
       }, { status: 404 })
     }
 
-    console.log(`✅ 최종 파일 경로: ${finalFilePath}`)
+    console.log(`✅ 파일 발견: ${filePath}`)
 
     // 파일 읽기
-    const fileBuffer = await readFile(finalFilePath)
+    const fileBuffer = await readFile(filePath)
 
     // MIME 타입 결정
     const extension = path.extname(filename).toLowerCase()

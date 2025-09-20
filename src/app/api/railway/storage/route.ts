@@ -9,13 +9,135 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
+// 🚀 성능 최적화된 Prisma 클라이언트
+const prisma = new PrismaClient({
+  log: ['error'],
+  transactionOptions: {
+    maxWait: 5000,
+    timeout: 10000,
+  },
+})
 
-// Railway Volume 디렉토리 설정 (지속적 저장)
-// 🚀 Railway Volume Mount Path가 이미 uploads를 포함할 수 있으므로 중복 방지
-const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'uploads')
-const IMAGES_DIR = path.join(UPLOADS_DIR, 'images')
-const VIDEOS_DIR = path.join(UPLOADS_DIR, 'videos')
+// Prisma 연결 풀 최적화 (Prisma 5.0+에서는 process 이벤트 사용)
+process.on('beforeExit', async () => {
+  console.log('🔌 Prisma 연결 정리 중...')
+  await prisma.$disconnect()
+})
+
+// 🚀 인메모리 캐싱 시스템
+interface CacheEntry {
+  data: any
+  timestamp: number
+  count?: number
+}
+
+const cache = new Map<string, CacheEntry>()
+const CACHE_TTL = 5 * 60 * 1000 // 5분
+const COUNT_CACHE_TTL = 10 * 60 * 1000 // 10분 (카운트는 더 길게)
+
+// 캐시 유틸리티 함수
+function getCacheKey(action: string, params?: Record<string, any>) {
+  return `${action}:${JSON.stringify(params || {})}`
+}
+
+function isValidCache(entry: CacheEntry, ttl: number = CACHE_TTL): boolean {
+  return Date.now() - entry.timestamp < ttl
+}
+
+function setCache(key: string, data: any, count?: number) {
+  cache.set(key, {
+    data,
+    timestamp: Date.now(),
+    count
+  })
+  console.log(`💾 캐시 저장: ${key} (${cache.size}개 항목)`)
+}
+
+function getCache(key: string, ttl?: number): CacheEntry | null {
+  const entry = cache.get(key)
+  if (entry && isValidCache(entry, ttl)) {
+    console.log(`⚡ 캐시 적중: ${key}`)
+    return entry
+  }
+  if (entry) {
+    cache.delete(key)
+    console.log(`🗑️ 만료된 캐시 삭제: ${key}`)
+  }
+  return null
+}
+
+// 캐시 무효화 함수
+function invalidateCache(pattern?: string) {
+  if (pattern) {
+    let deletedCount = 0
+    for (const [key] of cache) {
+      if (key.includes(pattern)) {
+        cache.delete(key)
+        deletedCount++
+      }
+    }
+    console.log(`🧹 패턴 캐시 무효화: ${pattern} (${deletedCount}개 삭제)`)
+  } else {
+    const totalCount = cache.size
+    cache.clear()
+    console.log(`🧹 전체 캐시 무효화: ${totalCount}개 삭제`)
+  }
+}
+
+// 🚀 성능 모니터링 함수
+function logPerformanceMetrics(operation: string, startTime: number, additionalInfo?: Record<string, any>) {
+  const endTime = Date.now()
+  const duration = endTime - startTime
+
+  console.log(`⚡ 성능 측정 [${operation}]:`, {
+    duration: `${duration}ms`,
+    timestamp: new Date().toISOString(),
+    cacheSize: cache.size,
+    ...additionalInfo
+  })
+
+  // 성능 경고 (500ms 이상)
+  if (duration > 500) {
+    console.warn(`⚠️ 느린 작업 감지: ${operation} (${duration}ms)`)
+  }
+}
+
+// 🚀 Railway Volume 디렉토리 설정 (완전 개선)
+function getRailwayPaths() {
+  const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production' ||
+                    process.env.RAILWAY_VOLUME_MOUNT_PATH
+
+  if (isRailway) {
+    // Railway 환경: Volume 루트 직접 사용
+    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
+    return {
+      UPLOADS_DIR: volumeRoot,
+      IMAGES_DIR: path.join(volumeRoot, 'images'),
+      VIDEOS_DIR: path.join(volumeRoot, 'videos'),
+      isRailway: true
+    }
+  } else {
+    // 로컬 환경: 기존 구조 유지
+    const uploadsDir = path.join(process.cwd(), 'uploads')
+    return {
+      UPLOADS_DIR: uploadsDir,
+      IMAGES_DIR: path.join(uploadsDir, 'images'),
+      VIDEOS_DIR: path.join(uploadsDir, 'videos'),
+      isRailway: false
+    }
+  }
+}
+
+const { UPLOADS_DIR, IMAGES_DIR, VIDEOS_DIR, isRailway } = getRailwayPaths()
+
+console.log('🔧 Railway 경로 설정:', {
+  isRailway,
+  UPLOADS_DIR,
+  IMAGES_DIR,
+  VIDEOS_DIR,
+  RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
+  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
+})
 
 // 업로드 디렉토리 초기화
 async function ensureUploadDirs() {
@@ -74,32 +196,89 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'list':
-        // PostgreSQL에서 미디어 목록 조회
+        const listStartTime = Date.now()
+
+        // 🚀 캐시 확인
+        const listCacheKey = getCacheKey('list', { take: 100 })
+        const cachedList = getCache(listCacheKey)
+
+        if (cachedList) {
+          logPerformanceMetrics('list-cached', listStartTime, {
+            count: cachedList.count,
+            cached: true
+          })
+          console.log(`⚡ 캐시된 미디어 목록 반환: ${cachedList.count}개`)
+          return NextResponse.json({
+            success: true,
+            data: cachedList.data,
+            count: cachedList.count,
+            cached: true
+          })
+        }
+
+        console.log('🔍 PostgreSQL에서 미디어 목록 조회 중...')
+
+        // PostgreSQL에서 미디어 목록 조회 (성능 최적화)
         const mediaList = await prisma.media.findMany({
-          orderBy: { uploadedAt: 'desc' }
+          select: {
+            id: true,
+            fileName: true,
+            originalFileName: true,
+            title: true,
+            type: true,
+            fileSize: true,
+            mimeType: true,
+            width: true,
+            height: true,
+            duration: true,
+            resolution: true,
+            uploadedAt: true
+          },
+          orderBy: { uploadedAt: 'desc' },
+          take: 100 // 성능을 위한 제한
         })
 
-        // Railway Volume에서 실제 파일 존재 여부 확인
+        console.log(`📊 PostgreSQL 조회 완료: ${mediaList.length}개`)
+
+        // Railway Volume에서 실제 파일 존재 여부 확인 (병렬 처리)
         const validMedia = []
-        for (const media of mediaList) {
+        const validationPromises = mediaList.map(async (media) => {
           const filePath = path.join(
             media.type === 'video' ? VIDEOS_DIR : IMAGES_DIR,
             media.fileName
           )
 
           if (existsSync(filePath)) {
-            validMedia.push({
+            return {
               ...media,
               url: `/api/railway/storage/file/${media.type}/${media.fileName}`,
               originalUrl: `/api/railway/storage/file/${media.type}/${media.fileName}`
-            })
+            }
           }
-        }
+          return null
+        })
+
+        const validationResults = await Promise.all(validationPromises)
+        validationResults.forEach(result => {
+          if (result) validMedia.push(result)
+        })
+
+        console.log(`✅ 파일 존재 확인 완료: ${validMedia.length}개`)
+
+        // 🚀 결과 캐싱
+        setCache(listCacheKey, validMedia, validMedia.length)
+
+        logPerformanceMetrics('list-uncached', listStartTime, {
+          count: validMedia.length,
+          dbResults: mediaList.length,
+          cached: false
+        })
 
         return NextResponse.json({
           success: true,
           data: validMedia,
-          count: validMedia.length
+          count: validMedia.length,
+          cached: false
         })
 
       case 'init':
@@ -273,9 +452,10 @@ export async function POST(request: NextRequest) {
 
         console.log(`✅ Railway Volume 저장 성공: ${filePath}`)
 
-        // 자동 번호 생성을 위한 기존 미디어 개수 조회
+        // 자동 번호 생성을 위한 기존 미디어 개수 조회 (캐시 최적화)
         const existingCount = await prisma.media.count({
-          where: { type: isVideo ? 'video' : 'image' }
+          where: { type: isVideo ? 'video' : 'image' },
+          // 빈번한 호출이므로 캐싱 고려 필요
         })
         const autoNumber = existingCount + 1
         const autoTitle = isVideo ? `VIDEO #${autoNumber}` : `MODEL #${autoNumber}`
@@ -338,14 +518,38 @@ export async function POST(request: NextRequest) {
             const uniqueFileName = `${timestamp}-${randomId}.${fileExtension}`
             const filePath = path.join(targetDir, uniqueFileName)
 
-            // 파일 저장
+            // 파일 저장 (강화된 디버깅)
+            console.log(`💾 파일 저장 시작: ${file.name}`)
+            console.log(`📁 대상 디렉토리: ${targetDir}`)
+            console.log(`📄 파일 경로: ${filePath}`)
+            console.log(`🌍 Volume 경로: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
+            console.log(`📏 파일 크기: ${file.size} bytes`)
+
             const arrayBuffer = await file.arrayBuffer()
             const buffer = Buffer.from(arrayBuffer)
+
+            // 파일 저장 전 디렉토리 다시 확인
+            if (!existsSync(targetDir)) {
+              console.log(`📁 디렉토리 재생성: ${targetDir}`)
+              await mkdir(targetDir, { recursive: true })
+            }
+
             await writeFile(filePath, buffer)
 
-            // 자동 번호 생성
+            // 저장 후 확인
+            if (existsSync(filePath)) {
+              const stats = await stat(filePath)
+              console.log(`✅ 파일 저장 성공: ${filePath}`)
+              console.log(`📏 저장된 크기: ${stats.size} bytes`)
+              console.log(`🕒 저장 시간: ${stats.mtime}`)
+            } else {
+              throw new Error(`파일 저장 실패: ${filePath}`)
+            }
+
+            // 자동 번호 생성 (배치 최적화)
             const existingCount = await prisma.media.count({
-              where: { type: isVideo ? 'video' : 'image' }
+              where: { type: isVideo ? 'video' : 'image' },
+              // TODO: 배치 업로드 시 카운트 캐싱 고려
             })
             const autoNumber = existingCount + 1
             const autoTitle = isVideo ? `VIDEO #${autoNumber}` : `MODEL #${autoNumber}`
@@ -399,6 +603,12 @@ export async function POST(request: NextRequest) {
         const failedCount = bulkResults.length - successCount
 
         console.log(`✅ Bulk Upload 완료: ${successCount}성공, ${failedCount}실패`)
+
+        // 🚀 업로드 성공 시 캐시 무효화
+        if (successCount > 0) {
+          invalidateCache('list')
+          console.log(`🧹 업로드 완료 후 캐시 무효화: ${successCount}개 파일`)
+        }
 
         return NextResponse.json({
           success: true,
@@ -468,6 +678,10 @@ export async function DELETE(request: NextRequest) {
 
     console.log(`✅ Railway 미디어 삭제 완료: ${mediaId}`)
 
+    // 🚀 삭제 완료 후 캐시 무효화
+    invalidateCache('list')
+    console.log(`🧹 삭제 완료 후 캐시 무효화: ${mediaId}`)
+
     return NextResponse.json({
       success: true,
       message: 'Media deleted successfully'
@@ -499,6 +713,10 @@ export async function PATCH(request: NextRequest) {
     })
 
     console.log(`✅ Railway: 미디어 타이틀 업데이트: ${id} → ${title}`)
+
+    // 🚀 업데이트 완료 후 캐시 무효화
+    invalidateCache('list')
+    console.log(`🧹 업데이트 완료 후 캐시 무효화: ${id}`)
 
     return NextResponse.json({
       success: true,
