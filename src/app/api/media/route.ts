@@ -15,21 +15,22 @@ export async function GET(request: NextRequest) {
 
   try {
     if (shouldUseRailway()) {
-      // Railway 환경에서는 Railway Storage API로 직접 라우팅
-      console.log('🚂 Railway Storage API로 라우팅')
+      // Railway 환경에서는 Railway Storage API 직접 import
+      console.log('🚂 Railway Storage API 직접 호출')
 
-      const railwayUrl = new URL('/api/railway/storage', request.url)
-      railwayUrl.search = request.nextUrl.search
+      // Railway Storage API를 직접 import해서 호출
+      const { GET: railwayStorageGET } = await import('../railway/storage/route')
 
-      const response = await fetch(railwayUrl.toString(), {
+      // 새로운 요청 객체 생성 (기존 쿼리 파라미터 유지)
+      const modifiedRequest = new NextRequest(request.url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: request.headers,
       })
 
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
+      const railwayResponse = await railwayStorageGET(modifiedRequest)
+      const data = await railwayResponse.json()
+
+      return NextResponse.json(data, { status: railwayResponse.status })
 
     } else {
       // 로컬 환경에서는 IndexedDB 데이터 반환
@@ -63,23 +64,16 @@ export async function PATCH(request: NextRequest) {
 
   try {
     if (shouldUseRailway()) {
-      // Railway 환경에서는 Railway Storage API로 라우팅
-      console.log('🚂 Railway Storage API로 업데이트 라우팅')
+      // Railway 환경에서는 Railway Storage API 직접 import
+      console.log('🚂 Railway Storage API 직접 호출 (PATCH)')
 
-      const body = await request.json()
+      // Railway Storage API를 직접 import해서 호출
+      const { PATCH: railwayStoragePATCH } = await import('../railway/storage/route')
 
-      const railwayUrl = new URL('/api/railway/storage', request.url)
+      const railwayResponse = await railwayStoragePATCH(request)
+      const data = await railwayResponse.json()
 
-      const response = await fetch(railwayUrl.toString(), {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
+      return NextResponse.json(data, { status: railwayResponse.status })
 
     } else {
       // 로컬 환경에서는 클라이언트 사이드 처리 안내
@@ -113,20 +107,24 @@ export async function POST(request: NextRequest) {
 
   try {
     if (shouldUseRailway()) {
-      // Railway 환경에서는 Railway Storage API로 직접 라우팅
-      console.log('🚂 Railway Storage API로 업로드 라우팅')
+      // Railway 환경에서는 Railway Storage API 직접 import
+      console.log('🚂 Railway Storage API 직접 호출 (POST)')
 
-      const formData = await request.formData()
+      // Railway Storage API를 직접 import해서 호출
+      const { POST: railwayStoragePOST } = await import('../railway/storage/route')
 
-      const railwayUrl = new URL('/api/railway/storage', request.url)
-      railwayUrl.searchParams.set('action', 'bulk-upload')
+      // 쿼리 파라미터 추가
+      const url = new URL(request.url)
+      url.searchParams.set('action', 'bulk-upload')
 
-      const response = await fetch(railwayUrl.toString(), {
+      const modifiedRequest = new NextRequest(url.toString(), {
         method: 'POST',
-        body: formData,
+        headers: request.headers,
+        body: request.body,
       })
 
-      const data = await response.json()
+      const railwayResponse = await railwayStoragePOST(modifiedRequest)
+      const data = await railwayResponse.json()
 
       if (data.success) {
         console.log(`✅ Railway 업로드 성공: ${data.uploadedFiles?.length || 0}개 파일`)
@@ -134,7 +132,7 @@ export async function POST(request: NextRequest) {
         console.error('❌ Railway 업로드 실패:', data.error)
       }
 
-      return NextResponse.json(data, { status: response.status })
+      return NextResponse.json(data, { status: railwayResponse.status })
 
     } else {
       // 로컬 환경에서는 클라이언트 사이드 처리 안내
@@ -168,23 +166,16 @@ export async function DELETE(request: NextRequest) {
 
   try {
     if (shouldUseRailway()) {
-      // Railway 환경에서는 Railway Storage API로 라우팅
-      console.log('🚂 Railway Storage API로 삭제 라우팅')
+      // Railway 환경에서는 Railway Storage API 직접 import
+      console.log('🚂 Railway Storage API 직접 호출 (DELETE)')
 
-      const body = await request.json()
+      // Railway Storage API를 직접 import해서 호출
+      const { DELETE: railwayStorageDELETE } = await import('../railway/storage/route')
 
-      const railwayUrl = new URL('/api/railway/storage', request.url)
+      const railwayResponse = await railwayStorageDELETE(request)
+      const data = await railwayResponse.json()
 
-      const response = await fetch(railwayUrl.toString(), {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
+      return NextResponse.json(data, { status: railwayResponse.status })
 
     } else {
       // 로컬 환경에서는 클라이언트 사이드 처리 안내
