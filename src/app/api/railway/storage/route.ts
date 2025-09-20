@@ -12,7 +12,8 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 // Railway Volume 디렉토리 설정 (지속적 저장)
-const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads') : path.join(process.cwd(), 'uploads')
+// 🚀 Railway Volume Mount Path가 이미 uploads를 포함할 수 있으므로 중복 방지
+const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'uploads')
 const IMAGES_DIR = path.join(UPLOADS_DIR, 'images')
 const VIDEOS_DIR = path.join(UPLOADS_DIR, 'videos')
 

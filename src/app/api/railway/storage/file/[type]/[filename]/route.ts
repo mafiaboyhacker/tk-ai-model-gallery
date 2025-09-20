@@ -10,9 +10,8 @@ import { existsSync } from 'fs'
 import path from 'path'
 
 // Railway Volume 경로 또는 로컬 경로 사용
-const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
-  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
-  : path.join(process.cwd(), 'uploads')
+// 🚀 Railway Volume Mount Path가 이미 uploads를 포함할 수 있으므로 중복 방지
+const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'uploads')
 
 export async function GET(
   request: NextRequest,
@@ -57,16 +56,15 @@ export async function GET(
       console.log(`❌ 디렉토리 구조 확인 실패:`, err)
     }
 
-    // 🚀 Railway Volume 경로 시스템 강화 - 모든 가능한 경로를 순차적으로 확인
+    // 🚀 Railway Volume 경로 시스템 강화 - Railway 환경에 최적화된 경로들
     const possiblePaths = [
-      filePath, // 기본 Railway Volume 경로
-      path.join('/app/uploads', typeDir, filename), // 컨테이너 기본 경로
+      filePath, // 기본 계산된 경로
+      path.join(UPLOADS_DIR, typeDir, filename), // UPLOADS_DIR 기반 경로
+      path.join('/app/uploads', typeDir, filename), // Railway 기본 경로
+      path.join('/data', typeDir, filename), // Railway Volume 루트
+      path.join('/opt/render/project/src/uploads', typeDir, filename), // Render 호환 경로
       path.join(process.cwd(), 'uploads', typeDir, filename), // 현재 작업 디렉토리
-      path.join('/data/uploads', typeDir, filename), // 추가 Volume 경로
-      path.join('/railway/uploads', typeDir, filename), // Railway 전용 경로
-      path.join('/opt/railway/uploads', typeDir, filename), // Railway 시스템 경로
-      path.join('/tmp/uploads', typeDir, filename), // 임시 파일 경로 (fallback)
-      path.join('/var/uploads', typeDir, filename), // 시스템 변수 경로
+      path.join('/tmp/uploads', typeDir, filename), // 임시 경로
     ]
 
     let finalFilePath: string | null = null
