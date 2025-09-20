@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import OverviewTab from '@/components/admin/tabs/OverviewTab'
+import VersionDisplay from '@/components/admin/VersionDisplay'
 
 export default function AdminOverviewPage() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -136,7 +137,13 @@ export default function AdminOverviewPage() {
       {/* Tab Content */}
       <main className="max-w-7xl mx-auto p-6">
         {isLoaded ? (
-          <OverviewTab />
+          <div className="space-y-6">
+            {/* 🚀 버전 정보 표시 */}
+            <VersionDisplay />
+
+            {/* 기존 Overview 탭 */}
+            <OverviewTab />
+          </div>
         ) : (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-gray-500">Loading admin panel...</div>

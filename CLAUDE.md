@@ -85,6 +85,7 @@ src/
 /api/health             # System health check
 /api/clear-storage      # Clear local storage
 /api/migrate            # Database migrations
+/api/version            # 🚀 Deployment version information
 ```
 
 ## System Overview
@@ -153,6 +154,37 @@ Reference these files in the parent directory for detailed specifications:
 - `user-image-folder-analysis.md` - Real user data analysis
 
 ## Recent Updates
+
+### 🚀 Deployment Version Management System (v1.0.0 - September 2025)
+- **Version Tracking**: Real-time deployment version display in admin panel
+- **Environment Detection**: Automatic Railway vs Local environment identification
+- **Build Information**: Git commit, build date, Node.js version tracking
+- **API Endpoint**: `/api/version` - Provides comprehensive deployment metadata
+- **Admin Integration**: VersionDisplay component in admin overview page
+- **Live Monitoring**: Real-time deployment status and environment verification
+
+#### Version Information Components
+```typescript
+// 🚀 Admin panel에서 확인 가능한 정보:
+- 📦 Version: v1.0.0 (package.json 기반)
+- 🕒 Build Date: 실시간 빌드 시간
+- 🔗 Git Commit: Railway/Vercel 자동 감지
+- 🚀 Platform: Railway/Vercel/Local 자동 인식
+- 🌐 Environment: production/development/staging
+- 🔧 Node.js: v22.x.x LTS 확인
+```
+
+#### Deployment Verification Commands
+```bash
+# 🚀 로컬에서 버전 확인
+curl http://localhost:3000/api/version
+
+# 🌐 Railway 배포 버전 확인
+curl https://ai-model-gallery.railway.app/api/version
+
+# 📊 Admin 패널에서 시각적 확인
+https://ai-model-gallery.railway.app/admin/overview
+```
 
 ### Node.js 22 LTS Upgrade (September 2025)
 - **Upgraded from**: Node.js >=20.0.0, npm >=8.0.0
