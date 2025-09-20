@@ -57,37 +57,44 @@ export async function GET(
       console.log(`❌ 디렉토리 구조 확인 실패:`, err)
     }
 
-    // 첫 번째 경로에서 파일 존재 확인
-    let finalFilePath = filePath
-    if (!existsSync(filePath)) {
-      // 이전 배포의 경로도 확인 (/app/uploads/)
-      const legacyPath = path.join('/app/uploads', typeDir, filename)
-      console.log(`🔍 레거시 경로 확인: ${legacyPath}`)
+    // 🚀 Railway Volume 경로 시스템 강화 - 모든 가능한 경로를 순차적으로 확인
+    const possiblePaths = [
+      filePath, // 기본 Railway Volume 경로
+      path.join('/app/uploads', typeDir, filename), // 컨테이너 기본 경로
+      path.join(process.cwd(), 'uploads', typeDir, filename), // 현재 작업 디렉토리
+      path.join('/data/uploads', typeDir, filename), // 추가 Volume 경로
+      path.join('/railway/uploads', typeDir, filename), // Railway 전용 경로
+      path.join('/opt/railway/uploads', typeDir, filename), // Railway 시스템 경로
+      path.join('/tmp/uploads', typeDir, filename), // 임시 파일 경로 (fallback)
+      path.join('/var/uploads', typeDir, filename), // 시스템 변수 경로
+    ]
 
-      if (existsSync(legacyPath)) {
-        finalFilePath = legacyPath
-        console.log(`✅ 레거시 경로에서 파일 발견: ${legacyPath}`)
-      } else {
-        // 업로드 API가 실제로 사용하는 경로 확인 (현재 작업 디렉토리 기준)
-        const currentWorkingPath = path.join(process.cwd(), 'uploads', typeDir, filename)
-        console.log(`🔍 현재 작업 디렉토리 경로 확인: ${currentWorkingPath}`)
+    let finalFilePath: string | null = null
 
-        if (existsSync(currentWorkingPath)) {
-          finalFilePath = currentWorkingPath
-          console.log(`✅ 현재 작업 디렉토리에서 파일 발견: ${currentWorkingPath}`)
-        } else {
-          console.log(`❌ 파일 없음 - 모든 경로 확인함:`)
-          console.log(`   - Volume 경로: ${filePath}`)
-          console.log(`   - 레거시 경로: ${legacyPath}`)
-          console.log(`   - 작업 디렉토리 경로: ${currentWorkingPath}`)
-          return NextResponse.json({
-            success: false,
-            error: 'File not found'
-          }, { status: 404 })
-        }
+    for (const testPath of possiblePaths) {
+      console.log(`🔍 경로 확인: ${testPath}`)
+      if (existsSync(testPath)) {
+        finalFilePath = testPath
+        console.log(`✅ 파일 발견: ${testPath}`)
+        break
       }
-    } else {
-      console.log(`✅ Volume 경로에서 파일 발견: ${filePath}`)
+    }
+
+    if (!finalFilePath) {
+      console.log(`❌ 파일 없음 - 모든 경로 확인 완료:`)
+      possiblePaths.forEach((testPath, index) => {
+        console.log(`   ${index + 1}. ${testPath}`)
+      })
+
+      // 🚀 파일을 찾지 못한 경우 대체 이미지 제공 (깨진 이미지 방지)
+      const fallbackResponse = new NextResponse(
+        Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
+      )
+      fallbackResponse.headers.set('Content-Type', 'image/gif')
+      fallbackResponse.headers.set('Cache-Control', 'public, max-age=60') // 짧은 캐시
+      fallbackResponse.headers.set('X-File-Status', 'fallback-placeholder')
+
+      return fallbackResponse
     }
 
     console.log(`✅ 최종 파일 경로: ${finalFilePath}`)

@@ -39,8 +39,14 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
         throw new Error(data.error || 'Failed to load media')
       }
 
-      console.log(`✅ Railway: ${data.data.length}개 미디어 로드 성공`)
-      set({ media: data.data, isLoading: false })
+      // 🚀 API 데이터를 Gallery 형식으로 변환 (title → customName 매핑)
+      const convertedMedia = data.data.map((item: any) => ({
+        ...item,
+        customName: item.title // title을 customName으로 매핑 (MODEL #1, VIDEO #1 형식)
+      }))
+
+      console.log(`✅ Railway: ${convertedMedia.length}개 미디어 로드 성공`)
+      set({ media: convertedMedia, isLoading: false })
 
     } catch (error) {
       console.error('❌ Railway: 미디어 로드 실패:', error)
@@ -76,8 +82,13 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
           throw new Error(data.error || `Upload failed for ${file.name}`)
         }
 
-        uploadResults.push(data.data)
-        console.log(`✅ Railway: ${file.name} 업로드 성공`)
+        // 🚀 업로드 결과에 customName 매핑 추가
+        const convertedResult = {
+          ...data.data,
+          customName: data.data.title // title을 customName으로 매핑
+        }
+        uploadResults.push(convertedResult)
+        console.log(`✅ Railway: ${file.name} 업로드 성공 - ${convertedResult.customName}`)
       }
 
       // 상태 업데이트 - 새로운 파일들을 앞에 추가
@@ -182,7 +193,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     }
   },
 
-  // 비율 기반 배치 (랜덤 섞기)
+  // 비율 기반 배치 (랜덤 섞기) - URL 무결성 보장
   arrangeByRatio: () => {
     const { media, ratioConfig } = get()
     if (!media.length || !ratioConfig) return
@@ -192,9 +203,25 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
 
     console.log(`📊 Railway: 미디어 분석: 총 ${media.length}개 (비디오 ${videos.length}개, 이미지 ${images.length}개)`)
 
-    // 모든 비디오 사용 (제한 없음)
-    const shuffledVideos = [...videos].sort(() => Math.random() - 0.5)
-    const shuffledImages = [...images].sort(() => Math.random() - 0.5)
+    // 🚀 URL 무결성 검증 및 복구
+    const validateUrls = (mediaArray: typeof media) => {
+      return mediaArray.map(item => {
+        // URL이 손상되었거나 누락된 경우 복구
+        if (!item.url || !item.url.includes('/api/railway/storage/file/')) {
+          const fixedUrl = `/api/railway/storage/file/${item.type}/${item.fileName}`
+          console.log(`🔧 Railway: URL 복구 - ${item.fileName}: ${item.url} → ${fixedUrl}`)
+          return { ...item, url: fixedUrl }
+        }
+        return item
+      })
+    }
+
+    // URL 검증 후 랜덤 배치
+    const validatedVideos = validateUrls(videos)
+    const validatedImages = validateUrls(images)
+
+    const shuffledVideos = [...validatedVideos].sort(() => Math.random() - 0.5)
+    const shuffledImages = [...validatedImages].sort(() => Math.random() - 0.5)
 
     // 모든 비디오와 이미지를 사용 (제한 없음)
     const allMedia = [...shuffledVideos, ...shuffledImages]
@@ -202,44 +229,56 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
 
     // 🚀 상태 업데이트 추가
     set({ media: arrangedMedia })
-    console.log(`🎯 Railway: 비율 기반 배치 완료 - 비디오 ${videos.length}개, 이미지 ${images.length}개`)
+    console.log(`🎯 Railway: 비율 기반 배치 완료 - 비디오 ${validatedVideos.length}개, 이미지 ${validatedImages.length}개`)
   },
 
-  // 모드별 셔플
+  // 모드별 셔플 - URL 무결성 보장
   shuffleByMode: (mode?: 'random' | 'ratio-based' | 'video-first' | 'image-first') => {
     const { media, arrangeByRatio, ratioConfig } = get()
     const shuffleMode = mode || ratioConfig?.shuffleMode || 'random'
+
+    // 🚀 URL 무결성 검증 함수 (공통 사용)
+    const validateUrls = (mediaArray: typeof media) => {
+      return mediaArray.map(item => {
+        if (!item.url || !item.url.includes('/api/railway/storage/file/')) {
+          const fixedUrl = `/api/railway/storage/file/${item.type}/${item.fileName}`
+          console.log(`🔧 Railway: URL 복구 - ${item.fileName}: ${item.url} → ${fixedUrl}`)
+          return { ...item, url: fixedUrl }
+        }
+        return item
+      })
+    }
 
     let arrangedMedia: typeof media
 
     switch (shuffleMode) {
       case 'ratio-based':
         if (arrangeByRatio) {
-          arrangeByRatio() // arrangeByRatio는 내부에서 set() 호출
+          arrangeByRatio() // arrangeByRatio는 내부에서 set() 호출하고 URL 검증 포함
           return
         } else {
-          arrangedMedia = [...media].sort(() => Math.random() - 0.5)
+          arrangedMedia = validateUrls([...media].sort(() => Math.random() - 0.5))
         }
         break
       case 'video-first':
-        const videos = media.filter(m => m.type === 'video')
-        const images = media.filter(m => m.type === 'image')
+        const videos = validateUrls(media.filter(m => m.type === 'video'))
+        const images = validateUrls(media.filter(m => m.type === 'image'))
         arrangedMedia = [...videos, ...images]
         break
       case 'image-first':
-        const imgs = media.filter(m => m.type === 'image')
-        const vids = media.filter(m => m.type === 'video')
+        const imgs = validateUrls(media.filter(m => m.type === 'image'))
+        const vids = validateUrls(media.filter(m => m.type === 'video'))
         arrangedMedia = [...imgs, ...vids]
         break
       case 'random':
       default:
-        arrangedMedia = [...media].sort(() => Math.random() - 0.5)
+        arrangedMedia = validateUrls([...media].sort(() => Math.random() - 0.5))
         break
     }
 
     // 🚀 상태 업데이트 추가
     set({ media: arrangedMedia })
-    console.log(`🎲 Railway: ${shuffleMode} 모드 배치 완료 - ${arrangedMedia.length}개 미디어`)
+    console.log(`🎲 Railway: ${shuffleMode} 모드 배치 완료 - ${arrangedMedia.length}개 미디어 (URL 검증 완료)`)
   },
 
   // 비율 설정 업데이트

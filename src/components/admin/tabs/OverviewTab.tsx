@@ -121,7 +121,7 @@ export default function OverviewTab() {
   const modelsForGallery = media.map((mediaItem, index) => {
     return {
       id: mediaItem.id,
-      name: mediaItem.fileName || `${mediaItem.type === 'video' ? 'Video' : 'Model'} #${index + 1}`,
+      name: mediaItem.customName || mediaItem.fileName || `${mediaItem.type === 'video' ? 'Video' : 'Model'} #${index + 1}`,
       imageUrl: mediaItem.url,
       originalUrl: mediaItem.originalUrl,
       imageAlt: `${mediaItem.type === 'video' ? 'Video' : 'Image'}: ${mediaItem.fileName}`,

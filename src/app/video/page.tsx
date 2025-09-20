@@ -13,7 +13,7 @@ export default function VideoPage() {
   // 비디오만 필터링
   const videoModels = media.filter(item => item.type === 'video').map(video => ({
     id: video.id,
-    name: video.fileName || `Video ${video.id}`,
+    name: video.customName || video.fileName || `Video ${video.id}`,
     imageUrl: video.url,           // 비디오 썸네일
     originalUrl: video.originalUrl, // 원본 비디오
     imageAlt: `Video: ${video.fileName}`,

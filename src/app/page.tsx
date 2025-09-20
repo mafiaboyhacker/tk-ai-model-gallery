@@ -14,7 +14,7 @@ export default function Home() {
   // GalleryMediaData를 MasonryGallery가 기대하는 Media 형태로 변환
   const convertedMedia: Media[] = media.map(item => ({
     id: item.id,
-    name: item.fileName || `Media ${item.id}`,
+    name: item.customName || item.fileName || `Media ${item.id}`,
     imageUrl: item.url,
     originalUrl: item.originalUrl,
     imageAlt: `Media: ${item.fileName}`,

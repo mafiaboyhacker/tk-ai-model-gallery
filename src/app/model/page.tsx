@@ -13,7 +13,7 @@ export default function ModelPage() {
   // 이미지만 필터링 (모델 카테고리는 이미지만)
   const imageModels = media.filter(item => item.type === 'image').map(image => ({
     id: image.id,
-    name: image.fileName || `Model ${image.id}`,
+    name: image.customName || image.fileName || `Model ${image.id}`,
     imageUrl: image.url,           // 이미지 썸네일
     originalUrl: image.originalUrl, // 원본 이미지
     imageAlt: `Model: ${image.fileName}`,
