@@ -86,10 +86,10 @@ export function getRandomElement<T>(array: T[]): T | undefined {
 }
 
 /**
- * 비율 기반 미디어 배치 (비디오 우선 상단 배치)
+ * 비율 기반 미디어 배치 - 모든 비디오 표시 + 골고루 분산
  * @param media 전체 미디어 배열
- * @param videoRatio 비디오 비율 (0.0 ~ 1.0, 기본값: 0.15 = 15%)
- * @param topVideoCount 상단에 배치할 비디오 개수 (기본값: 3)
+ * @param videoRatio 사용되지 않음 (모든 비디오 표시)
+ * @param topVideoCount 사용되지 않음 (하위 호환성 유지)
  */
 export function arrangeMediaByRatio<T extends { type: 'image' | 'video' }>(
   media: T[],
@@ -102,36 +102,54 @@ export function arrangeMediaByRatio<T extends { type: 'image' | 'video' }>(
   const videos = media.filter(item => item.type === 'video')
   const images = media.filter(item => item.type === 'image')
 
-  // 각각 랜덤 셔플
+  console.log(`📊 미디어 분석: 총 ${media.length}개 (비디오 ${videos.length}개, 이미지 ${images.length}개)`)
+
+  // 모든 비디오를 사용 (제한 없음)
   const shuffledVideos = shuffleArray(videos)
   const shuffledImages = shuffleArray(images)
 
-  // 전체 배열 길이 기준으로 비디오 개수 계산
-  const totalVideoCount = Math.max(
-    Math.floor(media.length * videoRatio),
-    Math.min(topVideoCount, shuffledVideos.length) // 최소 topVideoCount개 또는 실제 비디오 개수
-  )
+  // 비디오가 골고루 분산되도록 배치
+  const result: T[] = []
+  const totalItems = videos.length + images.length
 
-  // 상단 비디오 배치
-  const topVideos = shuffledVideos.slice(0, topVideoCount)
-  const remainingVideos = shuffledVideos.slice(topVideoCount)
+  if (videos.length === 0) {
+    // 비디오가 없으면 이미지만 반환
+    console.log('🖼️ 비디오 없음: 이미지만 표시')
+    return shuffledImages
+  }
 
-  // 나머지 비디오 개수 계산 (전체 비율에서 상단 비디오 제외)
-  const remainingVideoCount = Math.max(0, totalVideoCount - topVideoCount)
-  const additionalVideos = remainingVideos.slice(0, remainingVideoCount)
+  // 비디오 간격 계산 (전체 길이를 비디오 개수로 나누어 균등 분배)
+  const videoInterval = Math.floor(totalItems / videos.length)
 
-  // 사용되지 않은 비디오들은 이미지로 처리 (비율 초과분)
-  const unusedVideos = remainingVideos.slice(remainingVideoCount)
+  let videoIndex = 0
+  let imageIndex = 0
 
-  // 이미지 개수 계산 (전체 - 사용된 비디오)
-  const usedVideoCount = topVideos.length + additionalVideos.length
-  const imageCount = media.length - usedVideoCount
-  const finalImages = [...shuffledImages, ...unusedVideos].slice(0, imageCount)
+  for (let i = 0; i < totalItems; i++) {
+    // 비디오를 일정 간격으로 배치
+    const shouldPlaceVideo = (i % videoInterval === 0) && videoIndex < videos.length
 
-  // 최종 배치: 상단 비디오 + 나머지 섞어서 배치
-  const middleSection = shuffleArray([...additionalVideos, ...finalImages])
+    if (shouldPlaceVideo && videoIndex < shuffledVideos.length) {
+      result.push(shuffledVideos[videoIndex])
+      videoIndex++
+    } else if (imageIndex < shuffledImages.length) {
+      result.push(shuffledImages[imageIndex])
+      imageIndex++
+    }
+  }
 
-  return [...topVideos, ...middleSection]
+  // 남은 비디오나 이미지가 있으면 추가
+  while (videoIndex < shuffledVideos.length) {
+    result.push(shuffledVideos[videoIndex])
+    videoIndex++
+  }
+  while (imageIndex < shuffledImages.length) {
+    result.push(shuffledImages[imageIndex])
+    imageIndex++
+  }
+
+  console.log(`🎯 골고루 분산 배치 완료: 비디오 ${videos.length}개, 이미지 ${images.length}개`)
+
+  return result
 }
 
 /**

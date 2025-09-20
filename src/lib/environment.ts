@@ -22,6 +22,11 @@ export interface StorageConfig {
   features: string[]
 }
 
+// 🚀 성능 최적화: 환경 감지 결과 캐싱
+let cachedEnvironmentInfo: EnvironmentInfo | null = null
+let environmentCacheTimestamp = 0
+const CACHE_DURATION = 60000 // 1분 캐시
+
 // 배포 환경 감지 (Railway 플랫폼 중심)
 export const isProduction = (): boolean => {
   if (typeof window === 'undefined') {
@@ -85,9 +90,17 @@ export const shouldUseRailway = () => {
   }
 }
 
-// 환경 정보 출력 (디버깅용)
-export const getEnvironmentInfo = () => {
-  return {
+// 🚀 성능 최적화: 캐시된 환경 정보 반환 (디버깅용)
+export const getEnvironmentInfo = (): EnvironmentInfo => {
+  const now = Date.now()
+
+  // 캐시 유효성 확인
+  if (cachedEnvironmentInfo && (now - environmentCacheTimestamp) < CACHE_DURATION) {
+    return cachedEnvironmentInfo
+  }
+
+  // 새로운 환경 정보 계산
+  const envInfo: EnvironmentInfo = {
     isProduction: isProduction(),
     hasRailwayConfig: hasRailwayConfig(),
     shouldUseRailway: shouldUseRailway(),
@@ -96,6 +109,12 @@ export const getEnvironmentInfo = () => {
     railwayEnv: process.env.RAILWAY_ENVIRONMENT,
     databaseUrl: process.env.DATABASE_URL?.substring(0, 50) + '...' // 보안을 위해 일부만 표시
   }
+
+  // 캐시 업데이트
+  cachedEnvironmentInfo = envInfo
+  environmentCacheTimestamp = now
+
+  return envInfo
 }
 
 // 🔄 하위 호환성을 위한 Supabase → Railway 마이그레이션 alias

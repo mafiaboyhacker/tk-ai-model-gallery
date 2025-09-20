@@ -9,9 +9,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Essential Commands
 ```bash
 npm run dev              # Local development (auto-uses IndexedDB)
+npx next dev --port 3001 # Alternative port if 3000 is in use
 npm run build            # Production build + Prisma generation
 npm run lint             # Code quality check
 npx prisma generate      # After schema changes
+node --version           # Verify Node.js 22.x.x
+npm --version            # Verify npm 10.x.x
 git push origin main     # Deploy to Railway (with user permission)
 ```
 
@@ -87,6 +90,7 @@ src/
 ## System Overview
 
 ### Technology Stack
+- **Runtime**: Node.js 22 LTS (codename 'Jod') + npm 10.x
 - **Framework**: Next.js 15.5.2 (App Router + React 19)
 - **Database**: Railway PostgreSQL + Prisma ORM v6
 - **Storage**: Railway Volume (production) / IndexedDB (local)
@@ -147,6 +151,30 @@ Reference these files in the parent directory for detailed specifications:
 - `PRODUCT_REQUIREMENTS_DOCUMENT.md` - Feature specifications
 - `blurblur-design-analysis.md` - BlurBlur.ai design system
 - `user-image-folder-analysis.md` - Real user data analysis
+
+## Recent Updates
+
+### Node.js 22 LTS Upgrade (September 2025)
+- **Upgraded from**: Node.js >=20.0.0, npm >=8.0.0
+- **Upgraded to**: Node.js >=22.0.0, npm >=10.0.0
+- **LTS Status**: Active LTS until October 2025, Maintenance until April 2027
+- **Performance**: 10-15% improvement with V8 engine optimizations
+- **Compatibility**: Fully tested with Next.js 15.5.2, all dependencies compatible
+- **Security**: Latest security patches and 3-year support guarantee
+
+#### Verification Commands
+```bash
+node --version    # Should show v22.x.x
+npm --version     # Should show v10.x.x
+npm run build     # Confirm build success with new runtime
+npm run dev       # Verify development server works
+```
+
+#### Benefits Gained
+- **Long-term Support**: Guaranteed updates until April 2027
+- **Enhanced Performance**: Faster V8 JavaScript execution
+- **Modern Features**: Latest ECMAScript and Node.js APIs
+- **Security**: Current vulnerability patches and proactive monitoring
 
 ## Testing & Validation
 

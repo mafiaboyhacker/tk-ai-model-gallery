@@ -70,9 +70,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
   // 📊 비율 기반 배치 설정 (기본값: 비디오 15%, 상단 반응형)
   ratioConfig: {
-    videoRatio: 0.15,
-    topVideoCount: 3, // 기본값 (모바일)
-    topVideoCountDesktop: 5, // 데스크탑용
+    videoRatio: 0.50,
+    topVideoCount: 15, // 기본값 (모바일)
+    topVideoCountDesktop: 20, // 데스크탑용
     shuffleMode: 'ratio-based'
   },
 

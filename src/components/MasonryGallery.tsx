@@ -79,6 +79,11 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     return filteredMedia
   }, [models, mounted])
 
+  // Masonic cache key to handle array mutations
+  const masonryKey = useMemo(() => {
+    return `masonry-${allMedia.length}-${allMedia.map(item => item.id).join('-').slice(0, 50)}`
+  }, [allMedia])
+
   // 🚀 Performance: Optimized responsive column calculation
   const updateColumns = useCallback(() => {
     const width = window.innerWidth
@@ -178,10 +183,11 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
   return (
     <div className="container mx-auto px-4 py-8">
       <Masonry
+        key={masonryKey}
         items={allMedia}
         columnGutter={positioner.columnGutter}
         columnWidth={positioner.columnWidth}
-        overscanBy={5}
+        overscanBy={2}
         render={MasonryCard}
       />
     </div>

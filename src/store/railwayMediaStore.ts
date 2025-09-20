@@ -20,8 +20,8 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
 
   // 기본 비율 설정
   ratioConfig: {
-    videoRatio: 0.15,
-    topVideoCount: 3,
+    videoRatio: 0.50,
+    topVideoCount: 15,
     shuffleMode: 'ratio-based' as const
   },
 
@@ -182,7 +182,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     }
   },
 
-  // 비율 기반 배치
+  // 비율 기반 배치 (랜덤 섞기)
   arrangeByRatio: () => {
     const { media, ratioConfig } = get()
     if (!media.length || !ratioConfig) return []
@@ -190,17 +190,16 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     const images = media.filter(m => m.type === 'image')
     const videos = media.filter(m => m.type === 'video')
 
-    const targetVideoCount = Math.min(
-      Math.floor(media.length * ratioConfig.videoRatio),
-      ratioConfig.topVideoCount,
-      videos.length
-    )
+    console.log(`📊 Railway: 미디어 분석: 총 ${media.length}개 (비디오 ${videos.length}개, 이미지 ${images.length}개)`)
 
-    const selectedVideos = videos.slice(0, targetVideoCount)
-    const remainingSlots = media.length - selectedVideos.length
-    const selectedImages = images.slice(0, remainingSlots)
+    // 모든 비디오 사용 (제한 없음)
+    const shuffledVideos = [...videos].sort(() => Math.random() - 0.5)
+    const shuffledImages = [...images].sort(() => Math.random() - 0.5)
 
-    return [...selectedVideos, ...selectedImages]
+    // 모든 비디오와 이미지를 사용 (제한 없음)
+    const allMedia = [...shuffledVideos, ...shuffledImages]
+    console.log(`🎯 Railway: 모든 미디어 표시 - 비디오 ${videos.length}개, 이미지 ${images.length}개`)
+    return allMedia.sort(() => Math.random() - 0.5)
   },
 
   // 모드별 셔플
