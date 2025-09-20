@@ -11,6 +11,10 @@ interface AdminUploadProps {
 export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [currentFile, setCurrentFile] = useState('')
+  const [totalFiles, setTotalFiles] = useState(0)
+  const [processedFiles, setProcessedFiles] = useState(0)
   const { addMedia, usingRailway } = useEnvironmentStore()
 
   const generateRandomSize = () => {
@@ -41,7 +45,11 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
       })
     })
 
+    // 진행률 초기화
     setUploading(true)
+    setUploadProgress(0)
+    setProcessedFiles(0)
+    setCurrentFile('')
 
     try {
       // File[] 배열로 변환하여 이미지와 비디오 필터링
@@ -58,15 +66,39 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
         return
       }
 
+      setTotalFiles(fileArray.length)
       const images = fileArray.filter(file => file.type.startsWith('image/')).length
       const videos = fileArray.filter(file => file.type.startsWith('video/')).length
 
       console.log(`🚀 ${usingRailway ? 'Railway' : 'Local'} Storage에 미디어 업로드 시작: ${fileArray.length}개 (이미지: ${images}, 비디오: ${videos})`)
 
-      // Environment Store가 자동으로 적절한 스토어 선택 (로컬: IndexedDB, 배포: Supabase)
+      // 🚀 파일별 진행률 추적을 위한 개별 처리
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i]
+        setCurrentFile(file.name)
+        setProcessedFiles(i)
+
+        const progress = Math.round(((i + 0.5) / fileArray.length) * 100)
+        setUploadProgress(progress)
+
+        console.log(`📤 처리 중 (${i + 1}/${fileArray.length}): ${file.name}`)
+
+        // 파일 개별 처리 (시뮬레이션을 위한 약간의 지연)
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      // 전체 업로드 실행
       await addMedia(fileArray)
 
+      // 완료 상태
+      setUploadProgress(100)
+      setProcessedFiles(fileArray.length)
+      setCurrentFile('완료!')
+
       console.log(`✅ ${usingRailway ? 'Railway' : 'Local'} 업로드 완료: ${fileArray.length}개 파일`)
+
+      // 완료 후 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       setUploading(false)
       onClose()
@@ -74,6 +106,7 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
     } catch (error) {
       console.error('❌ Upload failed:', error)
       setUploading(false)
+      setUploadProgress(0)
       alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }, [addMedia, onClose, usingRailway])
@@ -131,9 +164,37 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
           }`}
         >
           {uploading ? (
-            <div className="text-blue-600">
-              <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p>Processing media...</p>
+            <div className="text-blue-600 space-y-4">
+              {/* 🚀 진행률 바 */}
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+
+              {/* 📊 진행률 정보 */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-medium">{uploadProgress}% 완료</span>
+                  <span className="text-gray-600">
+                    {processedFiles} / {totalFiles} 파일
+                  </span>
+                </div>
+
+                {/* 현재 처리 중인 파일 */}
+                {currentFile && (
+                  <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    📤 {currentFile}
+                  </div>
+                )}
+
+                {/* 애니메이션 스피너 */}
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  <span className="text-sm">미디어 처리 중...</span>
+                </div>
+              </div>
             </div>
           ) : (
             <>

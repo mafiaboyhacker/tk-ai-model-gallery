@@ -15,6 +15,7 @@ export async function POST() {
           'AIModelGallery',
           'keyval-store',
           'MediaDB',
+          'tk-gallery-media-db',  // 🚀 실제 MediaDB 이름 추가
           'imageStore',
           'videoStore',
           'mediaStore'

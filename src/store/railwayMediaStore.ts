@@ -185,7 +185,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
   // 비율 기반 배치 (랜덤 섞기)
   arrangeByRatio: () => {
     const { media, ratioConfig } = get()
-    if (!media.length || !ratioConfig) return []
+    if (!media.length || !ratioConfig) return
 
     const images = media.filter(m => m.type === 'image')
     const videos = media.filter(m => m.type === 'video')
@@ -198,8 +198,11 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
 
     // 모든 비디오와 이미지를 사용 (제한 없음)
     const allMedia = [...shuffledVideos, ...shuffledImages]
-    console.log(`🎯 Railway: 모든 미디어 표시 - 비디오 ${videos.length}개, 이미지 ${images.length}개`)
-    return allMedia.sort(() => Math.random() - 0.5)
+    const arrangedMedia = allMedia.sort(() => Math.random() - 0.5)
+
+    // 🚀 상태 업데이트 추가
+    set({ media: arrangedMedia })
+    console.log(`🎯 Railway: 비율 기반 배치 완료 - 비디오 ${videos.length}개, 이미지 ${images.length}개`)
   },
 
   // 모드별 셔플
@@ -207,21 +210,36 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     const { media, arrangeByRatio, ratioConfig } = get()
     const shuffleMode = mode || ratioConfig?.shuffleMode || 'random'
 
+    let arrangedMedia: typeof media
+
     switch (shuffleMode) {
       case 'ratio-based':
-        return arrangeByRatio ? arrangeByRatio() : [...media].sort(() => Math.random() - 0.5)
+        if (arrangeByRatio) {
+          arrangeByRatio() // arrangeByRatio는 내부에서 set() 호출
+          return
+        } else {
+          arrangedMedia = [...media].sort(() => Math.random() - 0.5)
+        }
+        break
       case 'video-first':
         const videos = media.filter(m => m.type === 'video')
         const images = media.filter(m => m.type === 'image')
-        return [...videos, ...images]
+        arrangedMedia = [...videos, ...images]
+        break
       case 'image-first':
         const imgs = media.filter(m => m.type === 'image')
         const vids = media.filter(m => m.type === 'video')
-        return [...imgs, ...vids]
+        arrangedMedia = [...imgs, ...vids]
+        break
       case 'random':
       default:
-        return [...media].sort(() => Math.random() - 0.5)
+        arrangedMedia = [...media].sort(() => Math.random() - 0.5)
+        break
     }
+
+    // 🚀 상태 업데이트 추가
+    set({ media: arrangedMedia })
+    console.log(`🎲 Railway: ${shuffleMode} 모드 배치 완료 - ${arrangedMedia.length}개 미디어`)
   },
 
   // 비율 설정 업데이트
