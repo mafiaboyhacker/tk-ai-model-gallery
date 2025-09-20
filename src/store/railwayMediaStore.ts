@@ -70,8 +70,8 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     }
   },
 
-  // 미디어 추가
-  addMedia: async (files: File[]) => {
+  // 미디어 추가 (진행률 콜백 지원)
+  addMedia: async (files: File[], onProgress?: (progress: number, currentFile: string, processed: number) => void) => {
     set({ isLoading: true, error: null })
 
     try {
@@ -80,7 +80,15 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       const uploadResults = []
       const currentMedia = get().media
 
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+
+        // 🚀 진행률 콜백 호출
+        if (onProgress) {
+          const progress = Math.round(((i + 0.5) / files.length) * 100)
+          onProgress(progress, file.name, i)
+        }
+
         const formData = new FormData()
         formData.append('file', file)
 
@@ -102,6 +110,12 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
         }
         uploadResults.push(convertedResult)
         console.log(`✅ Railway: ${file.name} 업로드 성공 - ${convertedResult.customName}`)
+
+        // 완료된 파일에 대한 진행률 업데이트
+        if (onProgress) {
+          const progress = Math.round(((i + 1) / files.length) * 100)
+          onProgress(progress, file.name, i + 1)
+        }
       }
 
       // 상태 업데이트 - 새로운 파일들을 앞에 추가

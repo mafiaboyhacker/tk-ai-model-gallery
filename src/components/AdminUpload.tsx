@@ -72,23 +72,13 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
 
       console.log(`🚀 ${usingRailway ? 'Railway' : 'Local'} Storage에 미디어 업로드 시작: ${fileArray.length}개 (이미지: ${images}, 비디오: ${videos})`)
 
-      // 🚀 파일별 진행률 추적을 위한 개별 처리
-      for (let i = 0; i < fileArray.length; i++) {
-        const file = fileArray[i]
-        setCurrentFile(file.name)
-        setProcessedFiles(i)
-
-        const progress = Math.round(((i + 0.5) / fileArray.length) * 100)
+      // 🚀 진행률 콜백과 함께 업로드 실행
+      await addMedia(fileArray, (progress, fileName, processed) => {
         setUploadProgress(progress)
-
-        console.log(`📤 처리 중 (${i + 1}/${fileArray.length}): ${file.name}`)
-
-        // 파일 개별 처리 (시뮬레이션을 위한 약간의 지연)
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-
-      // 전체 업로드 실행
-      await addMedia(fileArray)
+        setCurrentFile(fileName)
+        setProcessedFiles(processed)
+        console.log(`📤 진행중 (${processed + 1}/${fileArray.length}): ${fileName} - ${progress}%`)
+      })
 
       // 완료 상태
       setUploadProgress(100)
