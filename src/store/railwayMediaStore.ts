@@ -41,7 +41,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     try {
       console.log('🔄 Railway: 미디어 목록 로드 시작')
 
-      const response = await fetch('/api/media?action=list')
+      const response = await fetch('/api/railway/storage?action=list')
       console.log('🔍 Railway: API 응답 상태:', {
         status: response.status,
         statusText: response.statusText,
