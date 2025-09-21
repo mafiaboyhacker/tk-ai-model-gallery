@@ -1,10 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "mcp__playwright-mcp__browser_take_screenshot",
-      "mcp__playwright-mcp__browser_click",
-      "Read(/C:\\Users\\TK\\Documents\\llmcode\\tkbm\\tk_infl\\ai-model-gallery\\src\\components/**)",
-      "mcp__filesystem__list_directory"
+      "Bash"
     ],
     "deny": [],
     "ask": []

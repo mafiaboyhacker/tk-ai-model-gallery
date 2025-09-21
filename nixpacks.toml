@@ -1,0 +1,14 @@
+[phases.setup]
+nixpkgs = ["nodejs_22", "npm"]
+
+[phases.install]
+cmd = "npm install --production=false"
+
+[phases.build]
+cmd = "npm run build"
+
+[start]
+cmd = "npm run start"
+
+[variables]
+NODE_ENV = "production"
