@@ -309,7 +309,7 @@ export async function GET(request: NextRequest) {
         const listStartTime = Date.now()
 
         // 🚀 캐시 확인
-        const listCacheKey = getCacheKey('list', { take: 100 })
+        const listCacheKey = getCacheKey('list', { unlimited: true })
         const cachedList = getCache(listCacheKey)
 
         if (cachedList) {
@@ -336,7 +336,7 @@ export async function GET(request: NextRequest) {
           invalidateCache('list')
         }
 
-        // PostgreSQL에서 미디어 목록 조회 (성능 최적화)
+        // PostgreSQL에서 미디어 목록 조회 (모든 파일 반환)
         const mediaList = await prisma.media.findMany({
           select: {
             id: true,
@@ -352,8 +352,8 @@ export async function GET(request: NextRequest) {
             resolution: true,
             uploadedAt: true
           },
-          orderBy: { uploadedAt: 'desc' },
-          take: 100 // 성능을 위한 제한
+          orderBy: { uploadedAt: 'desc' }
+          // take 제한 제거 - 모든 파일 표시
         })
 
         console.log(`📊 PostgreSQL 조회 완료: ${mediaList.length}개`)
