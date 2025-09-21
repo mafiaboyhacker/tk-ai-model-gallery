@@ -29,7 +29,7 @@ const getOptimizedModels = async (params: ModelQueryParams) => {
   } = params
 
   const pageNum = Math.max(1, parseInt(page))
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit))) // Max 100 items per page
+  const limitNum = Math.max(1, parseInt(limit)) // No limit on items per page
   const offset = (pageNum - 1) * limitNum
 
   // Build where clause
