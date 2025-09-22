@@ -92,9 +92,9 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     const width = window.innerWidth
     let newColumnCount = 2 // default
 
-    if (width >= 1536) newColumnCount = 5        // 2xl (초대형 5열)
-    else if (width >= 1280) newColumnCount = 5   // xl (5열)
-    else if (width >= 1024) newColumnCount = 5   // lg (데스크탑 5열)
+    if (width >= 1536) newColumnCount = 6        // 2xl (초대형 6열)
+    else if (width >= 1280) newColumnCount = 6   // xl (6열)
+    else if (width >= 1024) newColumnCount = 6   // lg (데스크탑 6열)
     else if (width >= 768) newColumnCount = 4    // md (4열)
     else if (width >= 640) newColumnCount = 3    // sm (3열)
 
