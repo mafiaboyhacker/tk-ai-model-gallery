@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* Next.js Google Fonts 사용 - layout.tsx에서 폰트 변수 정의됨 */
+
+/* BlurBlur.ai 테마 - 라이트/다크 모드 지원 */
+:root {
+  --primary: #ffffff;
+  --surface: #f5f6f7;
+  --text-primary: #000000;
+  --text-secondary: #6c757d;
+  --accent: #495057;
+  --border: #dee2e6;
+  --shadow: rgba(0, 0, 0, 0.05);
+  --foreground: #000000;
+  --background: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-jost);
+  --font-serif: var(--font-libre-bodoni);
+}
+
+body {
+  background: var(--primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+/* Glass Effect Support */
+@supports (backdrop-filter: blur(10px)) {
+  .glass-header {
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
+/* Logo and Typography Classes */
+.logo-title {
+  font-family: var(--font-libre-bodoni), "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Custom minimal rounded */
+.rounded-minimal {
+  border-radius: 2px;
+}
+
+.nav-text {
+  font-family: var(--font-jost), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+/* Force redeploy Wed, Sep 17, 2025 10:25:02 PM */
