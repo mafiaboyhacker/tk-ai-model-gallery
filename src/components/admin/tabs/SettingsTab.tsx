@@ -112,25 +112,15 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
     if (confirm('Delete all images? Videos will be kept. This cannot be undone.')) {
       setIsClearing(true)
       try {
-        if (usingRailway) {
-          // Railway 환경: API 직접 호출
-          const response = await fetch('/api/railway/storage/clear-images', {
-            method: 'DELETE'
-          })
+        // 모든 환경에서 store 함수 사용 (일관성 보장)
+        const imageIds = media.filter(m => m.type === 'image').map(m => m.id)
+        console.log(`🗑️ ${imageIds.length}개 이미지 삭제 시작...`)
 
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`)
-          }
-
-          console.log('✅ Railway: API를 통한 모든 이미지 삭제 완료')
-        } else {
-          // 로컬 환경: 기존 방식 사용
-          const imageIds = media.filter(m => m.type === 'image').map(m => m.id)
-          for (const id of imageIds) {
-            await removeMedia(id)
-          }
-          console.log('✅ Local: IndexedDB 모든 이미지 삭제 완료')
+        for (const id of imageIds) {
+          await removeMedia(id)
         }
+
+        console.log(`✅ ${usingRailway ? 'Railway' : 'Local'}: 모든 이미지 삭제 완료`)
 
         // 통계 새로고침
         await refreshStats()
@@ -149,25 +139,15 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
     if (confirm('Delete all videos? Images will be kept. This cannot be undone.')) {
       setIsClearing(true)
       try {
-        if (usingRailway) {
-          // Railway 환경: API 직접 호출
-          const response = await fetch('/api/railway/storage/clear-videos', {
-            method: 'DELETE'
-          })
+        // 모든 환경에서 store 함수 사용 (일관성 보장)
+        const videoIds = media.filter(m => m.type === 'video').map(m => m.id)
+        console.log(`🗑️ ${videoIds.length}개 비디오 삭제 시작...`)
 
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`)
-          }
-
-          console.log('✅ Railway: API를 통한 모든 비디오 삭제 완료')
-        } else {
-          // 로컬 환경: 기존 방식 사용
-          const videoIds = media.filter(m => m.type === 'video').map(m => m.id)
-          for (const id of videoIds) {
-            await removeMedia(id)
-          }
-          console.log('✅ Local: IndexedDB 모든 비디오 삭제 완료')
+        for (const id of videoIds) {
+          await removeMedia(id)
         }
+
+        console.log(`✅ ${usingRailway ? 'Railway' : 'Local'}: 모든 비디오 삭제 완료`)
 
         // 통계 새로고침
         await refreshStats()
