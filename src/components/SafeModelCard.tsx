@@ -140,7 +140,7 @@ export default function SafeModelCard({
     <>
       <div
         ref={cardRef}
-        className="group relative overflow-hidden rounded-minimal bg-white shadow-sm hover:shadow-md transition-shadow duration-300"
+        className="group relative overflow-hidden rounded-minimal bg-white shadow-sm"
         data-category={category ?? 'uncategorized'}
       >
         {isActuallyVideo ? (
@@ -155,13 +155,13 @@ export default function SafeModelCard({
                 alt={altText}
                 width={width}
                 height={height}
-                className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-auto object-cover"
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
                 loading="lazy"
               />
 
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="bg-black/60 rounded-full p-3 group-hover:bg-black/80 transition-colors">
+                <div className="bg-black/60 rounded-full p-3">
                   <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>
                   </svg>
@@ -169,7 +169,7 @@ export default function SafeModelCard({
               </div>
 
               {duration && (
-                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded opacity-80">
                   {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')}
                 </div>
               )}
@@ -264,7 +264,7 @@ export default function SafeModelCard({
 
             <button
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 transition-colors bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 flex items-center justify-center"
+              className="absolute top-4 right-4 text-white text-2xl bg-black/70 rounded-full w-10 h-10 flex items-center justify-center"
             >
               ×
             </button>

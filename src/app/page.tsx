@@ -3,16 +3,14 @@
 import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
-import TypographicIntro from '@/components/TypographicIntro'
 import DebugPanel from '@/components/DebugPanel'
+import TypographicIntro from '@/components/TypographicIntro'
 import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import type { Media } from '@/types'
 
-type LoadingPhase = 'intro' | 'priority' | 'complete'
-
 export default function Home() {
-  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('intro')
   const [isLoaded, setIsLoaded] = useState(false)
+  const [showIntro, setShowIntro] = useState(true)
   const { media, loadMedia, shuffleByMode, isInitialized, usingRailway, environmentInfo } = useEnvironmentStore()
 
   // 디버깅용 로그
@@ -40,53 +38,45 @@ export default function Home() {
     resolution: item.resolution
   }))
 
-  // 🎯 3단계 로딩 시퀀스
+  // 타이포그래픽 인트로 완료 핸들러
+  const handleIntroComplete = () => {
+    setShowIntro(false)
+  }
+
+  // 인트로가 숨겨진 후 미디어 로딩 시작
   useEffect(() => {
-    if (!isInitialized) return
+    if (!showIntro && isInitialized && !isLoaded) {
+      console.log('🚀 page.tsx 인트로 완료 후 미디어 로딩 시작:', { isInitialized, usingRailway })
 
-    let timeoutId: NodeJS.Timeout
+      const initializeMedia = async () => {
+        console.log('🔧 initializeMedia 함수 호출됨:', { isInitialized, usingRailway })
 
-    const initializeSequence = async () => {
-      // Phase 1: 타이포그래픽 인트로 (백그라운드에서 미디어 로딩 시작)
-      console.log('🎨 Phase 1: 타이포그래픽 인트로 시작')
+        try {
+          await loadMedia()
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 성공:`, media.length, '개')
+          }
 
-      // 백그라운드에서 미디어 로딩 시작
-      const mediaLoadPromise = loadMedia().then(() => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ 백그라운드 미디어 로드 완료: ${media.length}개`)
+          // 📊 미디어 로드 후 비율 기반 자동 배치 (비디오 우선 상단, 반응형)
+          setTimeout(() => {
+            shuffleByMode?.()
+            if (process.env.NODE_ENV === 'development') {
+              console.log('📊 메인 페이지: 비율 기반 미디어 배치 완료 (비디오 15%, 반응형 상단 배치)')
+            }
+          }, 100)
+
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error(`❌ ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 실패:`, error)
+          }
+        } finally {
+          setIsLoaded(true)
         }
-      }).catch(error => {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('❌ 미디어 로드 실패:', error)
-        }
-      })
+      }
 
-      // 1.5초 후 Phase 2로 전환
-      timeoutId = setTimeout(async () => {
-        setLoadingPhase('priority')
-        console.log('🎯 Phase 2: 우선 갤러리 시작')
-
-        // 미디어 로딩 완료 대기
-        await mediaLoadPromise
-
-        // 배치 최적화
-        shuffleByMode?.()
-        setIsLoaded(true)
-
-        // 0.5초 후 완전 갤러리로 전환
-        setTimeout(() => {
-          setLoadingPhase('complete')
-          console.log('🚀 Phase 3: 완전 갤러리 완료')
-        }, 500)
-      }, 1500)
+      initializeMedia()
     }
-
-    initializeSequence()
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [isInitialized, loadMedia, shuffleByMode])
+  }, [showIntro, isInitialized, isLoaded, loadMedia, shuffleByMode, usingRailway, media.length])
 
   // 미디어 로드 완료 시 추가 로깅
   useEffect(() => {
@@ -97,48 +87,28 @@ export default function Home() {
     }
   }, [media])
 
-  // 타이포그래픽 인트로 완료 핸들러
-  const handleIntroComplete = () => {
-    setLoadingPhase('priority')
-  }
-
   return (
     <div className="min-h-screen bg-white">
-      {/* Phase 1: 타이포그래픽 인트로 */}
-      {loadingPhase === 'intro' && (
-        <TypographicIntro
-          onComplete={handleIntroComplete}
-          duration={1500}
-        />
-      )}
+      {/* 타이포그래픽 인트로 - 중단 불가능, 끝까지 재생 */}
+      {showIntro && <TypographicIntro onComplete={handleIntroComplete} />}
 
-      {/* Phase 2-3: 헤더 + 갤러리 */}
-      {loadingPhase !== 'intro' && (
-        <>
-          <Header />
+      <Header />
 
-          <main className="pt-20">
-            {isLoaded ? (
-              <MasonryGallery
-                models={convertedMedia}
-                loading={loadingPhase === 'priority'}
-              />
-            ) : (
-              <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-4"></div>
-                  <div className="text-gray-500">
-                    갤러리를 준비하고 있습니다...
-                  </div>
-                </div>
-              </div>
-            )}
-          </main>
+      <main className="pt-20">
+        {!showIntro && isLoaded ? (
+          <MasonryGallery models={convertedMedia} />
+        ) : !showIntro ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-gray-500">
+              Loading {usingRailway ? 'Railway' : 'Local'} media...
+              {!isInitialized && ' (환경 감지 중...)'}
+            </div>
+          </div>
+        ) : null}
+      </main>
 
-          {/* Development Debug Panel */}
-          <DebugPanel />
-        </>
-      )}
+      {/* Development Debug Panel */}
+      <DebugPanel />
     </div>
   )
 }
