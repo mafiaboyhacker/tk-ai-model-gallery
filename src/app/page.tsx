@@ -3,11 +3,15 @@
 import { useState, useEffect } from 'react'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
+import TypographicIntro from '@/components/TypographicIntro'
 import DebugPanel from '@/components/DebugPanel'
 import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import type { Media } from '@/types'
 
+type LoadingPhase = 'intro' | 'priority' | 'complete'
+
 export default function Home() {
+  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('intro')
   const [isLoaded, setIsLoaded] = useState(false)
   const { media, loadMedia, shuffleByMode, isInitialized, usingRailway, environmentInfo } = useEnvironmentStore()
 
@@ -36,38 +40,53 @@ export default function Home() {
     resolution: item.resolution
   }))
 
-  // 즉시 미디어 로딩 실행 (useEffect 우회)
-  if (isInitialized && !isLoaded) {
-    console.log('🚀 page.tsx 즉시 미디어 로딩 시작:', { isInitialized, usingRailway })
+  // 🎯 3단계 로딩 시퀀스
+  useEffect(() => {
+    if (!isInitialized) return
 
-    const initializeMedia = async () => {
-      console.log('🔧 initializeMedia 함수 호출됨:', { isInitialized, usingRailway })
+    let timeoutId: NodeJS.Timeout
 
-      try {
-        await loadMedia()
+    const initializeSequence = async () => {
+      // Phase 1: 타이포그래픽 인트로 (백그라운드에서 미디어 로딩 시작)
+      console.log('🎨 Phase 1: 타이포그래픽 인트로 시작')
+
+      // 백그라운드에서 미디어 로딩 시작
+      const mediaLoadPromise = loadMedia().then(() => {
         if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 성공:`, media.length, '개')
+          console.log(`✅ 백그라운드 미디어 로드 완료: ${media.length}개`)
         }
-
-        // 📊 미디어 로드 후 비율 기반 자동 배치 (비디오 우선 상단, 반응형)
-        setTimeout(() => {
-          shuffleByMode?.()
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📊 메인 페이지: 비율 기반 미디어 배치 완료 (비디오 15%, 반응형 상단 배치)')
-          }
-        }, 100) // 약간의 지연을 주어 상태 업데이트 완료 보장
-
-      } catch (error) {
+      }).catch(error => {
         if (process.env.NODE_ENV === 'development') {
-          console.error(`❌ ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 실패:`, error)
+          console.error('❌ 미디어 로드 실패:', error)
         }
-      } finally {
+      })
+
+      // 1.5초 후 Phase 2로 전환
+      timeoutId = setTimeout(async () => {
+        setLoadingPhase('priority')
+        console.log('🎯 Phase 2: 우선 갤러리 시작')
+
+        // 미디어 로딩 완료 대기
+        await mediaLoadPromise
+
+        // 배치 최적화
+        shuffleByMode?.()
         setIsLoaded(true)
-      }
+
+        // 0.5초 후 완전 갤러리로 전환
+        setTimeout(() => {
+          setLoadingPhase('complete')
+          console.log('🚀 Phase 3: 완전 갤러리 완료')
+        }, 500)
+      }, 1500)
     }
 
-    initializeMedia()
-  }
+    initializeSequence()
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [isInitialized, loadMedia, shuffleByMode])
 
   // 미디어 로드 완료 시 추가 로깅
   useEffect(() => {
@@ -78,25 +97,48 @@ export default function Home() {
     }
   }, [media])
 
+  // 타이포그래픽 인트로 완료 핸들러
+  const handleIntroComplete = () => {
+    setLoadingPhase('priority')
+  }
+
   return (
     <div className="min-h-screen bg-white">
-      <Header />
-      
-      <main className="pt-20">
-        {isLoaded ? (
-          <MasonryGallery models={convertedMedia} />
-        ) : (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-gray-500">
-              Loading {usingRailway ? 'Railway' : 'Local'} media...
-              {!isInitialized && ' (환경 감지 중...)'}
-            </div>
-          </div>
-        )}
-      </main>
+      {/* Phase 1: 타이포그래픽 인트로 */}
+      {loadingPhase === 'intro' && (
+        <TypographicIntro
+          onComplete={handleIntroComplete}
+          duration={1500}
+        />
+      )}
 
-      {/* Development Debug Panel */}
-      <DebugPanel />
+      {/* Phase 2-3: 헤더 + 갤러리 */}
+      {loadingPhase !== 'intro' && (
+        <>
+          <Header />
+
+          <main className="pt-20">
+            {isLoaded ? (
+              <MasonryGallery
+                models={convertedMedia}
+                loading={loadingPhase === 'priority'}
+              />
+            ) : (
+              <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-4"></div>
+                  <div className="text-gray-500">
+                    갤러리를 준비하고 있습니다...
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* Development Debug Panel */}
+          <DebugPanel />
+        </>
+      )}
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { Masonry } from 'masonic'
-import ModelCard from './ModelCard'
+import SafeModelCard from './SafeModelCard'
 // import { useImageStore } from '@/store/imageStore' // 더 이상 사용하지 않음
 
 // 🚀 Performance: Custom debounce hook
@@ -136,7 +136,7 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     }
 
     return (
-      <ModelCard
+      <SafeModelCard
         key={data.id}
         id={data.id}
         name={data.name}
