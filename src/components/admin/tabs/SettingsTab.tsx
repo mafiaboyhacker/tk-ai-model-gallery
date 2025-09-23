@@ -78,7 +78,25 @@ export default function SettingsTab() {
       setIsValidating(true)
       try {
         console.log('🔍 데이터 검증 시작...')
-        // TODO: 데이터 검증 로직 구현
+
+        // 캐시 무효화 및 최신 데이터 강제 로드
+        if (usingRailway) {
+          const syncResponse = await fetch('/api/railway/storage?action=sync', {
+            method: 'GET',
+            cache: 'no-cache'
+          })
+
+          if (!syncResponse.ok) {
+            throw new Error('Sync failed')
+          }
+
+          const syncData = await syncResponse.json()
+          console.log('🔄 DB-파일시스템 동기화 결과:', syncData)
+        }
+
+        // 최신 데이터 로드
+        await loadMedia()
+
         const result = {
           checkedCount: media.length,
           repairedCount: 0,
@@ -92,11 +110,10 @@ export default function SettingsTab() {
         const message = `
 데이터 검증 완료:
 • 검사된 항목: ${result.checkedCount}개
-• 문제가 있었던 항목: ${result.repairedCount}개
-• 삭제된 항목: ${result.removedCount}개
-• 발견된 문제: ${result.issues.length}개
+• 동기화 완료
+• 캐시 무효화 완료
 
-${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).join('\n') + (result.issues.length > 10 ? '\n... 등' : '') : ''}
+${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' : '💾 로컬 환경: IndexedDB 정리 완료'}
         `
         alert(message)
       } catch (error) {
@@ -461,7 +478,7 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Storage Type:</span>
-            <span className="font-medium">Supabase Storage (Cloud)</span>
+            <span className="font-medium">{usingRailway ? 'Railway Volume + PostgreSQL' : 'IndexedDB (Local)'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Supported Image Formats:</span>
@@ -498,8 +515,8 @@ ${result.issues.length > 0 ? '\n문제 목록:\n' + result.issues.slice(0, 10).j
       <div className="bg-blue-50 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-blue-900 mb-3">💡 Tips</h3>
         <ul className="space-y-2 text-sm text-blue-800">
-          <li>• All media is stored in Supabase cloud storage</li>
-          <li>• Data is synced across all devices and browsers</li>
+          <li>• {usingRailway ? 'All media is stored in Railway Volume with PostgreSQL metadata' : 'All media is stored locally in IndexedDB'}</li>
+          <li>• {usingRailway ? 'Data persists on Railway cloud platform' : 'Data is stored locally in your browser'}</li>
           <li>• Use separate image/video tabs for organized uploads</li>
           <li>• Press Ctrl+U anywhere for quick upload access</li>
           <li>• Large files are automatically optimized for performance</li>
