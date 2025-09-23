@@ -10,6 +10,7 @@ export default function SettingsTab() {
     media,
     clearMedia,
     removeMedia,
+    loadMedia,
     getStorageStats,
     ratioConfig,
     updateRatioConfig,
