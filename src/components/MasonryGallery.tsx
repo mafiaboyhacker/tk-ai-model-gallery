@@ -154,21 +154,52 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     )
   }, [])
 
+  // 🚀 Enhanced skeleton loading with realistic aspect ratios
+  const SkeletonLoader = useMemo(() => {
+    // Realistic aspect ratios for different media types
+    const aspectRatios = [
+      16/9,   // landscape video
+      9/16,   // portrait video
+      4/3,    // square-ish image
+      3/4,    // portrait image
+      2/1,    // wide banner
+      1/1     // perfect square
+    ]
+
+    const containerWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
+    const columnWidth = (containerWidth - 32) / columnsCount - 2
+
+    return Array.from({ length: 18 }).map((_, index) => {
+      const aspectRatio = aspectRatios[index % aspectRatios.length]
+      const height = Math.max(120, columnWidth / aspectRatio)
+
+      return (
+        <div
+          key={index}
+          className="bg-gray-100 rounded-lg mb-2 animate-pulse relative overflow-hidden"
+          style={{ height }}
+        >
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+
+          {/* Video indicator for some items */}
+          {index % 3 === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-gray-200 rounded-full p-2 animate-pulse">
+                <div className="w-4 h-4 bg-gray-300 rounded-sm" />
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    })
+  }, [columnsCount])
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${columnsCount}, 1fr)`, gap: '2px' }}>
-            {Array.from({ length: 12 }).map((_, index) => (
-              <div
-                key={index}
-                className="bg-gray-100 rounded-lg mb-4"
-                style={{
-                  height: Math.floor(Math.random() * 200) + 200
-                }}
-              />
-            ))}
-          </div>
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${columnsCount}, 1fr)`, gap: '2px' }}>
+          {SkeletonLoader}
         </div>
       </div>
     )
@@ -178,7 +209,10 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="animate-pulse bg-gray-200 w-6 h-6 rounded-full"></div>
+          <div className="flex flex-col items-center space-y-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+            <div className="text-gray-500 text-sm">갤러리 로딩 중...</div>
+          </div>
         </div>
       </div>
     )

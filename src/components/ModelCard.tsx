@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import OptimizedImage from './OptimizedImage'
-import useMediaObjectUrl from '@/hooks/useMediaObjectUrl'
+// import useMediaObjectUrl from '@/hooks/useMediaObjectUrl' // Not used in optimized version
 
 interface ModelCardProps {
   id: string
@@ -45,6 +45,8 @@ export default function ModelCard({
   const cardRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isVideoInView, setIsVideoInView] = useState(false)
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0)
 
   // 단순화: 직접 URL 사용 (useMediaObjectUrl 우회)
   const resolvedVideoSource = useMemo(
@@ -81,12 +83,21 @@ export default function ModelCard({
       return
     }
 
+    // 🚀 Optimized intersection observer with better timing
     const observer = new IntersectionObserver(
       entries => {
         const entry = entries[0]
-        setIsVideoInView(entry?.isIntersecting ?? false)
+        const isIntersecting = entry?.isIntersecting ?? false
+        const intersectionRatio = entry?.intersectionRatio ?? 0
+
+        // Only trigger autoplay when 30% of video is visible
+        // This reduces frequent start/stop during scroll
+        setIsVideoInView(isIntersecting && intersectionRatio > 0.3)
       },
-      { rootMargin: '200px 0px' }
+      {
+        rootMargin: '50px 0px',  // Reduced from 200px for better control
+        threshold: [0, 0.3, 0.7, 1.0]  // Multiple thresholds for fine control
+      }
     )
 
     observer.observe(currentCard)
@@ -109,14 +120,36 @@ export default function ModelCard({
     let isComponentMounted = true
 
     if (isVideoInView) {
-      const playPromise = videoElement.play()
-      if (playPromise) {
-        playPromise.catch(() => {
-          // autoplay might fail silently; ignore
-        })
+      // 🚀 Progressive video loading with better error handling
+      if (videoElement.readyState >= 2) { // HAVE_CURRENT_DATA
+        const playPromise = videoElement.play()
+        if (playPromise) {
+          playPromise
+            .then(() => {
+              if (isComponentMounted) {
+                setIsVideoLoaded(true)
+              }
+            })
+            .catch((error) => {
+              // Graceful fallback for autoplay failures
+              if (error.name === 'NotAllowedError') {
+                console.log('Autoplay blocked, showing poster instead')
+              }
+            })
+        }
+      } else {
+        // Wait for video to load enough data
+        const handleCanPlay = () => {
+          if (isComponentMounted && isVideoInView) {
+            videoElement.play().catch(() => {})
+            setIsVideoLoaded(true)
+          }
+        }
+        videoElement.addEventListener('canplay', handleCanPlay, { once: true })
       }
     } else {
       videoElement.pause()
+      setVideoProgress(videoElement.currentTime / videoElement.duration * 100 || 0)
     }
 
     return () => {
@@ -186,24 +219,53 @@ export default function ModelCard({
               className="block relative overflow-hidden bg-white"
               aria-label={`${name || '모델'} 상세 보기`}
             >
-              <video
-                ref={videoRef}
-                src={resolvedVideoSource}
-                autoPlay={false}
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
-                onError={() => {
-                  setHasLoadError(true)
-                  if (process.env.NODE_ENV === 'development') {
-                    console.warn('Video failed to load:', resolvedVideoSource)
-                  }
-                }}
-              >
-                비디오를 재생할 수 없습니다.
-              </video>
+              <div className="relative">
+                {/* Video loading skeleton */}
+                {!isVideoLoaded && (
+                  <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
+                    <div className="bg-gray-200 rounded-full p-3">
+                      <div className="w-6 h-6 bg-gray-300 rounded-sm animate-pulse" />
+                    </div>
+                  </div>
+                )}
+
+                <video
+                  ref={videoRef}
+                  src={resolvedVideoSource}
+                  autoPlay={false}
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className={`w-full h-auto object-cover transition-all duration-300 group-hover:scale-105 ${
+                    isVideoLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  onLoadedData={() => setIsVideoLoaded(true)}
+                  onTimeUpdate={(e) => {
+                    const video = e.target as HTMLVideoElement
+                    setVideoProgress(video.currentTime / video.duration * 100 || 0)
+                  }}
+                  onError={() => {
+                    setHasLoadError(true)
+                    setIsVideoLoaded(false)
+                    if (process.env.NODE_ENV === 'development') {
+                      console.warn('Video failed to load:', resolvedVideoSource)
+                    }
+                  }}
+                >
+                  비디오를 재생할 수 없습니다.
+                </video>
+
+                {/* Progress indicator for videos */}
+                {isVideoLoaded && videoProgress > 0 && (
+                  <div className="absolute bottom-1 left-1 right-1 h-0.5 bg-black/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/80 transition-all duration-300 ease-out rounded-full"
+                      style={{ width: `${videoProgress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
             </Link>
           )
         ) : (
