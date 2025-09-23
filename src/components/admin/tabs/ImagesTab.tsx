@@ -24,7 +24,9 @@ export default function ImagesTab() {
     usingRailway,
     uploadQueue = [],
     overallProgress = 0,
-    clearUploadQueue
+    isClearingQueue = false,
+    clearUploadQueue,
+    clearUploadQueueByType
   } = useEnvironmentStore()
 
   useEffect(() => {
@@ -263,7 +265,8 @@ export default function ImagesTab() {
           <UploadProgressPanel
             queue={uploadQueue}
             overallProgress={effectiveOverall}
-            onClear={clearUploadQueue}
+            onClear={() => clearUploadQueueByType ? clearUploadQueueByType('image') : clearUploadQueue?.()}
+            isClearing={isClearingQueue}
             className="mt-6"
           />
         )}

@@ -312,7 +312,37 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     }
   },
 
-  clearUploadQueue: () => set({ uploadQueue: [], overallProgress: 0 }),
+  clearUploadQueue: async () => {
+    // 시각적 피드백을 위한 약간의 지연
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    console.log('🗑️ 전체 업로드 큐 클리어')
+    set({ uploadQueue: [], overallProgress: 0 })
+  },
+
+  // 타입별 업로드 큐 클리어 (이미지 또는 비디오만)
+  clearUploadQueueByType: async (type: 'image' | 'video') => {
+    const currentQueue = get().uploadQueue
+    const filteredQueue = currentQueue.filter(item => {
+      // 지정된 타입이 아닌 항목만 남김
+      if (item.file) {
+        return !item.file.type.startsWith(type)
+      }
+      return true
+    })
+
+    console.log(`🗑️ ${type} 업로드 큐 클리어: ${currentQueue.length} → ${filteredQueue.length}`)
+
+    // 시각적 피드백을 위한 약간의 지연
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    // 남은 항목이 있으면 진행률 재계산, 없으면 0으로 설정
+    const newProgress = filteredQueue.length === 0 ? 0 : get().overallProgress
+    set({
+      uploadQueue: filteredQueue,
+      overallProgress: newProgress
+    })
+  },
 
   // 간소화된 미디어 관리 함수들
   removeMedia: async (id: string) => {

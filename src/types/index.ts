@@ -99,7 +99,9 @@ export interface MediaStore {
   // 업로드 상태
   uploadQueue?: UploadStatus[]
   overallProgress?: number
-  clearUploadQueue?: () => void
+  isClearingQueue?: boolean
+  clearUploadQueue?: () => Promise<void>
+  clearUploadQueueByType?: (type: 'image' | 'video') => Promise<void>
 
   // 검색 및 필터링
   searchMedia: (query: string) => GalleryMediaData[]

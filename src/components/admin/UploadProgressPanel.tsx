@@ -6,6 +6,7 @@ interface UploadProgressPanelProps {
   queue: UploadStatus[]
   overallProgress: number
   onClear?: () => void
+  isClearing?: boolean
   className?: string
 }
 
@@ -51,7 +52,7 @@ const formatDuration = (start: number, end?: number) => {
   return `${minutes}m ${remain}s`
 }
 
-export default function UploadProgressPanel({ queue, overallProgress, onClear, className }: UploadProgressPanelProps) {
+export default function UploadProgressPanel({ queue, overallProgress, onClear, isClearing = false, className }: UploadProgressPanelProps) {
   if (!queue?.length) return null
 
   const completed = queue.filter((item) => item.status === 'completed').length
@@ -72,9 +73,28 @@ export default function UploadProgressPanel({ queue, overallProgress, onClear, c
         {onClear && (
           <button
             onClick={onClear}
-            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-1"
+            disabled={isClearing}
+            className={`text-xs border border-gray-200 rounded px-2 py-1 flex items-center space-x-1 transition-colors ${
+              isClearing
+                ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
           >
-            기록 초기화
+            {isClearing ? (
+              <>
+                <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"
+                  />
+                </svg>
+                <span>삭제 중...</span>
+              </>
+            ) : (
+              <span>기록 초기화</span>
+            )}
           </button>
         )}
       </div>
