@@ -87,24 +87,50 @@ The app uses a unified environment detection system:
 
 #### Core Components
 - **MasonryGallery.tsx** - Main virtualized gallery using Masonic
-- **ModelCard.tsx** - Individual media item display
+- **ModelCard.tsx** - Individual media item display with Intersection Observer autoplay
 - **VideoPlayer.tsx** - Custom video player component
 - **OptimizedImage.tsx** - Performance-optimized image component
 
 #### Gallery Features
 - 6-column responsive masonry layout
-- Video autoplay with controls
+- Video autoplay when in viewport (200px rootMargin)
 - Modal view for detailed inspection
 - Virtualization for performance with large datasets
 - Smart ratio-based arrangement (videos prioritized)
 
+### Mobile Navigation System
+
+#### Responsive Design
+- **Desktop**: Right-aligned navigation (MODEL, VIDEO, CONTACT)
+- **Mobile**: Hamburger menu with slide-out drawer
+- **Breakpoint**: `md:hidden` for mobile-only elements
+
+#### Mobile Menu Features
+- Left-side hamburger button with animation (3-line to X transformation)
+- Slide-out menu with backdrop overlay
+- Categories: MODEL, VIDEO, CONTACT with icons
+- Auto-close on selection and outside click
+
 ### API Architecture
 
 #### Railway Storage API (`/api/railway/storage`)
-- `GET ?action=list` - List all media files
-- `POST ?action=upload` - Upload new media file
+- `GET ?action=list` - List all media files with caching
+- `POST ?action=upload` - Upload with optional video/image processing
 - `DELETE ?id={id}` - Delete specific media file
 - `GET /file/{type}/{filename}` - Serve media files
+- `GET ?action=sync` - DB-filesystem synchronization
+- `GET ?action=health` - Storage system health check
+
+#### Video Processing System
+- **VideoProcessor.ts** - FFmpeg-based video compression and optimization
+- **Progress API** (`/api/railway/storage/progress`) - Server-Sent Events for real-time progress
+- **VideoProcessingModal.tsx** - User interface for video processing options
+- **Features**: Compression, thumbnail generation, preview clips, metadata extraction
+
+#### Processing Options
+- Image: Sharp-based resizing, WebP conversion, thumbnail generation
+- Video: FFmpeg compression, thumbnail extraction, preview generation
+- Fallback: Original file storage if processing fails
 
 #### Health & Validation APIs
 - `/api/health-check` - System health status
@@ -163,44 +189,36 @@ The app uses a unified environment detection system:
 
 ## 🚨 Critical Development Rules
 
-### Absolute Prohibitions
+### File Management Rules
 
-#### 1. No New Features
-- Never add new functionality, UI elements, or components
-- No fallback images, error messages, or alternative UIs
-- Preserve existing user experience exactly
+#### Backup Folder Policy
+- **ai-model-gallery-backup/** folder is for reference ONLY
+- **NEVER commit or push the backup folder to Git**
+- Use backup files for understanding legacy implementations
+- Do not copy code from backup without thorough review
 
-#### 2. No UI/UX Changes
-- Maintain current design and layout 100%
-- Keep 6-column Masonic gallery layout
-- Preserve all colors, fonts, spacing, animations
-- No visual modifications whatsoever
+#### Git Exclusions
+- Always exclude: `.env*`, `node_modules/`, `.next/`, `.railway/`
+- Never commit sensitive data or build artifacts
+- Use `.gitignore` to prevent accidental commits
 
-#### 3. No Functional Changes
-- Keep existing behavior unchanged
-- Maintain video autoplay, modal interactions, link behavior
-- Preserve all user interactions exactly as they are
+### Code Modification Guidelines
 
-### Allowed Operations
+#### Allowed Operations
+- Performance optimization and bug fixes
+- Video/image processing improvements
+- Mobile responsiveness enhancements
+- API efficiency improvements
+- Memory leak prevention
 
-#### 1. Performance Optimization Only
-- Remove console.log statements (production only)
-- Prevent memory leaks and unnecessary re-renders
-- Optimize API calls and caching
-- Improve loading performance
-
-#### 2. Bug Fixes Only
-- Fix broken functionality to restore intended behavior
-- Prevent errors without adding new UI
-- Improve stability and reliability
-
-#### 3. Code Quality Improvements Only
-- Enhance type safety
-- Improve cleanup functions
-- Code organization and optimization
+#### UI/UX Consistency
+- Maintain 6-column masonry gallery layout
+- Preserve video autoplay behavior
+- Keep mobile hamburger menu functionality
+- Maintain responsive design patterns
 
 ### Development Principle
-**Users should only notice "faster and more stable" - visually identical experience**
+**Enhance functionality and performance while preserving user experience**
 
 ## Common Patterns
 
@@ -250,4 +268,4 @@ export const useStore = create<StoreInterface>((set, get) => ({
 }
 ```
 
-This architecture supports a robust, scalable AI model gallery with dual deployment strategies (local development + Railway production) while maintaining strict optimization-only development constraints.
+This architecture supports a robust, scalable AI model gallery with comprehensive media processing capabilities, mobile-first responsive design, and Railway deployment optimization. The system balances feature richness with performance while maintaining clean separation between development and production environments.
