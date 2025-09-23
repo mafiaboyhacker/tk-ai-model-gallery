@@ -169,7 +169,7 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     const containerWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
     const columnWidth = (containerWidth - 32) / columnsCount - 2
 
-    return Array.from({ length: 18 }).map((_, index) => {
+    return Array.from({ length: 12 }).map((_, index) => {
       const aspectRatio = aspectRatios[index % aspectRatios.length]
       const height = Math.max(120, columnWidth / aspectRatio)
 
@@ -179,8 +179,10 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
           className="bg-gray-100 rounded-lg mb-2 animate-pulse relative overflow-hidden"
           style={{ height }}
         >
-          {/* Shimmer effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+          {/* Simplified shimmer - only on some items to reduce CPU load */}
+          {index % 3 === 0 && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+          )}
 
           {/* Video indicator for some items */}
           {index % 3 === 0 && (

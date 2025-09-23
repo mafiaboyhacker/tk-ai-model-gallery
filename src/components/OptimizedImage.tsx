@@ -110,8 +110,8 @@ const OptimizedImage = ({
             }
           },
           {
-            rootMargin: '150px 0px',  // Slightly increased for smoother loading
-            threshold: 0.1  // Start loading when 10% visible
+            rootMargin: '100px 0px',  // Reduced for stability
+            threshold: 0.1
           }
         )
 
@@ -157,8 +157,8 @@ const OptimizedImage = ({
       className={`bg-gray-100 animate-pulse relative overflow-hidden ${className}`}
       style={skeletonStyle}
     >
-      {/* Enhanced shimmer effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+      {/* Simplified shimmer for better performance */}
+      <div className="absolute inset-0 bg-gray-200 animate-pulse" />
 
       {/* Loading progress bar */}
       {isLoading && loadProgress > 0 && (

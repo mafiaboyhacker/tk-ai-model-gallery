@@ -95,8 +95,8 @@ export default function ModelCard({
         setIsVideoInView(isIntersecting && intersectionRatio > 0.3)
       },
       {
-        rootMargin: '50px 0px',  // Reduced from 200px for better control
-        threshold: [0, 0.3, 0.7, 1.0]  // Multiple thresholds for fine control
+        rootMargin: '100px 0px',  // Safer margin
+        threshold: 0.3  // Single threshold to reduce overhead
       }
     )
 
@@ -242,8 +242,12 @@ export default function ModelCard({
                   }`}
                   onLoadedData={() => setIsVideoLoaded(true)}
                   onTimeUpdate={(e) => {
+                    // Throttle progress updates to prevent excessive re-renders
                     const video = e.target as HTMLVideoElement
-                    setVideoProgress(video.currentTime / video.duration * 100 || 0)
+                    const progress = video.currentTime / video.duration * 100 || 0
+                    if (Math.abs(progress - videoProgress) > 5) { // Only update every 5%
+                      setVideoProgress(progress)
+                    }
                   }}
                   onError={() => {
                     setHasLoadError(true)
