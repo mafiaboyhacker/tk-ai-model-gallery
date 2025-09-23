@@ -8,6 +8,8 @@ import { writeFile, readdir, unlink, mkdir, stat } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
+import { VideoProcessor } from '@/lib/videoProcessor'
+import { ImageProcessor } from '@/lib/imageProcessor'
 
 // 🚀 성능 최적화된 Prisma 클라이언트
 const prisma = new PrismaClient({
@@ -726,6 +728,7 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData()
         const file = formData.get('file') as File
         const metadata = formData.get('metadata') ? JSON.parse(formData.get('metadata') as string) : {}
+        const enableProcessing = formData.get('enableProcessing') === 'true' || metadata.enableProcessing === true
 
         if (!file) {
           return NextResponse.json({
@@ -744,8 +747,10 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(`🔄 Railway Upload: ${file.name} 시작 (${(file.size / 1024 / 1024).toFixed(1)}MB)`)
+        console.log(`⚙️ 파일 처리 옵션: ${enableProcessing ? '활성화' : '비활성화'}`)
 
         const isVideo = file.type.startsWith('video/')
+        const isImage = file.type.startsWith('image/')
         const targetDir = isVideo ? VIDEOS_DIR : IMAGES_DIR
 
         // 고유 파일명 생성
@@ -753,28 +758,115 @@ export async function POST(request: NextRequest) {
         const randomId = Math.random().toString(36).substring(2, 8)
         const fileExtension = file.name.split('.').pop()
         const uniqueFileName = `${timestamp}-${randomId}.${fileExtension}`
-        const filePath = path.join(targetDir, uniqueFileName)
 
-        // 파일을 Railway Volume에 저장
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
-        await writeFile(filePath, buffer)
+        let processedResult = null
+        let finalMediaData = null
 
-        // 🔍 파일 저장 즉시 검증
         try {
-          const fileStats = await stat(filePath)
-          if (fileStats.size !== buffer.length) {
-            throw new Error(`파일 크기 불일치: 예상 ${buffer.length}, 실제 ${fileStats.size}`)
+          if (enableProcessing) {
+            // 🎬 파일 타입별 처리 활성화
+            if (isVideo) {
+              console.log(`🎬 비디오 처리 시작: ${file.name}`)
+
+              // FFmpeg 설치 확인
+              const hasFFmpeg = await VideoProcessor.checkFFmpegInstallation()
+              if (!hasFFmpeg) {
+                console.warn('⚠️ FFmpeg 미설치 - 원본 저장 모드로 전환')
+                throw new Error('FFmpeg not available')
+              }
+
+              // 비디오 처리 실행
+              processedResult = await VideoProcessor.processVideo(
+                file,
+                targetDir,
+                uniqueFileName,
+                {
+                  maxWidth: metadata.maxWidth || 1920,
+                  maxHeight: metadata.maxHeight || 1080,
+                  quality: metadata.quality || 'medium',
+                  thumbnailTime: metadata.thumbnailTime || 1
+                },
+                (stage, percent) => {
+                  console.log(`🎬 비디오 처리 진행: ${stage} ${percent}%`)
+                }
+              )
+
+              // DB 저장용 데이터 준비
+              finalMediaData = {
+                fileName: path.basename(processedResult.compressed.path),
+                originalFileName: file.name,
+                fileSize: processedResult.compressed.size,
+                width: processedResult.metadata.width,
+                height: processedResult.metadata.height,
+                duration: processedResult.metadata.duration,
+                resolution: `${processedResult.metadata.width}x${processedResult.metadata.height}`,
+                thumbnailUrl: processedResult.thumbnail.url,
+                previewUrl: processedResult.preview.url
+              }
+
+              console.log(`✅ 비디오 처리 완료: ${file.name}`)
+
+            } else if (isImage) {
+              console.log(`🖼️ 이미지 처리 시작: ${file.name}`)
+
+              // 이미지 처리 실행
+              processedResult = await ImageProcessor.processImage(
+                file,
+                targetDir,
+                uniqueFileName
+              )
+
+              // DB 저장용 데이터 준비
+              finalMediaData = {
+                fileName: path.basename(processedResult.original.path),
+                originalFileName: file.name,
+                fileSize: file.size,
+                width: processedResult.original.width,
+                height: processedResult.original.height,
+                duration: null,
+                resolution: null,
+                thumbnailUrl: processedResult.thumbnail.url,
+                webpUrl: processedResult.webp.url
+              }
+
+              console.log(`✅ 이미지 처리 완료: ${file.name}`)
+            }
           }
-          console.log(`✅ Railway Volume 저장 및 검증 성공: ${filePath} (${fileStats.size} bytes)`)
-        } catch (verifyError) {
-          console.error(`❌ 파일 저장 검증 실패: ${filePath}`, verifyError)
-          throw new Error(`파일 저장 검증 실패: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`)
-        }
 
-        // 🔄 DB 저장과 파일 저장 트랜잭션 처리
-        let mediaRecord
-        try {
+          // 처리 실패 또는 비활성화 시 원본 저장 모드
+          if (!processedResult) {
+            console.log(`📁 원본 저장 모드: ${file.name}`)
+
+            const filePath = path.join(targetDir, uniqueFileName)
+            const arrayBuffer = await file.arrayBuffer()
+            const buffer = Buffer.from(arrayBuffer)
+            await writeFile(filePath, buffer)
+
+            // 파일 저장 검증
+            const fileStats = await stat(filePath)
+            if (fileStats.size !== buffer.length) {
+              throw new Error(`파일 크기 불일치: 예상 ${buffer.length}, 실제 ${fileStats.size}`)
+            }
+
+            // 기본 메타데이터 설정
+            finalMediaData = {
+              fileName: uniqueFileName,
+              originalFileName: file.name,
+              fileSize: file.size,
+              width: metadata.width || (isVideo ? 1920 : 800),
+              height: metadata.height || (isVideo ? 1080 : 600),
+              duration: isVideo ? metadata.duration : null,
+              resolution: isVideo ? metadata.resolution || '1920x1080' : null,
+              thumbnailUrl: null,
+              webpUrl: null,
+              previewUrl: null
+            }
+
+            console.log(`✅ 원본 파일 저장 완료: ${filePath}`)
+          }
+
+          // 🔄 DB 저장과 파일 저장 트랜잭션 처리
+          let mediaRecord
           await prisma.$transaction(async (tx) => {
             // 자동 번호 생성을 위한 기존 미디어 개수 조회
             const existingCount = await tx.media.count({
@@ -786,52 +878,106 @@ export async function POST(request: NextRequest) {
             // PostgreSQL에 메타데이터 저장
             mediaRecord = await tx.media.create({
               data: {
-                id: uniqueFileName.split('.')[0],
-                fileName: uniqueFileName,
-                originalFileName: file.name,
+                id: finalMediaData.fileName.split('.')[0],
+                fileName: finalMediaData.fileName,
+                originalFileName: finalMediaData.originalFileName,
                 title: autoTitle,
                 type: isVideo ? 'video' : 'image',
-                fileSize: file.size,
+                fileSize: finalMediaData.fileSize,
                 mimeType: file.type,
-                width: metadata.width || (isVideo ? 1920 : 800),
-                height: metadata.height || (isVideo ? 1080 : 600),
-                duration: isVideo ? metadata.duration : null,
-                resolution: isVideo ? metadata.resolution || '1920x1080' : null,
+                width: finalMediaData.width,
+                height: finalMediaData.height,
+                duration: finalMediaData.duration,
+                resolution: finalMediaData.resolution,
                 uploadedAt: new Date()
               }
             })
-
-            // 트랜잭션 내에서 파일 존재 재확인
-            const fileStats = await stat(filePath)
-            if (!fileStats.isFile()) {
-              throw new Error('저장된 파일을 찾을 수 없습니다')
-            }
           })
-        } catch (dbError) {
-          // DB 저장 실패 시 업로드된 파일 삭제
-          try {
-            await unlink(filePath)
-            console.log(`🗑️ DB 저장 실패로 인한 파일 삭제: ${filePath}`)
-          } catch (unlinkError) {
-            console.error(`❌ 파일 삭제 실패: ${filePath}`, unlinkError)
-          }
-          throw dbError
-        }
 
-        console.log(`✅ PostgreSQL 메타데이터 저장: ${mediaRecord.id}`)
+          console.log(`✅ PostgreSQL 메타데이터 저장: ${mediaRecord.id}`)
 
-        // 🚀 업로드 성공 후 즉시 캐시 무효화 (실시간 업데이트)
-        invalidateCache('list')
-        console.log('♻️ 업로드 완료 → 목록 캐시 무효화')
+          // 🚀 업로드 성공 후 즉시 캐시 무효화 (실시간 업데이트)
+          invalidateCache('list')
+          console.log('♻️ 업로드 완료 → 목록 캐시 무효화')
 
-        return NextResponse.json({
-          success: true,
-          data: {
+          // 응답 데이터 구성
+          const responseData = {
             ...mediaRecord,
             url: `/api/railway/storage/file/${mediaRecord.type}/${mediaRecord.fileName}`,
-            originalUrl: `/api/railway/storage/file/${mediaRecord.type}/${mediaRecord.fileName}`
+            originalUrl: `/api/railway/storage/file/${mediaRecord.type}/${mediaRecord.fileName}`,
+            processed: !!processedResult,
+            processingInfo: processedResult ? {
+              thumbnailUrl: finalMediaData.thumbnailUrl,
+              webpUrl: finalMediaData.webpUrl,
+              previewUrl: finalMediaData.previewUrl,
+              compression: isVideo && processedResult ? {
+                originalSize: file.size,
+                compressedSize: processedResult.compressed.size,
+                compressionRatio: Math.round((1 - processedResult.compressed.size / file.size) * 100)
+              } : null
+            } : null
           }
-        })
+
+          return NextResponse.json({
+            success: true,
+            data: responseData
+          })
+
+        } catch (processingError) {
+          console.error(`❌ 파일 처리 실패: ${file.name}`, processingError)
+
+          // 처리 실패 시에도 원본 저장 시도
+          try {
+            const filePath = path.join(targetDir, uniqueFileName)
+            const arrayBuffer = await file.arrayBuffer()
+            const buffer = Buffer.from(arrayBuffer)
+            await writeFile(filePath, buffer)
+
+            // 기본 메타데이터로 DB 저장
+            let fallbackRecord
+            await prisma.$transaction(async (tx) => {
+              const existingCount = await tx.media.count({
+                where: { type: isVideo ? 'video' : 'image' },
+              })
+              const autoNumber = existingCount + 1
+              const autoTitle = isVideo ? `VIDEO #${autoNumber}` : `MODEL #${autoNumber}`
+
+              fallbackRecord = await tx.media.create({
+                data: {
+                  id: uniqueFileName.split('.')[0],
+                  fileName: uniqueFileName,
+                  originalFileName: file.name,
+                  title: autoTitle,
+                  type: isVideo ? 'video' : 'image',
+                  fileSize: file.size,
+                  mimeType: file.type,
+                  width: isVideo ? 1920 : 800,
+                  height: isVideo ? 1080 : 600,
+                  duration: isVideo ? null : null,
+                  resolution: isVideo ? '1920x1080' : null,
+                  uploadedAt: new Date()
+                }
+              })
+            })
+
+            invalidateCache('list')
+
+            return NextResponse.json({
+              success: true,
+              data: {
+                ...fallbackRecord,
+                url: `/api/railway/storage/file/${fallbackRecord.type}/${fallbackRecord.fileName}`,
+                originalUrl: `/api/railway/storage/file/${fallbackRecord.type}/${fallbackRecord.fileName}`,
+                processed: false,
+                processingError: processingError instanceof Error ? processingError.message : 'Processing failed'
+              }
+            })
+
+          } catch (fallbackError) {
+            console.error(`❌ 원본 저장도 실패: ${file.name}`, fallbackError)
+            throw fallbackError
+          }
+        }
 
 
       case 'bulk-upload':
