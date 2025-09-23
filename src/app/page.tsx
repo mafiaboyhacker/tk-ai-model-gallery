@@ -9,7 +9,6 @@ import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 import type { Media } from '@/types'
 
 export default function Home() {
-  const [isLoaded, setIsLoaded] = useState(false)
   const [showIntro, setShowIntro] = useState(true)
   const { media, loadMedia, shuffleByMode, isInitialized, usingRailway, environmentInfo } = useEnvironmentStore()
 
@@ -17,7 +16,6 @@ export default function Home() {
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 Home 컴포넌트 상태:', {
       isInitialized,
-      isLoaded,
       mediaCount: media.length,
       usingRailway
     })
@@ -43,49 +41,13 @@ export default function Home() {
     setShowIntro(false)
   }
 
-  // 인트로가 숨겨진 후 미디어 로딩 시작
+  // 환경 초기화 후 미디어 로드
   useEffect(() => {
-    if (!showIntro && isInitialized && !isLoaded) {
-      console.log('🚀 page.tsx 인트로 완료 후 미디어 로딩 시작:', { isInitialized, usingRailway })
-
-      const initializeMedia = async () => {
-        console.log('🔧 initializeMedia 함수 호출됨:', { isInitialized, usingRailway })
-
-        try {
-          await loadMedia()
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 성공:`, media.length, '개')
-          }
-
-          // 📊 미디어 로드 후 비율 기반 자동 배치 (비디오 우선 상단, 반응형)
-          setTimeout(() => {
-            shuffleByMode?.()
-            if (process.env.NODE_ENV === 'development') {
-              console.log('📊 메인 페이지: 비율 기반 미디어 배치 완료 (비디오 15%, 반응형 상단 배치)')
-            }
-          }, 100)
-
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error(`❌ ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 실패:`, error)
-          }
-        } finally {
-          setIsLoaded(true)
-        }
-      }
-
-      initializeMedia()
+    if (isInitialized) {
+      loadMedia()
     }
-  }, [showIntro, isInitialized, isLoaded, loadMedia, shuffleByMode, usingRailway, media.length])
+  }, [isInitialized, loadMedia])
 
-  // 미디어 로드 완료 시 추가 로깅
-  useEffect(() => {
-    if (media.length > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🎯 메인 페이지: ${media.length}개 미디어 감지됨, 갤러리 업데이트`)
-      }
-    }
-  }, [media])
 
   return (
     <div className="min-h-screen bg-white">
@@ -95,16 +57,7 @@ export default function Home() {
       <Header />
 
       <main className="pt-20">
-        {!showIntro && isLoaded ? (
-          <MasonryGallery models={convertedMedia} />
-        ) : !showIntro ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-gray-500">
-              Loading {usingRailway ? 'Railway' : 'Local'} media...
-              {!isInitialized && ' (환경 감지 중...)'}
-            </div>
-          </div>
-        ) : null}
+        {!showIntro && <MasonryGallery models={convertedMedia} />}
       </main>
 
       {/* Development Debug Panel */}
