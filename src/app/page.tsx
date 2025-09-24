@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
@@ -9,6 +10,8 @@ import type { Media } from '@/types'
 
 export default function Home() {
   const { media, loadMedia, shuffleByMode } = useRailwayMediaStore()
+  const searchParams = useSearchParams()
+  const filter = searchParams.get('filter')
 
   // 데이터 변환
   const convertedMedia: Media[] = media.map(item => ({
@@ -25,6 +28,14 @@ export default function Home() {
     resolution: item.resolution
   }))
 
+  // 필터링된 미디어 (video 필터 적용)
+  const filteredMedia = useMemo(() => {
+    if (filter === 'video') {
+      return convertedMedia.filter(item => item.type === 'video')
+    }
+    return convertedMedia
+  }, [convertedMedia, filter])
+
   // 미디어 로드 후 가중치 랜덤 배치 적용
   useEffect(() => {
     const initializeMedia = async () => {
@@ -39,7 +50,7 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <Header />
       <main className="pt-20">
-        <MasonryGallery models={convertedMedia} />
+        <MasonryGallery models={filteredMedia} />
       </main>
       <DebugPanel />
     </div>
