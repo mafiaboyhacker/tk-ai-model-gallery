@@ -110,8 +110,8 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     rowGutter: 4
   }, [width, windowWidth, columnConfig.columnWidth])
 
-  // 🚀 Resize observer for dynamic height changes
-  const resizeObserver = useResizeObserver(positioner)
+  // 🚀 Resize observer for dynamic height changes (client-only)
+  const resizeObserver = typeof window !== 'undefined' ? useResizeObserver(positioner) : null
 
   // Dynamic overscanBy calculation based on screen size and performance
   const dynamicOverscanBy = useMemo(() => {
@@ -229,7 +229,7 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
         isScrolling={mounted ? isScrolling : false}
         height={windowHeight}
         overscanBy={dynamicOverscanBy}
-        {...(resizeObserver && { resizeObserver })}
+        {...(resizeObserver ? { resizeObserver } : {})}
         render={MasonryCard}
       />
 
