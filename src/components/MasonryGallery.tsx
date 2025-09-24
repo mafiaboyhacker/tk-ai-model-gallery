@@ -74,10 +74,9 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
 
   // Filtered media based on current page
   const allMedia = useMemo(() => {
-    if (!mounted) return []
-
-    const isModelPage = typeof window !== 'undefined' && window.location.pathname === '/model'
-    const isVideoPage = typeof window !== 'undefined' && window.location.pathname === '/video'
+    // Always process data, don't wait for mounted state
+    const isModelPage = mounted && typeof window !== 'undefined' && window.location.pathname === '/model'
+    const isVideoPage = mounted && typeof window !== 'undefined' && window.location.pathname === '/video'
 
     let filteredMedia = models
     if (isModelPage) {
@@ -95,7 +94,8 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
 
   // Dynamic column calculation based on width
   const columnConfig = useMemo(() => {
-    const availableWidth = width || windowWidth
+    // Ensure we always have a valid width for column calculation
+    const availableWidth = width > 0 ? width : windowWidth
     let columnCount = 2
     let columnWidth = 300
 
@@ -123,20 +123,20 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
   }, [width, windowWidth])
 
   const positioner = usePositioner({
-    width: width || windowWidth,
+    width: width > 0 ? width : windowWidth,
     columnWidth: columnConfig.columnWidth,
     columnGutter: 4,
     rowGutter: 4
-  })
+  }, [width, windowWidth, columnConfig.columnWidth])
 
   // 🚀 Resize observer for dynamic height changes (client-only)
   const resizeObserver = mounted ? useResizeObserver(positioner) : null
 
   // Dynamic overscanBy calculation based on screen size and performance
   const dynamicOverscanBy = useMemo(() => {
-    if (!mounted) return 5 // Default fallback for SSR
+    // Higher initial overscan to ensure top items are rendered
+    const baseOverscan = !mounted ? 15 : 8 // Higher initial value
 
-    const baseOverscan = 5 // Base overscan
     const screenMultiplier = windowHeight > 1000 ? 1.5 : 1
     const itemCountMultiplier = allMedia.length > 100 ? 1.2 : 1
 
@@ -244,8 +244,8 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       <Masonry
         items={allMedia}
         positioner={positioner}
-        scrollTop={scrollTop}
-        isScrolling={isScrolling}
+        scrollTop={mounted ? scrollTop : 0}
+        isScrolling={mounted ? isScrolling : false}
         height={windowHeight}
         overscanBy={dynamicOverscanBy}
         {...(resizeObserver && { resizeObserver })}
