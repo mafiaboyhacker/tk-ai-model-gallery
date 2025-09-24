@@ -71,7 +71,9 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
 
   // 🚀 Advanced Masonic hooks integration
   const { offset, width } = useContainerPosition(containerRef, [windowWidth, windowHeight])
-  const { scrollTop, isScrolling } = useScroller(offset)
+  // Safety check for offset to prevent WeakMap errors
+  const safeOffset = offset && typeof offset === 'object' ? offset : { top: 0, left: 0 }
+  const { scrollTop, isScrolling } = useScroller(safeOffset)
 
   // Dynamic column calculation based on width
   const columnConfig = useMemo(() => {
@@ -225,8 +227,8 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       <Masonry
         items={allMedia}
         positioner={positioner}
-        scrollTop={mounted ? scrollTop : 0}
-        isScrolling={mounted ? isScrolling : false}
+        scrollTop={mounted && scrollTop != null ? scrollTop : 0}
+        isScrolling={mounted && typeof isScrolling === 'boolean' ? isScrolling : false}
         height={windowHeight}
         overscanBy={dynamicOverscanBy}
         {...(resizeObserver ? { resizeObserver } : {})}
