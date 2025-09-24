@@ -2,6 +2,60 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 MANDATORY DEBUG_LOG.md WORKFLOW
+
+### STEP 1: ALWAYS READ DEBUG_LOG.md FIRST
+**BEFORE doing ANYTHING else, you MUST:**
+```bash
+# Run this command FIRST:
+cat DEBUG_LOG.md
+```
+**This contains:**
+- Current loading issue status (1+ week old problem)
+- What has already been tried and FAILED
+- What NOT to repeat
+- Current working theories
+- Last session's findings
+
+### STEP 2: UPDATE DEBUG_LOG.md DURING WORK
+**Every time you:**
+- Try a new approach → Update DEBUG_LOG.md
+- Find new info → Update DEBUG_LOG.md
+- Make changes → Update DEBUG_LOG.md
+- Hit an error → Update DEBUG_LOG.md
+
+### STEP 3: SAVE CONTEXT BEFORE ENDING
+**Before ending session, you MUST:**
+```bash
+# Update DEBUG_LOG.md with:
+# - What you tried this session
+# - What worked/failed
+# - Next steps to try
+# - Current status
+```
+
+### DEBUGGING RULES
+1. **READ DEBUG_LOG.md** before any debugging task
+2. **READ DEBUG_LOG.md** after /compact or context compression
+3. **UPDATE DEBUG_LOG.md** after every significant action
+4. **NEVER repeat** failed approaches without noting why it might work now
+5. **DOCUMENT ALL** error messages and symptoms in DEBUG_LOG.md
+6. **SAVE STATE** in DEBUG_LOG.md before session ends
+
+### 🚨 CRITICAL: POST-COMPACT WORKFLOW
+**After /compact command or any context compression:**
+```bash
+# IMMEDIATELY run this command:
+cat DEBUG_LOG.md
+```
+**Why?** Context compression removes session memory. DEBUG_LOG.md restores:
+- What was being worked on
+- Current problem status
+- Failed attempts to avoid
+- Next steps to take
+
+**🚫 If you start debugging without reading DEBUG_LOG.md, you WILL waste time repeating failed approaches.**
+
 ## Development Commands
 
 ### Essential Commands
@@ -22,6 +76,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx prisma studio` - Open Prisma Studio for database management
 
 ### Testing & Deployment
+- `npm test` - Run Playwright E2E tests
+- `npm run test:headed` - Run tests with browser UI
+- `npm run test:ui` - Run tests in interactive UI mode
 - `npm run deploy-railway` - Deploy to Railway with validation
 - `npm run post-deploy` - Post-deployment health check
 - `npm run batch-upload` - Batch upload media files
@@ -29,14 +86,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture Overview
 
 ### Tech Stack
-- **Framework**: Next.js 15.5.2 with React 19
-- **Database**: PostgreSQL with Prisma ORM
-- **Styling**: Tailwind CSS v4
+- **Framework**: Next.js 15.5.2 with React 19 (with optimizeCss enabled)
+- **Database**: PostgreSQL with Prisma ORM (v6.15.0)
+- **Styling**: Tailwind CSS v4 with PostCSS
 - **Authentication**: NextAuth.js with Prisma adapter
 - **State Management**: Zustand stores
 - **UI Components**: Masonic for virtualized masonry gallery
 - **File Storage**: Railway Volume + PostgreSQL metadata
-- **Deployment**: Railway platform
+- **Testing**: Playwright for E2E testing
+- **Deployment**: Railway platform with Docker builds
 
 ### Key Directories Structure
 ```
@@ -166,12 +224,18 @@ The app uses a unified environment detection system:
 2. Run `npm run validate-env` to check environment
 3. Use `npm run dev` for development server
 4. Admin access via `/admin` route (requires authentication)
+5. Use `npm test` to run E2E tests during development
 
 #### Deployment Process
 1. Run `npm run deploy-safe` for comprehensive validation
 2. Use `npm run deploy-railway` for automated deployment
 3. Post-deployment health check runs automatically
 4. Monitor via `/api/health-check` endpoint
+
+#### Build Troubleshooting
+- If encountering "Cannot find module 'critters'" error, ensure `critters` is in dependencies (not devDependencies)
+- CSS optimization (`optimizeCss: true`) requires critters package in production builds
+- Use `npm run build` locally to test Railway deployment builds
 
 ### Environment Configuration
 
