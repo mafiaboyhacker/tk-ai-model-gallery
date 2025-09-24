@@ -69,10 +69,30 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     return filteredMedia
   }, [models, mounted])
 
-  // 🚀 Advanced Masonic hooks integration
+  // 🚀 Advanced Masonic hooks integration with WeakMap safety
   const { offset, width } = useContainerPosition(containerRef, [windowWidth, windowHeight])
-  // Safety check for offset to prevent WeakMap errors
-  const safeOffset = offset && typeof offset === 'object' ? offset : { top: 0, left: 0 }
+
+  // ✅ DEBUGGING: Log offset type and value for WeakMap troubleshooting
+  if (process.env.NODE_ENV === 'development' && offset) {
+    console.log('🔍 Offset debug:', {
+      type: typeof offset,
+      value: offset,
+      isObject: typeof offset === 'object',
+      isNull: offset === null,
+      constructor: offset?.constructor?.name
+    })
+  }
+
+  // 🛡️ WeakMap safety: Ensure offset is a valid object (not primitive)
+  const createSafeOffset = () => {
+    if (offset && typeof offset === 'object' && offset !== null && !Array.isArray(offset)) {
+      return offset
+    }
+    // Return a safe default object that WeakMap can use as key
+    return { top: 0, left: 0, element: containerRef.current }
+  }
+
+  const safeOffset = createSafeOffset()
   const { scrollTop, isScrolling } = useScroller(safeOffset)
 
   // Dynamic column calculation based on width
@@ -111,6 +131,16 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     columnGutter: 4,
     rowGutter: 4
   }, [width, windowWidth, columnConfig.columnWidth])
+
+  // ✅ DEBUGGING: Validate positioner for WeakMap compatibility
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 Positioner debug:', {
+      type: typeof positioner,
+      isObject: typeof positioner === 'object',
+      isNull: positioner === null,
+      hasKeys: positioner ? Object.keys(positioner).length : 0
+    })
+  }
 
   // 🚀 Resize observer for dynamic height changes (client-only)
   const resizeObserver = typeof window !== 'undefined' ? useResizeObserver(positioner) : null
@@ -222,10 +252,48 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     )
   }
 
+  // ✅ DEBUGGING: Final validation before Masonry render
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 Final Masonry props validation:', {
+      allMediaType: typeof allMedia,
+      allMediaLength: allMedia?.length || 0,
+      positionerType: typeof positioner,
+      scrollTopType: typeof scrollTop,
+      scrollTopValue: scrollTop,
+      isScrollingType: typeof isScrolling,
+      isScrollingValue: isScrolling,
+      resizeObserverType: typeof resizeObserver
+    })
+
+    // Validate each media item has valid object properties for WeakMap
+    allMedia.forEach((item, index) => {
+      if (!item || typeof item !== 'object') {
+        console.warn(`🚨 Invalid media item at index ${index}:`, item)
+      }
+      if (!item.id || (typeof item.id !== 'string' && typeof item.id !== 'number')) {
+        console.warn(`🚨 Invalid ID in media item at index ${index}:`, item.id)
+      }
+    })
+  }
+
+  // 🛡️ SafeItems: Filter out any invalid items that might cause WeakMap errors
+  const safeItems = allMedia.filter((item, index) => {
+    const isValid = item &&
+                   typeof item === 'object' &&
+                   item !== null &&
+                   (item.id !== null && item.id !== undefined)
+
+    if (!isValid && process.env.NODE_ENV === 'development') {
+      console.warn(`🚨 Filtering out invalid item at index ${index}:`, item)
+    }
+
+    return isValid
+  })
+
   return (
     <div ref={containerRef} className="container mx-auto px-4 py-8">
       <Masonry
-        items={allMedia}
+        items={safeItems}
         positioner={positioner}
         scrollTop={mounted && scrollTop != null ? scrollTop : 0}
         isScrolling={mounted && typeof isScrolling === 'boolean' ? isScrolling : false}
@@ -236,9 +304,9 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       />
 
       {/* 로딩 완료 인디케이터 */}
-      {allMedia.length > 0 && (
+      {safeItems.length > 0 && (
         <div className="text-center mt-8 py-4 text-gray-500 text-sm">
-          총 {allMedia.length}개의 미디어 파일이 로드되었습니다
+          총 {safeItems.length}개의 미디어 파일이 로드되었습니다
           <br />
           <span className="text-xs text-gray-400">
             {columnConfig.columnCount}열 그리드 · overscan: {dynamicOverscanBy} ·
