@@ -227,7 +227,7 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
         items={allMedia}
         columnGutter={positioner.columnGutter}
         columnWidth={positioner.columnWidth}
-        overscanBy={2}
+        overscanBy={10}
         render={MasonryCard}
       />
 
