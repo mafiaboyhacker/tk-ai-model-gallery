@@ -873,5 +873,203 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
         videos: 0
       }
     }
+  },
+
+  // 개별 미디어 삭제
+  deleteMedia: async (id: string): Promise<void> => {
+    try {
+      console.log('🗑️ Railway: 미디어 삭제 중...', id)
+
+      const response = await fetch(`/api/railway/storage?id=${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error(`삭제 실패: ${response.status}`)
+      }
+
+      // 로컬 상태에서도 제거
+      const { media } = get()
+      const updatedMedia = media.filter(item => item.id !== id)
+      set({ media: updatedMedia })
+
+      console.log('✅ Railway: 미디어 삭제 완료', id)
+    } catch (error) {
+      console.error('❌ Railway: 미디어 삭제 실패:', error)
+      throw error
+    }
+  },
+
+  // 전체 미디어 삭제
+  clearMedia: async (): Promise<void> => {
+    try {
+      console.log('🗑️ Railway: 전체 미디어 삭제 중...')
+
+      const { media } = get()
+
+      // 각 미디어 항목을 개별적으로 삭제
+      for (const item of media) {
+        try {
+          await fetch(`/api/railway/storage?id=${item.id}`, {
+            method: 'DELETE',
+          })
+        } catch (error) {
+          console.error(`❌ Railway: 미디어 삭제 실패 (${item.id}):`, error)
+        }
+      }
+
+      // 로컬 상태 초기화
+      set({ media: [] })
+
+      console.log('✅ Railway: 전체 미디어 삭제 완료')
+    } catch (error) {
+      console.error('❌ Railway: 전체 미디어 삭제 실패:', error)
+      throw error
+    }
+  },
+
+  // 이미지만 삭제
+  clearImages: async (): Promise<void> => {
+    try {
+      console.log('🗑️ Railway: 이미지 삭제 중...')
+
+      const { media } = get()
+      const images = media.filter(item => item.type === 'image')
+
+      // 이미지들만 개별 삭제
+      for (const item of images) {
+        try {
+          await fetch(`/api/railway/storage?id=${item.id}`, {
+            method: 'DELETE',
+          })
+        } catch (error) {
+          console.error(`❌ Railway: 이미지 삭제 실패 (${item.id}):`, error)
+        }
+      }
+
+      // 로컬 상태에서 이미지만 제거
+      const updatedMedia = media.filter(item => item.type !== 'image')
+      set({ media: updatedMedia })
+
+      console.log('✅ Railway: 이미지 삭제 완료')
+    } catch (error) {
+      console.error('❌ Railway: 이미지 삭제 실패:', error)
+      throw error
+    }
+  },
+
+  // 비디오만 삭제
+  clearVideos: async (): Promise<void> => {
+    try {
+      console.log('🗑️ Railway: 비디오 삭제 중...')
+
+      const { media } = get()
+      const videos = media.filter(item => item.type === 'video')
+
+      // 비디오들만 개별 삭제
+      for (const item of videos) {
+        try {
+          await fetch(`/api/railway/storage?id=${item.id}`, {
+            method: 'DELETE',
+          })
+        } catch (error) {
+          console.error(`❌ Railway: 비디오 삭제 실패 (${item.id}):`, error)
+        }
+      }
+
+      // 로컬 상태에서 비디오만 제거
+      const updatedMedia = media.filter(item => item.type !== 'video')
+      set({ media: updatedMedia })
+
+      console.log('✅ Railway: 비디오 삭제 완료')
+    } catch (error) {
+      console.error('❌ Railway: 비디오 삭제 실패:', error)
+      throw error
+    }
+  },
+
+  // 상세 스토리지 통계 (OverviewTab에서 사용)
+  getStorageStats: async (): Promise<{ count: number; estimatedSize: string; images: number; videos: number }> => {
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 Railway: PostgreSQL 기반 저장소 통계 계산 시작')
+      }
+
+      const currentMedia = get().media
+      const images = currentMedia.filter(m => m.type === 'image')
+      const videos = currentMedia.filter(m => m.type === 'video')
+
+      // 총 파일 크기 계산 (바이트 단위)
+      const totalSizeBytes = currentMedia.reduce((sum, item) => sum + (item.fileSize || 0), 0)
+
+      // 사이즈를 읽기 쉬운 형태로 변환
+      const formatSize = (bytes: number): string => {
+        if (bytes === 0) return '0 Bytes'
+        const k = 1024
+        const sizes = ['Bytes', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+      }
+
+      const result = {
+        count: currentMedia.length,
+        estimatedSize: formatSize(totalSizeBytes),
+        images: images.length,
+        videos: videos.length
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Railway: PostgreSQL 통계 계산 완료:', {
+          ...result,
+          totalSizeBytes,
+          dataSource: 'Railway PostgreSQL (실제 데이터)',
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      return result
+
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Railway: 저장소 통계 계산 실패:', error)
+      }
+      return {
+        count: 0,
+        estimatedSize: '0 Bytes',
+        images: 0,
+        videos: 0
+      }
+    }
+  },
+
+  // 커스텀 이름 업데이트
+  updateCustomName: async (id: string, newName: string): Promise<void> => {
+    try {
+      console.log('✏️ Railway: 커스텀 이름 업데이트 중...', { id, newName })
+
+      const response = await fetch('/api/railway/storage', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, customName: newName })
+      })
+
+      if (!response.ok) {
+        throw new Error(`업데이트 실패: ${response.status}`)
+      }
+
+      // 로컬 상태 업데이트
+      const { media } = get()
+      const updatedMedia = media.map(item =>
+        item.id === id ? { ...item, customName: newName } : item
+      )
+      set({ media: updatedMedia })
+
+      console.log('✅ Railway: 커스텀 이름 업데이트 완료', { id, newName })
+    } catch (error) {
+      console.error('❌ Railway: 커스텀 이름 업데이트 실패:', error)
+      throw error
+    }
   }
 }))
