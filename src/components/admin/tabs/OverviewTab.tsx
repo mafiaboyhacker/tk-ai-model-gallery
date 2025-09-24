@@ -195,6 +195,8 @@ export default function OverviewTab() {
       {showUpload && (
         <div className="mb-6">
           <AdminUpload
+            isVisible={true}
+            onClose={() => setShowUpload(false)}
             onUploadComplete={async () => {
               console.log('✅ 업로드 완료 - 미디어 새로고침 중...')
               await loadMedia()

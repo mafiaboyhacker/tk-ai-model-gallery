@@ -6,8 +6,9 @@ import UploadProgressPanel from '@/components/admin/UploadProgressPanel'
 import type { UploadProgressEvent } from '@/types'
 
 interface AdminUploadProps {
-  isVisible: boolean
-  onClose: () => void
+  isVisible?: boolean
+  onClose?: () => void
+  onUploadComplete?: () => Promise<void>
 }
 
 const formatBytes = (bytes: number) => {
@@ -18,7 +19,7 @@ const formatBytes = (bytes: number) => {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
 }
 
-export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
+export default function AdminUpload({ isVisible = true, onClose, onUploadComplete }: AdminUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -91,7 +92,15 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
 
         await new Promise((resolve) => setTimeout(resolve, 400))
         setUploading(false)
-        onClose()
+
+        // 업로드 완료 콜백 호출
+        if (onUploadComplete) {
+          await onUploadComplete()
+        }
+
+        if (onClose) {
+          onClose()
+        }
       } catch (error) {
         console.error('❌ Upload failed:', error)
         setUploading(false)
@@ -100,7 +109,7 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
         alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
     },
-    [addMedia, handleProgressEvent, onClose]
+    [addMedia, handleProgressEvent, onUploadComplete, onClose]
   )
 
   const handleDrop = useCallback(
@@ -148,7 +157,9 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
           <button
             onClick={() => {
               setUploading(false)
-              onClose()
+              if (onClose) {
+                onClose()
+              }
             }}
             className="text-gray-500 hover:text-gray-700 text-2xl"
           >
