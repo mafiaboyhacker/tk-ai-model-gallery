@@ -4,7 +4,6 @@ import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import MasonryGallery from '@/components/MasonryGallery'
-import SimpleGallery from '@/components/SimpleGallery'
 import DebugPanel from '@/components/DebugPanel'
 import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import type { Media } from '@/types'
@@ -51,7 +50,7 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <Header />
       <main className="pt-20">
-        <SimpleGallery models={filteredMedia} />
+        <MasonryGallery models={filteredMedia} />
       </main>
       <DebugPanel />
     </div>
