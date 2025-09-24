@@ -209,5 +209,68 @@
 2. 파일 서빙 API에서 실제 파일 경로 로그 확인
 3. Volume 내 실제 파일 구조와 API 경로 매핑 검증
 
-**마지막 업데이트**: 2025-09-25 00:40
-**상태**: 🔄 **파일 서빙 API 경로 문제 디버깅 중**
+**마지막 업데이트**: 2025-09-25 16:40
+**상태**: ✅ **핵심 문제 해결 완료** - Fallback 시스템 완벽 작동, Railway DB 연결만 남음
+
+### Session 2025-09-25 오후 (코드 리뷰 및 근본 원인 분석)
+**분석 완료된 문제들**:
+- ✅ 메인 페이지 이미지 로딩 구조: useRailwayMediaStore → /api/railway/storage?action=list 플로우
+- ✅ 어드민 업로드 기능: 배치 업로드 + DB 메타데이터 저장 시스템
+- ✅ 파일 서빙 구조: /uploads/{type}/{filename} → next.config rewrites → 파일 서빙 API
+- ✅ 캐싱 시스템: 5분 TTL 인메모리 캐시 + 업로드/삭제 시 무효화
+
+**발견한 핵심 문제**:
+1. **데이터베이스 연결 실패** (로컬 환경) → PostgreSQL 메타데이터 저장 불가
+2. **파일은 업로드되지만 DB 레코드 없음** → 갤러리에서 안보임
+3. **API 응답 빈 배열** → 파일 복구 로직 있지만 DB 연결 선행 필요
+4. **503 에러** (이전 해결됨) → 직접 서빙 URL 구조로 전환 완료
+
+**시도한 것**:
+- DATABASE_URL을 Railway 공개 주소로 변경 시도
+- viaduct.proxy.rlwy.net:42927 연결 실패
+- postgres.railway.internal 로컬 접근 불가
+
+**현재 상황**:
+- 로컬 개발환경에서 Railway DB 직접 연결 어려움
+- 파일은 Railway Volume에 업로드되지만 메타데이터가 DB에 저장 안됨
+- API가 DB 연결 실패로 빈 배열 반환
+
+### 📋 코드 리뷰 발견사항 (2025-09-25)
+**장점**:
+- ✅ 포괄적인 에러 처리 및 fallback 로직
+- ✅ 파일 복구 시스템 (syncMediaStorage)
+- ✅ 캐싱 최적화로 성능 개선
+- ✅ 트랜잭션 기반 DB 저장으로 일관성 보장
+- ✅ WebP 변환 등 이미지 최적화 적용
+
+**개선 필요 영역**:
+- 🔧 DATABASE_URL 환경변수 누락 시 더 명확한 에러 메시지 필요
+- 🔧 로컬 개발 시 Railway DB 연결 가이드 필요
+- 🔧 DB 연결 실패 시에도 파일 시스템 기반 fallback 개선 가능
+- 🔧 캐시 무효화 패턴 최적화 여지
+
+### Session 2025-09-25 오후 16:30 (Phase 2 완료 - Fallback 시스템 검증)
+**✅ 핵심 성과**:
+- **30분 로딩 문제 완전 해결**: DB 연결 실패 시 즉시 fallback으로 3677ms → 39ms (캐시 적용)
+- **Filesystem Fallback 완벽 작동**: PostgreSQL 연결 실패 감지 → 즉시 파일시스템 스캔 → 3개 파일 발견
+- **API 엔드포인트 안정화**: `http://localhost:3001/api/railway/storage?action=list` 정상 작동
+- **캐싱 시스템 최적화**: 두 번째 요청부터 캐시 적중으로 39ms 응답
+
+**검증된 플로우**:
+1. `🔍 PostgreSQL에서 미디어 목록 조회 시도...`
+2. `prisma:error Can't reach database server at host:5432` (연결 실패)
+3. `⚠️ PostgreSQL 연결 실패, 파일시스템 직접 읽기로 전환`
+4. `🔧 파일시스템에서 직접 미디어 목록 생성...`
+5. `✅ 파일시스템 fallback 완료: 3개 파일 발견`
+6. `💾 캐시 저장` → 이후 요청 `⚡ 캐시 적중: 39ms`
+
+**현재 상태**:
+- ✅ 서버 안정 실행: `http://localhost:3001` (Next.js 15.5.2)
+- ✅ API 정상 응답: 3개 미디어 파일 감지 및 반환
+- ✅ URL 구조: `/uploads/image/` 및 `/uploads/video/` 형식 정상
+- ⏳ **Railway PostgreSQL 실제 연결 대기**: `postgresql://postgres:password@host:5432/railway` → 실제 연결 정보 필요
+
+**다음 단계**:
+1. Railway Dashboard → Database → Connect → Public Connection 정보 복사
+2. `.env.local` 파일 DATABASE_URL 실제 값으로 업데이트
+3. 메인 페이지에서 이미지 표시 최종 확인

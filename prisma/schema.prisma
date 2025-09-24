@@ -6,11 +6,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// 🔧 환경별 자동 데이터베이스 감지
-// 로컬: SQLite (빠른 개발)
-// Railway: PostgreSQL (운영환경)
+// 🔧 Railway PostgreSQL 우선, 연결 실패시 자동 fallback
 datasource db {
-  provider = "postgresql" // Railway 기본값
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

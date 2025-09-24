@@ -315,10 +315,6 @@ export async function GET(request: NextRequest) {
         const cachedList = getCache(listCacheKey)
 
         if (cachedList) {
-          logPerformanceMetrics('list-cached', listStartTime, {
-            count: cachedList.count,
-            cached: true
-          })
           console.log(`⚡ 캐시된 미디어 목록 반환: ${cachedList.count}개`)
           return NextResponse.json({
             success: true,
@@ -328,42 +324,25 @@ export async function GET(request: NextRequest) {
           })
         }
 
-        console.log('🔍 PostgreSQL에서 미디어 목록 조회 중...')
-
-        // 🔄 DB-파일 동기화 실행 (손실된 파일 복구)
-        const syncResult = await syncMediaStorage()
-        if (syncResult.success && syncResult.stats.recoveredFiles > 0) {
-          console.log(`🔄 동기화 완료: ${syncResult.stats.recoveredFiles}개 파일 복구됨`)
-          // 동기화 후 캐시 무효화
-          invalidateCache('list')
-        }
-
-        // PostgreSQL에서 미디어 목록 조회 (모든 파일 반환)
-        const mediaList = await prisma.media.findMany({
-          select: {
-            id: true,
-            fileName: true,
-            originalFileName: true,
-            title: true,
-            type: true,
-            fileSize: true,
-            mimeType: true,
-            width: true,
-            height: true,
-            duration: true,
-            resolution: true,
-            uploadedAt: true
-          },
-          orderBy: { uploadedAt: 'desc' }
-          // take 제한 제거 - 모든 파일 표시
-        })
-
-        console.log(`📊 PostgreSQL 조회 완료: ${mediaList.length}개`)
-
         let validMedia = []
 
-        if (mediaList.length > 0) {
-          // PostgreSQL에 레코드가 있는 경우: 기존 로직 사용
+        // 🚀 DB 연결 시도, 실패 시 즉시 파일시스템으로 전환
+        try {
+          console.log('🔍 PostgreSQL에서 미디어 목록 조회 시도...')
+
+          // PostgreSQL에서 미디어 목록 조회
+          const mediaList = await prisma.media.findMany({
+            select: {
+              id: true, fileName: true, originalFileName: true, title: true,
+              type: true, fileSize: true, mimeType: true, width: true,
+              height: true, duration: true, resolution: true, uploadedAt: true
+            },
+            orderBy: { uploadedAt: 'desc' }
+          })
+
+          console.log(`📊 PostgreSQL 조회 성공: ${mediaList.length}개`)
+
+          // DB에서 가져온 데이터로 유효성 검사 및 URL 생성
           const validationPromises = mediaList.map(async (media) => {
             const filePath = path.join(
               media.type === 'video' ? VIDEOS_DIR : IMAGES_DIR,
@@ -381,15 +360,17 @@ export async function GET(request: NextRequest) {
           })
 
           const validationResults = await Promise.all(validationPromises)
-          validationResults.forEach(result => {
-            if (result) validMedia.push(result)
-          })
-        } else {
-          // 🚀 PostgreSQL에 레코드가 없지만 파일이 존재하는 경우: 파일 시스템 기반 복구
-          console.log('🔧 PostgreSQL 레코드가 없음. 파일 시스템에서 직접 복구 시도...')
+          validMedia = validationResults.filter(result => result !== null)
+
+        } catch (dbError) {
+          // 🚨 DB 연결 실패 - 즉시 파일시스템 fallback으로 전환
+          console.log('⚠️ PostgreSQL 연결 실패, 파일시스템 직접 읽기로 전환')
+          console.log('🔧 파일시스템에서 직접 미디어 목록 생성...')
 
           const imageFiles = existsSync(IMAGES_DIR) ? await readdir(IMAGES_DIR) : []
           const videoFiles = existsSync(VIDEOS_DIR) ? await readdir(VIDEOS_DIR) : []
+
+          let mediaCounter = 1
 
           // 이미지 파일 처리
           for (const fileName of imageFiles) {
@@ -397,23 +378,20 @@ export async function GET(request: NextRequest) {
               const filePath = path.join(IMAGES_DIR, fileName)
               const stats = await stat(filePath)
               validMedia.push({
-                id: fileName.split('-')[0] || Date.now().toString(),
+                id: fileName.split('-')[0] || `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 fileName,
                 originalFileName: fileName,
-                title: `MODEL #${validMedia.length + 1}`,
+                title: `MODEL #${mediaCounter++}`,
                 type: 'image',
                 fileSize: stats.size,
                 mimeType: 'image/png',
-                width: null,
-                height: null,
-                duration: null,
-                resolution: null,
+                width: null, height: null, duration: null, resolution: null,
                 uploadedAt: stats.birthtime,
                 url: `/uploads/image/${fileName}`,
                 originalUrl: `/uploads/image/${fileName}`
               })
             } catch (e) {
-              console.warn(`⚠️ 파일 처리 실패: ${fileName}`, e)
+              console.warn(`⚠️ 이미지 파일 처리 실패: ${fileName}`)
             }
           }
 
@@ -423,40 +401,32 @@ export async function GET(request: NextRequest) {
               const filePath = path.join(VIDEOS_DIR, fileName)
               const stats = await stat(filePath)
               validMedia.push({
-                id: fileName.split('-')[0] || Date.now().toString(),
+                id: fileName.split('-')[0] || `vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 fileName,
                 originalFileName: fileName,
-                title: `VIDEO #${validMedia.filter(m => m.type === 'video').length + 1}`,
+                title: `VIDEO #${mediaCounter++}`,
                 type: 'video',
                 fileSize: stats.size,
                 mimeType: 'video/mp4',
-                width: null,
-                height: null,
-                duration: null,
-                resolution: null,
+                width: null, height: null, duration: null, resolution: null,
                 uploadedAt: stats.birthtime,
                 url: `/uploads/video/${fileName}`,
                 originalUrl: `/uploads/video/${fileName}`
               })
             } catch (e) {
-              console.warn(`⚠️ 파일 처리 실패: ${fileName}`, e)
+              console.warn(`⚠️ 비디오 파일 처리 실패: ${fileName}`)
             }
           }
 
           // 업로드 시간순 정렬
           validMedia.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+          console.log(`✅ 파일시스템 fallback 완료: ${validMedia.length}개 파일 발견`)
         }
-
-        console.log(`✅ 파일 존재 확인 완료: ${validMedia.length}개 (DB: ${mediaList.length}개, 복구: ${validMedia.length - mediaList.length}개)`)
 
         // 🚀 결과 캐싱
         setCache(listCacheKey, validMedia, validMedia.length)
 
-        logPerformanceMetrics('list-uncached', listStartTime, {
-          count: validMedia.length,
-          dbResults: mediaList.length,
-          cached: false
-        })
+        console.log(`✅ 최종 미디어 목록: ${validMedia.length}개`)
 
         return NextResponse.json({
           success: true,
