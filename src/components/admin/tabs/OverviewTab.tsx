@@ -39,7 +39,7 @@ export default function OverviewTab() {
   useEffect(() => {
     const updateStats = async () => {
       console.log('🔄 통계 업데이트 시작:', {
-        environment: usingRailway ? 'Railway' : 'Local',
+        environment: 'Railway',
         mediaCount: media.length,
         timestamp: new Date().toISOString()
       })
@@ -48,7 +48,6 @@ export default function OverviewTab() {
         const stats = await getStorageStats()
 
         // Railway 환경에서는 실제 media 배열과 비교하여 검증
-        if (usingRailway) {
           const actualImages = media.filter(m => m.type === 'image').length
           const actualVideos = media.filter(m => m.type === 'video').length
 
@@ -90,7 +89,7 @@ export default function OverviewTab() {
 
         console.log('📊 실시간 통계 업데이트 완료:', {
           ...stats,
-          dataSource: usingRailway ? 'Railway PostgreSQL' : 'IndexedDB',
+          dataSource: 'Railway PostgreSQL',
           timestamp: new Date().toISOString()
         })
 
@@ -113,7 +112,7 @@ export default function OverviewTab() {
     }
 
     updateStats()
-  }, [media, getStorageStats, usingRailway]) // usingRailway도 의존성에 추가
+  }, [media, getStorageStats])
 
   // 미디어 데이터를 AdminMasonryGallery가 기대하는 형식으로 변환
   const modelsForGallery = media.map((mediaItem, index) => {
@@ -138,12 +137,12 @@ export default function OverviewTab() {
       // 환경별 자동 선택된 스토어의 updateCustomName 사용
       if (updateCustomName) {
         await updateCustomName(id, newName)
-        console.log(`✅ ${usingRailway ? 'Railway' : 'Local'} 커스텀 이름 업데이트 완료:`, id, newName)
+        console.log('✅ Railway 커스텀 이름 업데이트 완료:', id, newName)
       } else {
         console.log('⚠️ 커스텀 이름 업데이트 기능이 없습니다:', id, newName)
       }
     } catch (error) {
-      console.error(`❌ ${usingRailway ? 'Railway' : 'Local'} 이름 업데이트 실패:`, error)
+      console.error('❌ Railway 이름 업데이트 실패:', error)
       throw error
     }
   }
@@ -339,7 +338,7 @@ export default function OverviewTab() {
                   {storageStats.estimatedSize}
                 </div>
                 <div className="text-sm text-gray-600">
-                  {usingRailway ? 'Railway Storage' : 'Local Storage'}
+                  Railway Storage
                 </div>
               </div>
             </div>
