@@ -30,8 +30,7 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
   const {
     addMedia,
     uploadQueue = [],
-    overallProgress = 0,
-    clearUploadQueue
+    overallProgress = 0
   } = useRailwayMediaStore()
 
   const handleProgressEvent = useCallback((event: UploadProgressEvent) => {
@@ -205,7 +204,6 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
               <UploadProgressPanel
                 queue={uploadQueue}
                 overallProgress={effectiveOverall}
-                onClear={clearUploadQueue}
                 className="mt-4"
               />
             </div>
@@ -248,7 +246,6 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
           <UploadProgressPanel
             queue={uploadQueue}
             overallProgress={effectiveOverall}
-            onClear={clearUploadQueue}
             className="mt-6"
           />
         )}
