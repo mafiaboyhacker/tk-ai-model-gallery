@@ -8,7 +8,7 @@ import AdminMasonryGallery from '@/components/AdminMasonryGallery'
 export default function OverviewTab() {
   const [showUpload, setShowUpload] = useState(false)
   const [storageStats, setStorageStats] = useState({ count: 0, estimatedSize: '0 MB', images: 0, videos: 0 })
-  const { media, clearMedia, loadMedia, getStorageStats, updateCustomName } = useRailwayMediaStore()
+  const { media, loadMedia, getStorageStats, updateCustomName } = useRailwayMediaStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
@@ -143,32 +143,6 @@ export default function OverviewTab() {
     }
   }
 
-  // 전체 미디어 삭제 (확인 후)
-  const handleClearAll = async () => {
-    const confirmed = window.confirm(
-      `정말로 모든 미디어 파일 ${storageStats.count}개를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
-    )
-
-    if (confirmed) {
-      try {
-        console.log('🗑️ Railway 전체 미디어 삭제 중...')
-
-        await clearMedia()
-
-        // 통계 초기화
-        setStorageStats({ count: 0, estimatedSize: '0 MB', images: 0, videos: 0 })
-        console.log('✅ Railway 전체 미디어 삭제 완료')
-
-        alert('모든 미디어 파일이 삭제되었습니다.')
-
-        // 미디어 다시 로드하여 UI 업데이트
-        await loadMedia()
-      } catch (error) {
-        console.error('❌ Railway 전체 미디어 삭제 실패:', error)
-        alert('삭제 중 오류가 발생했습니다. 콘솔을 확인하세요.')
-      }
-    }
-  }
 
   return (
     <div className="p-6">
@@ -214,13 +188,6 @@ export default function OverviewTab() {
           className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
         >
           새로고침
-        </button>
-
-        <button
-          onClick={handleClearAll}
-          className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-        >
-          전체 삭제
         </button>
       </div>
 

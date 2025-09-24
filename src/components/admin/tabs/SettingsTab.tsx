@@ -170,6 +170,57 @@ export default function SettingsTab() {
     }
   }
 
+  // 캐시 클리어 함수
+  const handleClearCache = async () => {
+    if (confirm('브라우저 캐시를 클리어하시겠습니까? 페이지가 새로고침됩니다.')) {
+      setIsClearing(true)
+      try {
+        console.log('🗑️ 캐시 클리어 시작...')
+
+        // 서비스 워커 캐시 클리어
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations()
+          for (let registration of registrations) {
+            await registration.unregister()
+            console.log('✅ 서비스 워커 등록 해제:', registration.scope)
+          }
+        }
+
+        // 브라우저 캐시 클리어 (가능한 경우)
+        if ('caches' in window) {
+          const cacheNames = await caches.keys()
+          await Promise.all(
+            cacheNames.map(cacheName => {
+              console.log('🗑️ 캐시 삭제:', cacheName)
+              return caches.delete(cacheName)
+            })
+          )
+        }
+
+        // 로컬 스토리지 클리어
+        localStorage.clear()
+        sessionStorage.clear()
+        console.log('✅ 로컬 스토리지 클리어 완료')
+
+        // 미디어 데이터 강제 새로고침
+        await loadMedia()
+        await refreshStats()
+
+        console.log('✅ 캐시 클리어 완료')
+        alert('캐시가 클리어되었습니다. 페이지를 새로고침합니다.')
+
+        // 페이지 새로고침
+        window.location.reload()
+
+      } catch (error) {
+        console.error('❌ 캐시 클리어 실패:', error)
+        alert('캐시 클리어 중 오류가 발생했습니다.')
+      } finally {
+        setIsClearing(false)
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Settings Header */}
@@ -351,6 +402,37 @@ export default function SettingsTab() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>검증 시작</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Cache Clear */}
+          <div className="border border-green-200 rounded-lg p-4 bg-green-50">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-medium text-green-900">캐시 클리어</h4>
+                <p className="text-sm text-green-700 mt-1">
+                  브라우저 캐시와 임시 데이터를 삭제하여 새로운 콘텐츠를 강제 로드합니다.
+                </p>
+              </div>
+              <button
+                onClick={handleClearCache}
+                disabled={isClearing}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+              >
+                {isClearing ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <span>클리어 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>캐시 클리어</span>
                   </>
                 )}
               </button>

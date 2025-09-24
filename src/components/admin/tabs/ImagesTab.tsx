@@ -136,6 +136,8 @@ export default function ImagesTab() {
     try {
       await removeMedia(id)
       console.log('✅ 이미지 삭제 완료:', id)
+      // UI 업데이트를 위해 미디어 다시 로드
+      await loadMedia()
     } catch (error) {
       console.error('❌ 이미지 삭제 실패:', error)
       alert('Failed to delete image. Please try again.')

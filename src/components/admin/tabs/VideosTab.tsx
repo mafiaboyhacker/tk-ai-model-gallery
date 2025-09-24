@@ -136,6 +136,8 @@ export default function VideosTab() {
     try {
       await removeMedia(id)
       console.log('✅ 비디오 삭제 완료:', id)
+      // UI 업데이트를 위해 미디어 다시 로드
+      await loadMedia()
     } catch (error) {
       console.error('❌ 비디오 삭제 실패:', error)
       alert('Failed to delete video. Please try again.')

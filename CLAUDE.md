@@ -93,8 +93,9 @@ cat DEBUG_LOG.md
 - **State Management**: Zustand stores
 - **UI Components**: Masonic for virtualized masonry gallery
 - **File Storage**: Railway Volume + PostgreSQL metadata
+- **Media Processing**: Sharp for images, FFmpeg for videos (via nixpacks.toml)
 - **Testing**: Playwright for E2E testing
-- **Deployment**: Railway platform with Docker builds
+- **Deployment**: Railway platform with Nixpacks build system
 
 ### Key Directories Structure
 ```
@@ -144,17 +145,19 @@ The app uses a unified environment detection system:
 ### Media Gallery System
 
 #### Core Components
-- **MasonryGallery.tsx** - Main virtualized gallery using Masonic
-- **ModelCard.tsx** - Individual media item display with Intersection Observer autoplay
-- **VideoPlayer.tsx** - Custom video player component
+- **MasonryGallery.tsx** - Main virtualized gallery using Masonic with advanced hooks integration
+- **SafeModelCard.tsx** - Individual media item display with Chrome stability fixes and performance memoization
 - **OptimizedImage.tsx** - Performance-optimized image component
+- **VideoPlayer.tsx** - Custom video player component
 
 #### Gallery Features
-- 6-column responsive masonry layout
-- Video autoplay when in viewport (200px rootMargin)
+- 6-column responsive masonry layout with dynamic column calculation
+- Video autoplay when in viewport with Intersection Observer (50px rootMargin)
 - Modal view for detailed inspection
-- Virtualization for performance with large datasets
+- Advanced Masonic virtualization with hooks (usePositioner, useContainerPosition, useScroller, useResizeObserver)
 - Smart ratio-based arrangement (videos prioritized)
+- Chrome stability fixes with reduced intersection observer complexity
+- Memory leak prevention with proper cleanup functions
 
 ### Mobile Navigation System
 
@@ -186,9 +189,12 @@ The app uses a unified environment detection system:
 - **Features**: Compression, thumbnail generation, preview clips, metadata extraction
 
 #### Processing Options
-- Image: Sharp-based resizing, WebP conversion, thumbnail generation
-- Video: FFmpeg compression, thumbnail extraction, preview generation
-- Fallback: Original file storage if processing fails
+- **Image Processing**: Sharp-based resizing (max 1600x900), WebP conversion (85% quality), thumbnail generation (320px)
+- **Video Processing**: FFmpeg compression, thumbnail extraction, preview generation, metadata extraction
+- **Supported Formats**:
+  - Images: .jpg, .jpeg, .png, .webp, .gif (auto-converted to WebP)
+  - Videos: .mp4, .webm, .mov (with automatic compression and thumbnail generation)
+- **Fallback**: Original file storage if processing fails
 
 #### Health & Validation APIs
 - `/api/health-check` - System health status
@@ -237,6 +243,23 @@ The app uses a unified environment detection system:
 - CSS optimization (`optimizeCss: true`) requires critters package in production builds
 - Use `npm run build` locally to test Railway deployment builds
 
+#### Common Issues and Solutions
+
+**Masonic Gallery Issues:**
+- **Images not appearing initially**: Ensure `allMedia` doesn't return empty array before mount; use higher initial `overscanBy` value (15 for unmounted state)
+- **SSR errors with ResizeObserver**: Make `useResizeObserver` conditional: `const resizeObserver = mounted ? useResizeObserver(positioner) : null`
+- **Video autoplay issues**: Check Intersection Observer configuration and `isVideoInView` state management
+
+**Video Processing Issues:**
+- **"비디오를 재생할 수 없습니다" error**: Usually indicates FFmpeg not available or video processing failed
+- **FFmpeg installation**: Ensure `nixpacks.toml` is properly configured with `nixPkgs = ["...", "ffmpeg"]`
+- **Video upload but no thumbnail**: Check FFmpeg installation and VideoProcessor.checkFFmpegInstallation() result
+
+**Performance Issues:**
+- **Chrome stability**: Use SafeModelCard with reduced intersection observer complexity and throttled video events
+- **Memory leaks**: Ensure proper cleanup in useEffect hooks and disposal of object URLs
+- **Large datasets**: Utilize Masonic virtualization with dynamic overscanBy calculation
+
 ### Environment Configuration
 
 #### Required Environment Variables
@@ -246,10 +269,17 @@ The app uses a unified environment detection system:
 - `NODE_ENV` - Environment (development/production)
 
 #### Railway-Specific Configuration
-- Automatic environment detection
+- Automatic environment detection via Nixpacks build system
 - Volume-based file storage in `/app/uploads`
 - PostgreSQL metadata storage
+- FFmpeg installation via `nixpacks.toml` for video processing
 - Auto-recovery system for deployment issues
+
+#### FFmpeg Integration (2025)
+- **nixpacks.toml** configures FFmpeg installation on Railway deployment
+- **VideoProcessor.ts** handles video compression, thumbnail generation, and metadata extraction
+- **ImageProcessor.ts** handles Sharp-based image optimization and WebP conversion
+- Automatic fallback to original files if processing fails
 
 ## 🚨 Critical Development Rules
 
