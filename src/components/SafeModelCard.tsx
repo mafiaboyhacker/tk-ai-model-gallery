@@ -224,7 +224,7 @@ function SafeModelCard({
               alt={altText}
               width={width}
               height={height}
-              className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-auto object-cover"
               placeholder="empty"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
             />
