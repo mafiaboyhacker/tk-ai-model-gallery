@@ -1,7 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, memo } from 'react'
-import { Masonry } from 'masonic'
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react'
+import {
+  Masonry,
+  usePositioner,
+  useContainerPosition,
+  useScroller,
+  useResizeObserver
+} from 'masonic'
 import SafeModelCard from './SafeModelCard'
 // import { useImageStore } from '@/store/imageStore' // 더 이상 사용하지 않음
 
@@ -45,23 +51,31 @@ interface MasonryGalleryProps {
   loading?: boolean
 }
 
-// 🚀 Performance: Memoized component to prevent unnecessary re-renders
+// 🚀 Advanced Masonic implementation with hooks
 const MasonryGallery = memo(function MasonryGallery({ models, loading = false }: MasonryGalleryProps) {
-  const [columnsCount, setColumnsCount] = useState(2)
   const [mounted, setMounted] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(1200)
+  const [windowHeight, setWindowHeight] = useState(800)
+  const containerRef = React.useRef<HTMLDivElement>(null)
 
+  // Window size tracking
   useEffect(() => {
     setMounted(true)
-  }, [])
 
-
-  // props로 받은 models 사용 (store 직접 호출 제거)
-  const allMedia = useMemo(() => {
-    if (!mounted) {
-      return []
+    const updateWindowSize = () => {
+      setWindowWidth(window.innerWidth)
+      setWindowHeight(window.innerHeight)
     }
 
-    // 현재 페이지에 따라 미디어 타입 필터링
+    updateWindowSize()
+    window.addEventListener('resize', updateWindowSize)
+    return () => window.removeEventListener('resize', updateWindowSize)
+  }, [])
+
+  // Filtered media based on current page
+  const allMedia = useMemo(() => {
+    if (!mounted) return []
+
     const isModelPage = typeof window !== 'undefined' && window.location.pathname === '/model'
     const isVideoPage = typeof window !== 'undefined' && window.location.pathname === '/video'
 
@@ -72,57 +86,60 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       filteredMedia = models.filter(media => media.type === 'video')
     }
 
-    // models는 이미 Media 형태로 변환되어 전달됨
     return filteredMedia
   }, [models, mounted])
 
-  // Masonic cache key to handle array mutations
-  const masonryKey = useMemo(() => {
-    if (!allMedia.length) {
-      return 'masonry-empty'
+  // 🚀 Advanced Masonic hooks integration
+  const { offset, width } = useContainerPosition(containerRef, [windowWidth, windowHeight])
+  const { scrollTop, isScrolling } = useScroller(offset)
+
+  // Dynamic column calculation based on width
+  const columnConfig = useMemo(() => {
+    const availableWidth = width || windowWidth
+    let columnCount = 2
+    let columnWidth = 300
+
+    if (availableWidth >= 1536) {
+      columnCount = 6
+      columnWidth = Math.floor((availableWidth - 64) / 6) - 4
+    } else if (availableWidth >= 1280) {
+      columnCount = 6
+      columnWidth = Math.floor((availableWidth - 64) / 6) - 4
+    } else if (availableWidth >= 1024) {
+      columnCount = 5
+      columnWidth = Math.floor((availableWidth - 64) / 5) - 4
+    } else if (availableWidth >= 768) {
+      columnCount = 4
+      columnWidth = Math.floor((availableWidth - 64) / 4) - 4
+    } else if (availableWidth >= 640) {
+      columnCount = 3
+      columnWidth = Math.floor((availableWidth - 64) / 3) - 4
+    } else {
+      columnCount = 2
+      columnWidth = Math.floor((availableWidth - 64) / 2) - 4
     }
-    const firstId = allMedia[0]?.id ?? 'start'
-    const lastId = allMedia[allMedia.length - 1]?.id ?? 'end'
-    return `masonry-${allMedia.length}-${firstId}-${lastId}`
-  }, [allMedia])
 
-  // 🚀 Performance: Optimized responsive column calculation
-  const updateColumns = useCallback(() => {
-    const width = window.innerWidth
-    let newColumnCount = 2 // default
+    return { columnCount, columnWidth }
+  }, [width, windowWidth])
 
-    if (width >= 1536) newColumnCount = 6        // 2xl (초대형 6열)
-    else if (width >= 1280) newColumnCount = 6   // xl (6열)
-    else if (width >= 1024) newColumnCount = 6   // lg (데스크탑 6열)
-    else if (width >= 768) newColumnCount = 4    // md (4열)
-    else if (width >= 640) newColumnCount = 3    // sm (3열)
+  const positioner = usePositioner({
+    width: width || windowWidth,
+    columnWidth: columnConfig.columnWidth,
+    columnGutter: 4,
+    rowGutter: 4
+  })
 
-    // Only update if changed to prevent unnecessary re-renders
-    setColumnsCount(prevCount => prevCount !== newColumnCount ? newColumnCount : prevCount)
-  }, [])
+  // 🚀 Resize observer for dynamic height changes
+  const resizeObserver = useResizeObserver(positioner)
 
-  // 🚀 Performance: Debounced resize handler
-  const debouncedUpdateColumns = useDebounce(updateColumns, 150)
+  // Dynamic overscanBy calculation based on screen size and performance
+  const dynamicOverscanBy = useMemo(() => {
+    const baseOverscan = 5 // Base overscan
+    const screenMultiplier = windowHeight > 1000 ? 1.5 : 1
+    const itemCountMultiplier = allMedia.length > 100 ? 1.2 : 1
 
-  useEffect(() => {
-    updateColumns() // 초기 실행
-    window.addEventListener('resize', debouncedUpdateColumns)
-    return () => {
-      window.removeEventListener('resize', debouncedUpdateColumns)
-    }
-  }, [updateColumns, debouncedUpdateColumns])
-
-  const positioner = useMemo(() => {
-    if (typeof window === 'undefined') {
-      return { columnWidth: 300, columnGutter: 2, rowGutter: 2 }
-    }
-    const columnWidth = (window.innerWidth - 32) / columnsCount - 2; // 32px for padding, 2px gap
-    return {
-      columnWidth,
-      columnGutter: 2,
-      rowGutter: 2
-    }
-  }, [columnsCount])
+    return Math.ceil(baseOverscan * screenMultiplier * itemCountMultiplier)
+  }, [windowHeight, allMedia.length])
 
   const MasonryCard = useCallback(({ index, data, width }: { index: number, data: Media, width: number }) => {
     // 16:9 landscape images get larger height for better visibility
@@ -221,13 +238,15 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div ref={containerRef} className="container mx-auto px-4 py-8">
       <Masonry
-        key={masonryKey}
         items={allMedia}
-        columnGutter={positioner.columnGutter}
-        columnWidth={positioner.columnWidth}
-        overscanBy={2}
+        positioner={positioner}
+        scrollTop={scrollTop}
+        isScrolling={isScrolling}
+        height={windowHeight}
+        overscanBy={dynamicOverscanBy}
+        resizeObserver={resizeObserver}
         render={MasonryCard}
       />
 
@@ -235,6 +254,12 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       {allMedia.length > 0 && (
         <div className="text-center mt-8 py-4 text-gray-500 text-sm">
           총 {allMedia.length}개의 미디어 파일이 로드되었습니다
+          <br />
+          <span className="text-xs text-gray-400">
+            {columnConfig.columnCount}열 그리드 · overscan: {dynamicOverscanBy} ·
+            {isScrolling ? '스크롤 중' : '정적'} ·
+            고급 가상화 활성화
+          </span>
         </div>
       )}
     </div>

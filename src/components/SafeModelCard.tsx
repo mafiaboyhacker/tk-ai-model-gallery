@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import OptimizedImage from './OptimizedImage'
 
 interface SafeModelCardProps {
@@ -276,3 +276,21 @@ export default function SafeModelCard({
     </>
   )
 }
+
+// 🚀 Performance: Memoized component with prop comparison
+const MemorizedSafeModelCard = memo(SafeModelCard, (prevProps, nextProps) => {
+  // Core props comparison for performance
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.imageUrl === nextProps.imageUrl &&
+    prevProps.originalUrl === nextProps.originalUrl &&
+    prevProps.width === nextProps.width &&
+    prevProps.height === nextProps.height &&
+    prevProps.type === nextProps.type &&
+    prevProps.isAdminMode === nextProps.isAdminMode
+  )
+})
+
+MemorizedSafeModelCard.displayName = 'SafeModelCard'
+
+export default MemorizedSafeModelCard
