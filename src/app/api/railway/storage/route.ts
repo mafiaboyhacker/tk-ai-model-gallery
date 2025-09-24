@@ -767,6 +767,7 @@ export async function POST(request: NextRequest) {
             // 🎬 파일 타입별 처리 활성화
             if (isVideo) {
               console.log(`🎬 비디오 처리 시작: ${file.name}`)
+              console.log(`📏 원본 비디오: ${(file.size / (1024 * 1024)).toFixed(1)}MB`)
 
               // FFmpeg 설치 확인
               const hasFFmpeg = await VideoProcessor.checkFFmpegInstallation()
@@ -774,6 +775,8 @@ export async function POST(request: NextRequest) {
                 console.warn('⚠️ FFmpeg 미설치 - 원본 저장 모드로 전환')
                 throw new Error('FFmpeg not available')
               }
+
+              console.log('✅ FFmpeg 설치 확인됨 - 비디오 압축 시작')
 
               // 비디오 처리 실행
               processedResult = await VideoProcessor.processVideo(
@@ -804,10 +807,15 @@ export async function POST(request: NextRequest) {
                 previewUrl: processedResult.preview.url
               }
 
+              const compressionRatio = Math.round((1 - processedResult.compressed.size / file.size) * 100)
               console.log(`✅ 비디오 처리 완료: ${file.name}`)
+              console.log(`📊 압축 결과: ${(file.size / (1024 * 1024)).toFixed(1)}MB → ${(processedResult.compressed.size / (1024 * 1024)).toFixed(1)}MB (${compressionRatio}% 절약)`)
+              console.log(`🎯 최종 파일: ${path.basename(processedResult.compressed.path)}`)
 
             } else if (isImage) {
               console.log(`🖼️ 이미지 처리 시작: ${file.name}`)
+              console.log(`📏 원본 이미지: ${(file.size / (1024 * 1024)).toFixed(1)}MB, 포맷: ${file.type}`)
+              console.log('🔄 WebP 변환 + 썸네일 생성 시작...')
 
               // 이미지 처리 실행
               processedResult = await ImageProcessor.processImage(
@@ -816,13 +824,13 @@ export async function POST(request: NextRequest) {
                 uniqueFileName
               )
 
-              // DB 저장용 데이터 준비
+              // DB 저장용 데이터 준비 (WebP 파일을 메인으로 사용)
               finalMediaData = {
-                fileName: path.basename(processedResult.original.path),
+                fileName: path.basename(processedResult.webp.path),
                 originalFileName: file.name,
-                fileSize: file.size,
-                width: processedResult.original.width,
-                height: processedResult.original.height,
+                fileSize: processedResult.webp.url.includes('webp') ? Math.round(file.size * 0.7) : file.size, // WebP 압축 고려
+                width: processedResult.webp.width,
+                height: processedResult.webp.height,
                 duration: null,
                 resolution: null,
                 thumbnailUrl: processedResult.thumbnail.url,
@@ -830,6 +838,11 @@ export async function POST(request: NextRequest) {
               }
 
               console.log(`✅ 이미지 처리 완료: ${file.name}`)
+              console.log(`📊 변환 결과:`)
+              console.log(`  └ WebP: ${path.basename(processedResult.webp.path)} (메인 표시용)`)
+              console.log(`  └ 썸네일: ${path.basename(processedResult.thumbnail.path)}`)
+              console.log(`  └ 원본: ${path.basename(processedResult.original.path)} (백업용)`)
+              console.log(`🎯 갤러리 표시 파일: ${path.basename(processedResult.webp.path)}`)
             }
           }
 
@@ -925,6 +938,7 @@ export async function POST(request: NextRequest) {
 
         } catch (processingError) {
           console.error(`❌ 파일 처리 실패: ${file.name}`, processingError)
+          console.log(`🔄 원본 파일로 fallback 저장 시도...`)
 
           // 처리 실패 시에도 원본 저장 시도
           try {
@@ -966,8 +980,8 @@ export async function POST(request: NextRequest) {
               success: true,
               data: {
                 ...fallbackRecord,
-                url: `/api/railway/storage/file/${fallbackRecord.type}/${fallbackRecord.fileName}`,
-                originalUrl: `/api/railway/storage/file/${fallbackRecord.type}/${fallbackRecord.fileName}`,
+                url: `/uploads/${fallbackRecord.type}/${fallbackRecord.fileName}`,
+                originalUrl: `/uploads/${fallbackRecord.type}/${fallbackRecord.fileName}`,
                 processed: false,
                 processingError: processingError instanceof Error ? processingError.message : 'Processing failed'
               }

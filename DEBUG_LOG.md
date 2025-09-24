@@ -141,5 +141,34 @@
 
 ---
 
-**마지막 업데이트**: 2025-09-24 22:05
-**상태**: ✅ **문제 완전 해결됨** - 30분 로딩 → 즉시 완료
+---
+
+### Session 2025-09-24 후반 (503 Service Unavailable 해결)
+**새로운 문제**:
+- 갤러리 로딩은 해결되었으나 이미지/비디오가 503 에러로 로드되지 않음
+- API 라우트 서빙 `/api/railway/storage/file/` 방식이 Railway에서 병목 발생
+
+**시도한 것**:
+- 직접 서빙 구조로 전환 (API 우회)
+- `/uploads/` 경로로 Railway Volume 직접 접근
+- next.config.ts rewrites 설정으로 URL 매핑
+- 모든 URL을 `/api/railway/storage/file/` → `/uploads/` 로 변경
+
+**수정한 파일들**:
+- `next.config.ts`: rewrites로 /uploads → API 매핑
+- `src/store/railwayMediaStore.ts`: URL 생성 로직을 직접 서빙으로 변경
+- `src/app/api/railway/storage/route.ts`: 응답에서 직접 서빙 URL 반환
+- 업로드 API와 목록 API 모두 `/uploads/` URL 구조로 통일
+
+**기대 효과**:
+- 503 Service Unavailable 에러 해결
+- API 라우트 병목 우회로 성능 개선
+- Railway Volume 파일들이 정적 파일처럼 직접 서빙
+
+**다음 단계**:
+- Railway 배포하여 실제 성능 테스트
+- 이미지/비디오 프로세싱 동작 확인
+- 업로드 시 변환 기능 검증
+
+**마지막 업데이트**: 2025-09-24 23:07
+**상태**: 🔄 **503 에러 수정 완료 - 배포 대기중** (직접 서빙 구조 구현)
