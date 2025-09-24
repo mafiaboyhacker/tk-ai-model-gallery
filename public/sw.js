@@ -1,10 +1,11 @@
 // 🚀 PHASE 3 ENHANCEMENT: Service Worker for Advanced Caching
 // Expected 30-40% improvement in repeat visit performance
 
-const CACHE_NAME = 'ai-gallery-v1.0'
-const IMAGE_CACHE_NAME = 'ai-gallery-images-v1.0'
-const API_CACHE_NAME = 'ai-gallery-api-v1.0'
-const STATIC_CACHE_NAME = 'ai-gallery-static-v1.0'
+const CACHE_VERSION = '1.1-' + Date.now()
+const CACHE_NAME = 'ai-gallery-v' + CACHE_VERSION
+const IMAGE_CACHE_NAME = 'ai-gallery-images-v' + CACHE_VERSION
+const API_CACHE_NAME = 'ai-gallery-api-v' + CACHE_VERSION
+const STATIC_CACHE_NAME = 'ai-gallery-static-v' + CACHE_VERSION
 
 // Cache duration settings
 const CACHE_DURATIONS = {
