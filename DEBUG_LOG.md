@@ -192,5 +192,22 @@
 3. 콘솔 로그에서 변환 과정 확인
 4. 갤러리에서 WebP 파일이 표시되는지 확인
 
-**마지막 업데이트**: 2025-09-24 23:15
-**상태**: ✅ **WebP 최적화 + 로깅 완료 - Railway 배포 완료**
+### Session 2025-09-25 (파일 서빙 503 에러 해결)
+**현재 문제**:
+- 갤러리 로딩은 해결되었으나 이미지/비디오가 503 에러로 로드되지 않음
+- URLs: `/uploads/image/filename.jpg` → rewrites → `/api/railway/storage/file/image/filename.jpg`
+- 파일 서빙 API에서 Railway Volume 경로 문제 가능성
+
+**발견한 것**:
+- ✅ Bulk upload URL 패턴 `/api/railway/storage/file/` → `/uploads/` 수정 완료
+- ✅ 목록 API는 이미 `/uploads/` 패턴 사용 중
+- ✅ next.config.ts rewrites 설정 정상: `/uploads/:type/:filename` → `/api/railway/storage/file/:type/:filename`
+- 🚨 파일 서빙 API `/api/railway/storage/file/[type]/[filename]/route.ts`에서 503 에러 발생
+
+**다음 단계**:
+1. Railway Volume 경로 설정 확인 (`RAILWAY_VOLUME_MOUNT_PATH`)
+2. 파일 서빙 API에서 실제 파일 경로 로그 확인
+3. Volume 내 실제 파일 구조와 API 경로 매핑 검증
+
+**마지막 업데이트**: 2025-09-25 00:40
+**상태**: 🔄 **파일 서빙 API 경로 문제 디버깅 중**

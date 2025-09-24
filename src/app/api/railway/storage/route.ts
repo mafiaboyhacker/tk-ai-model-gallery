@@ -1081,7 +1081,7 @@ export async function POST(request: NextRequest) {
               file: file.name,
               data: {
                 ...mediaRecord,
-                url: `/api/railway/storage/file/${mediaRecord.type}/${mediaRecord.fileName}`
+                url: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`
               }
             })
 
