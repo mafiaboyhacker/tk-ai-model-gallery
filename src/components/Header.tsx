@@ -106,9 +106,9 @@ export default function Header() {
 
               {/* 말풍선 스타일 드롭다운 */}
               {isContactOpen && (
-                <div className="absolute top-full right-0 mt-2 w-64 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="absolute top-full right-0 mt-2 w-64 bg-white/80 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
                   {/* 말풍선 화살표 */}
-                  <div className="absolute -top-2 right-6 w-4 h-4 bg-white/5 backdrop-blur-2xl border-l border-t border-white/10 rotate-45"></div>
+                  <div className="absolute -top-2 right-6 w-4 h-4 bg-white/80 backdrop-blur-2xl border-l border-t border-white/20 rotate-45"></div>
 
                   {/* 내용 */}
                   <div className="p-6 relative">
@@ -127,7 +127,7 @@ export default function Header() {
                       </h3>
                       <div className="text-sm text-black">
                         <p className="mb-2">문의는</p>
-                        <p className="font-semibold text-black">김태은</p>
+                        <p className="font-semibold text-black">웹사이트 알려준사람에게</p>
                       </div>
                     </div>
                   </div>
