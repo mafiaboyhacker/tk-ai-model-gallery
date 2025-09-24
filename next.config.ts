@@ -9,9 +9,8 @@ const nextConfig: NextConfig = {
       'masonic',
       'zustand'
     ],
-    // Railway 배포 최적화 - Next.js 15 새 문법
-    // CSS 프리로드 최적화 (critters 의존성 문제로 임시 비활성화)
-    optimizeCss: false,
+    // Railway 배포 최적화 - CSS 최적화 다시 활성화 (critters 의존성 해결됨)
+    optimizeCss: true,
   },
   eslint: {
     // Railway 배포 시 린트 에러 무시 (로컬에서는 체크)
