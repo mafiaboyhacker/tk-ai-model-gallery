@@ -274,3 +274,41 @@
 1. Railway Dashboard → Database → Connect → Public Connection 정보 복사
 2. `.env.local` 파일 DATABASE_URL 실제 값으로 업데이트
 3. 메인 페이지에서 이미지 표시 최종 확인
+
+---
+
+### Session 2025-09-25 오후 (React 오류 #311 해결)
+**새로운 문제**:
+- Railway 배포 사이트에서 React error #311 발생
+- "Minified React error #311: Should have a queue. You are likely calling Hooks conditionally"
+- useState와 관련된 무한 루프로 인한 스택 오버플로우
+
+**원인 분석**:
+1. **MasonryGallery.tsx useDebounce hook** - useCallback dependency에 debounceTimer 포함으로 무한 루프 발생
+2. **useResizeObserver 조건부 호출** - React Hooks Rules 위반 (line 141)
+3. **SafeModelCard IntersectionObserver** - 컴포넌트 언마운트 시 메모리 누수 가능성
+
+**해결 방법**:
+1. useDebounce hook에서 useState → useRef 변경으로 무한 루프 제거
+2. useCallback dependency에서 debounceTimer 제거
+3. useResizeObserver 조건부 호출 제거
+4. SafeModelCard에 isMounted 플래그 추가로 메모리 누수 방지
+
+**수정한 파일들**:
+- `src/components/MasonryGallery.tsx`: useDebounce hook 완전 개선
+- `src/components/SafeModelCard.tsx`: IntersectionObserver 안정성 향상
+
+**검증 결과**:
+- ✅ ESLint 에러 0개 (139 warnings만 남음)
+- ✅ React Hooks Rules 위반 해결
+- ✅ 무한 루프 원인 제거
+
+**배포 정보**:
+- 커밋: 3b4f70b "Fix React error #311: 무한 렌더링 오류 해결"
+- Railway 자동 배포 진행 중
+- 테스트 URL: https://tk-ai-model-gallery-production.up.railway.app/
+
+**예상 결과**:
+- React error #311 완전 해결
+- 콘솔 에러 없는 깨끗한 실행
+- 갤러리 정상 렌더링 및 무한 루프 방지
