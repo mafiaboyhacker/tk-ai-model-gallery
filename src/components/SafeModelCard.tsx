@@ -25,7 +25,7 @@ interface SafeModelCardProps {
  * - Throttled video events
  * - Memory leak prevention
  */
-export default function SafeModelCard({
+function SafeModelCard({
   id,
   name,
   imageUrl,
