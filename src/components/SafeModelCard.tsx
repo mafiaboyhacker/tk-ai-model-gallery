@@ -202,7 +202,10 @@ export default function SafeModelCard({
                     isVideoLoaded ? 'opacity-100' : 'opacity-0'
                   }`}
                   onLoadedData={() => setIsVideoLoaded(true)}
-                  onError={() => setIsVideoLoaded(false)}
+                  onError={() => {
+                    console.log(`⚠️ 비디오 로딩 실패: ${resolvedVideoSource}`)
+                    setIsVideoLoaded(false)
+                  }}
                 >
                   비디오를 재생할 수 없습니다.
                 </video>
@@ -222,8 +225,7 @@ export default function SafeModelCard({
               width={width}
               height={height}
               className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
-              placeholder="blur"
-              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R/Xw=="
+              placeholder="empty"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
             />
           </Link>

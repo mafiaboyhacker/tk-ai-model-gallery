@@ -1129,15 +1129,148 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const mediaId = searchParams.get('id')
-
-  if (!mediaId) {
-    return NextResponse.json({
-      success: false,
-      error: 'Media ID required'
-    }, { status: 400 })
-  }
+  const action = searchParams.get('action')
 
   try {
+    // Bulk deletion actions
+    if (action === 'clear-all') {
+      console.log('🗑️ Railway: 전체 미디어 삭제 시작')
+
+      // PostgreSQL에서 모든 미디어 조회
+      const allMedia = await prisma.media.findMany()
+      let deletedCount = 0
+      let errors = []
+
+      // 각 파일 삭제
+      for (const media of allMedia) {
+        try {
+          const filePath = path.join(
+            media.type === 'video' ? VIDEOS_DIR : IMAGES_DIR,
+            media.fileName
+          )
+
+          if (existsSync(filePath)) {
+            await unlink(filePath)
+            console.log(`🗑️ 파일 삭제: ${filePath}`)
+          }
+
+          deletedCount++
+        } catch (fileError) {
+          console.warn(`⚠️ 파일 삭제 실패: ${media.fileName}`, fileError)
+          errors.push(`File: ${media.fileName}`)
+        }
+      }
+
+      // PostgreSQL에서 모든 미디어 레코드 삭제
+      const dbResult = await prisma.media.deleteMany({})
+      console.log(`✅ DB 레코드 삭제: ${dbResult.count}개`)
+
+      // 캐시 무효화
+      invalidateCache()
+
+      return NextResponse.json({
+        success: true,
+        message: `모든 미디어 삭제 완료: 파일 ${deletedCount}개, DB 레코드 ${dbResult.count}개`,
+        deletedFiles: deletedCount,
+        deletedRecords: dbResult.count,
+        errors: errors.length > 0 ? errors : null
+      })
+    }
+
+    if (action === 'clear-videos') {
+      console.log('🗑️ Railway: 비디오 삭제 시작')
+
+      // PostgreSQL에서 비디오 미디어 조회
+      const videos = await prisma.media.findMany({
+        where: { type: 'video' }
+      })
+      let deletedCount = 0
+      let errors = []
+
+      // 각 비디오 파일 삭제
+      for (const video of videos) {
+        try {
+          const filePath = path.join(VIDEOS_DIR, video.fileName)
+          if (existsSync(filePath)) {
+            await unlink(filePath)
+            console.log(`🗑️ 비디오 파일 삭제: ${filePath}`)
+          }
+          deletedCount++
+        } catch (fileError) {
+          console.warn(`⚠️ 비디오 파일 삭제 실패: ${video.fileName}`, fileError)
+          errors.push(`Video: ${video.fileName}`)
+        }
+      }
+
+      // PostgreSQL에서 비디오 레코드 삭제
+      const dbResult = await prisma.media.deleteMany({
+        where: { type: 'video' }
+      })
+      console.log(`✅ 비디오 DB 레코드 삭제: ${dbResult.count}개`)
+
+      // 캐시 무효화
+      invalidateCache()
+
+      return NextResponse.json({
+        success: true,
+        message: `비디오 삭제 완료: 파일 ${deletedCount}개, DB 레코드 ${dbResult.count}개`,
+        deletedFiles: deletedCount,
+        deletedRecords: dbResult.count,
+        errors: errors.length > 0 ? errors : null
+      })
+    }
+
+    if (action === 'clear-images') {
+      console.log('🗑️ Railway: 이미지 삭제 시작')
+
+      // PostgreSQL에서 이미지 미디어 조회
+      const images = await prisma.media.findMany({
+        where: { type: 'image' }
+      })
+      let deletedCount = 0
+      let errors = []
+
+      // 각 이미지 파일 삭제
+      for (const image of images) {
+        try {
+          const filePath = path.join(IMAGES_DIR, image.fileName)
+          if (existsSync(filePath)) {
+            await unlink(filePath)
+            console.log(`🗑️ 이미지 파일 삭제: ${filePath}`)
+          }
+          deletedCount++
+        } catch (fileError) {
+          console.warn(`⚠️ 이미지 파일 삭제 실패: ${image.fileName}`, fileError)
+          errors.push(`Image: ${image.fileName}`)
+        }
+      }
+
+      // PostgreSQL에서 이미지 레코드 삭제
+      const dbResult = await prisma.media.deleteMany({
+        where: { type: 'image' }
+      })
+      console.log(`✅ 이미지 DB 레코드 삭제: ${dbResult.count}개`)
+
+      // 캐시 무효화
+      invalidateCache()
+
+      return NextResponse.json({
+        success: true,
+        message: `이미지 삭제 완료: 파일 ${deletedCount}개, DB 레코드 ${dbResult.count}개`,
+        deletedFiles: deletedCount,
+        deletedRecords: dbResult.count,
+        errors: errors.length > 0 ? errors : null
+      })
+    }
+
+    // Individual media deletion
+    if (!mediaId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Media ID required for individual deletion'
+      }, { status: 400 })
+    }
+
     // PostgreSQL에서 미디어 정보 조회
     const media = await prisma.media.findUnique({
       where: { id: mediaId }

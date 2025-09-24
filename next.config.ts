@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
       'zustand'
     ],
     // Railway 배포 최적화 - Next.js 15 새 문법
+    // CSS 프리로드 최적화
+    optimizeCss: true,
   },
   eslint: {
     // Railway 배포 시 린트 에러 무시 (로컬에서는 체크)
@@ -97,6 +99,37 @@ const nextConfig: NextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=3600, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/css/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/api/railway/storage/file/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/media/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

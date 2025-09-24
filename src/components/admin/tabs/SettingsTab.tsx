@@ -15,7 +15,10 @@ export default function SettingsTab() {
     ratioConfig,
     updateRatioConfig,
     shuffleByMode,
-    usingRailway
+    usingRailway,
+    clearAllMedia,
+    clearVideos,
+    clearImages
   } = useEnvironmentStore()
   const [storageStats, setStorageStats] = useState<{count: number; estimatedSize: string; images: number; videos: number} | null>(null)
 
@@ -44,17 +47,10 @@ export default function SettingsTab() {
       try {
         console.log(`🗑️ ${usingRailway ? 'Railway' : 'Local'} 모든 미디어 삭제 중...`)
 
-        if (usingRailway) {
-          // Railway 환경: API 직접 호출
-          const response = await fetch('/api/railway/storage/clear-all', {
-            method: 'DELETE'
-          })
-
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`)
-          }
-
-          console.log('✅ Railway: API를 통한 모든 미디어 삭제 완료')
+        if (usingRailway && clearAllMedia) {
+          // Railway 환경: 새로운 벌크 삭제 함수 사용
+          await clearAllMedia()
+          console.log('✅ Railway: 벌크 삭제를 통한 모든 미디어 삭제 완료')
         } else {
           // 로컬 환경: 기존 clearMedia 사용
           await clearMedia()
@@ -130,15 +126,23 @@ ${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' :
     if (confirm('Delete all images? Videos will be kept. This cannot be undone.')) {
       setIsClearing(true)
       try {
-        // 모든 환경에서 store 함수 사용 (일관성 보장)
-        const imageIds = media.filter(m => m.type === 'image').map(m => m.id)
-        console.log(`🗑️ ${imageIds.length}개 이미지 삭제 시작...`)
+        console.log(`🗑️ ${usingRailway ? 'Railway' : 'Local'} 모든 이미지 삭제 중...`)
 
-        for (const id of imageIds) {
-          await removeMedia(id)
+        if (usingRailway && clearImages) {
+          // Railway 환경: 새로운 벌크 삭제 함수 사용
+          await clearImages()
+          console.log('✅ Railway: 벌크 삭제를 통한 모든 이미지 삭제 완료')
+        } else {
+          // 로컬 환경: 개별 삭제 방식 사용
+          const imageIds = media.filter(m => m.type === 'image').map(m => m.id)
+          console.log(`🗑️ ${imageIds.length}개 이미지 삭제 시작...`)
+
+          for (const id of imageIds) {
+            await removeMedia(id)
+          }
+
+          console.log(`✅ Local: 모든 이미지 삭제 완료`)
         }
-
-        console.log(`✅ ${usingRailway ? 'Railway' : 'Local'}: 모든 이미지 삭제 완료`)
 
         // 통계 새로고침
         await refreshStats()
@@ -157,15 +161,23 @@ ${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' :
     if (confirm('Delete all videos? Images will be kept. This cannot be undone.')) {
       setIsClearing(true)
       try {
-        // 모든 환경에서 store 함수 사용 (일관성 보장)
-        const videoIds = media.filter(m => m.type === 'video').map(m => m.id)
-        console.log(`🗑️ ${videoIds.length}개 비디오 삭제 시작...`)
+        console.log(`🗑️ ${usingRailway ? 'Railway' : 'Local'} 모든 비디오 삭제 중...`)
 
-        for (const id of videoIds) {
-          await removeMedia(id)
+        if (usingRailway && clearVideos) {
+          // Railway 환경: 새로운 벌크 삭제 함수 사용
+          await clearVideos()
+          console.log('✅ Railway: 벌크 삭제를 통한 모든 비디오 삭제 완료')
+        } else {
+          // 로컬 환경: 개별 삭제 방식 사용
+          const videoIds = media.filter(m => m.type === 'video').map(m => m.id)
+          console.log(`🗑️ ${videoIds.length}개 비디오 삭제 시작...`)
+
+          for (const id of videoIds) {
+            await removeMedia(id)
+          }
+
+          console.log(`✅ Local: 모든 비디오 삭제 완료`)
         }
-
-        console.log(`✅ ${usingRailway ? 'Railway' : 'Local'}: 모든 비디오 삭제 완료`)
 
         // 통계 새로고침
         await refreshStats()

@@ -520,24 +520,46 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
 
   // 전체 삭제
   clearAllMedia: async () => {
+    set({ isLoading: true, error: null })
+
     try {
       if (process.env.NODE_ENV === 'development') {
         console.log('🗑️ Railway: 전체 미디어 삭제 시작')
       }
 
-      const currentMedia = get().media
-      for (const item of currentMedia) {
-        await get().removeMedia(item.id)
+      const response = await fetch('/api/railway/storage?action=clear-all', {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Bulk clear failed')
       }
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Railway: 전체 미디어 삭제 완료')
+        console.log('✅ Railway: 전체 미디어 삭제 완료:', data.message)
+        console.log('📊 삭제 통계:', {
+          files: data.deletedFiles,
+          records: data.deletedRecords,
+          errors: data.errors
+        })
       }
+
+      // 상태 초기화
+      set({
+        media: [],
+        isLoading: false
+      })
 
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Railway: 전체 미디어 삭제 실패:', error)
       }
+      set({
+        error: error instanceof Error ? error.message : 'Clear all failed',
+        isLoading: false
+      })
       throw error
     }
   },
@@ -590,24 +612,94 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     }
   },
   clearMedia: async () => {
+    // Delegate to clearAllMedia for consistency
+    return get().clearAllMedia()
+  },
+
+  // 비디오만 삭제
+  clearVideos: async () => {
+    set({ isLoading: true, error: null })
+
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🗑️ Railway: 전체 미디어 삭제 시작')
+        console.log('🗑️ Railway: 비디오 삭제 시작')
       }
 
-      const currentMedia = get().media
-      for (const item of currentMedia) {
-        await get().removeMedia(item.id)
+      const response = await fetch('/api/railway/storage?action=clear-videos', {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Video clear failed')
       }
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Railway: 전체 미디어 삭제 완료')
+        console.log('✅ Railway: 비디오 삭제 완료:', data.message)
       }
+
+      // 비디오만 제거하고 이미지는 유지
+      const currentMedia = get().media
+      const remainingMedia = currentMedia.filter(item => item.type !== 'video')
+
+      set({
+        media: remainingMedia,
+        isLoading: false
+      })
 
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Railway: 전체 미디어 삭제 실패:', error)
+        console.error('❌ Railway: 비디오 삭제 실패:', error)
       }
+      set({
+        error: error instanceof Error ? error.message : 'Clear videos failed',
+        isLoading: false
+      })
+      throw error
+    }
+  },
+
+  // 이미지만 삭제
+  clearImages: async () => {
+    set({ isLoading: true, error: null })
+
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🗑️ Railway: 이미지 삭제 시작')
+      }
+
+      const response = await fetch('/api/railway/storage?action=clear-images', {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Image clear failed')
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Railway: 이미지 삭제 완료:', data.message)
+      }
+
+      // 이미지만 제거하고 비디오는 유지
+      const currentMedia = get().media
+      const remainingMedia = currentMedia.filter(item => item.type !== 'image')
+
+      set({
+        media: remainingMedia,
+        isLoading: false
+      })
+
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Railway: 이미지 삭제 실패:', error)
+      }
+      set({
+        error: error instanceof Error ? error.message : 'Clear images failed',
+        isLoading: false
+      })
       throw error
     }
   },

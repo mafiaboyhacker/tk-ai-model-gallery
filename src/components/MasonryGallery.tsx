@@ -230,6 +230,13 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
         overscanBy={2}
         render={MasonryCard}
       />
+
+      {/* 로딩 완료 인디케이터 */}
+      {allMedia.length > 0 && (
+        <div className="text-center mt-8 py-4 text-gray-500 text-sm">
+          총 {allMedia.length}개의 미디어 파일이 로드되었습니다
+        </div>
+      )}
     </div>
   )
 })

@@ -16,6 +16,10 @@ interface EnvironmentStoreReturn extends MediaStore {
   environmentInfo: EnvironmentInfo
   updateCustomName: (id: string, newName: string) => Promise<void>
   getStorageStats: () => Promise<{ count: number; estimatedSize: string; images: number; videos: number }>
+  // Bulk deletion functions
+  clearAllMedia?: () => Promise<void>
+  clearVideos?: () => Promise<void>
+  clearImages?: () => Promise<void>
 }
 
 export const useEnvironmentStore = (): EnvironmentStoreReturn => {
@@ -128,6 +132,10 @@ export const useEnvironmentStore = (): EnvironmentStoreReturn => {
     // 커스텀 네임 업데이트 기능 - 완전한 타입 안전성 (fallback 제거)
     updateCustomName: selectedStore.updateCustomName,
     // 스토리지 통계 기능 - 완전한 타입 안전성 (fallback 제거)
-    getStorageStats: selectedStore.getStorageStats
+    getStorageStats: selectedStore.getStorageStats,
+    // 벌크 삭제 기능 - Railway 환경에서만 사용 가능
+    clearAllMedia: usingRailway ? (selectedStore as any).clearAllMedia : undefined,
+    clearVideos: usingRailway ? (selectedStore as any).clearVideos : undefined,
+    clearImages: usingRailway ? (selectedStore as any).clearImages : undefined
   }
 }

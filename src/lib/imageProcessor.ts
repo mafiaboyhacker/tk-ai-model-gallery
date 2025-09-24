@@ -39,8 +39,8 @@ export class ImageProcessor {
   // 🚀 성능 최적화: 해상도 및 품질 조정
   private static readonly MAX_WIDTH = 1600 // 1920→1600 (16% 파일 크기 감소)
   private static readonly MAX_HEIGHT = 900  // 1080→900 (16% 파일 크기 감소)
-  private static readonly THUMBNAIL_WIDTH = 300 // 400→300 (25% 빠른 썸네일 생성)
-  private static readonly WEBP_QUALITY = 80 // 85→80 (더 작은 파일 크기)
+  private static readonly THUMBNAIL_WIDTH = 320 // 300→320 (모바일 최적화)
+  private static readonly WEBP_QUALITY = 85 // 80→85 (품질 향상)
   private static readonly JPEG_QUALITY = 85 // 90→85 (압축률 향상)
 
   /**

@@ -110,7 +110,7 @@ const OptimizedImage = ({
             }
           },
           {
-            rootMargin: '100px 0px',  // Reduced for stability
+            rootMargin: '200px 0px',  // Increased for smoother loading
             threshold: 0.1
           }
         )
@@ -158,10 +158,10 @@ const OptimizedImage = ({
       style={skeletonStyle}
     >
       {/* Simplified shimmer for better performance */}
-      <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+      <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
 
-      {/* Loading progress bar */}
-      {isLoading && loadProgress > 0 && (
+      {/* Loading progress bar - only show if we have meaningful progress */}
+      {isLoading && loadProgress > 10 && loadProgress < 100 && (
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
           <div
             className="h-full bg-blue-400 transition-all duration-300 ease-out"
