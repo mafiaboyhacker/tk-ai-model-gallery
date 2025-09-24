@@ -129,17 +129,19 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     rowGutter: 4
   })
 
-  // 🚀 Resize observer for dynamic height changes
-  const resizeObserver = useResizeObserver(positioner)
+  // 🚀 Resize observer for dynamic height changes (client-only)
+  const resizeObserver = mounted ? useResizeObserver(positioner) : null
 
   // Dynamic overscanBy calculation based on screen size and performance
   const dynamicOverscanBy = useMemo(() => {
+    if (!mounted) return 5 // Default fallback for SSR
+
     const baseOverscan = 5 // Base overscan
     const screenMultiplier = windowHeight > 1000 ? 1.5 : 1
     const itemCountMultiplier = allMedia.length > 100 ? 1.2 : 1
 
     return Math.ceil(baseOverscan * screenMultiplier * itemCountMultiplier)
-  }, [windowHeight, allMedia.length])
+  }, [mounted, windowHeight, allMedia.length])
 
   const MasonryCard = useCallback(({ index, data, width }: { index: number, data: Media, width: number }) => {
     // 16:9 landscape images get larger height for better visibility
@@ -184,7 +186,7 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     ]
 
     const containerWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
-    const columnWidth = (containerWidth - 32) / columnsCount - 2
+    const columnWidth = (containerWidth - 32) / columnConfig.columnCount - 2
 
     return Array.from({ length: 12 }).map((_, index) => {
       const aspectRatio = aspectRatios[index % aspectRatios.length]
@@ -212,12 +214,12 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
         </div>
       )
     })
-  }, [columnsCount])
+  }, [columnConfig.columnCount])
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${columnsCount}, 1fr)`, gap: '2px' }}>
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${columnConfig.columnCount}, 1fr)`, gap: '2px' }}>
           {SkeletonLoader}
         </div>
       </div>
@@ -246,7 +248,7 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
         isScrolling={isScrolling}
         height={windowHeight}
         overscanBy={dynamicOverscanBy}
-        resizeObserver={resizeObserver}
+        {...(resizeObserver && { resizeObserver })}
         render={MasonryCard}
       />
 
