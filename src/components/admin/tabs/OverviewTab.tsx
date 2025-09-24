@@ -1,22 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import AdminUpload from '@/components/AdminUpload'
 import AdminMasonryGallery from '@/components/AdminMasonryGallery'
 
 export default function OverviewTab() {
   const [showUpload, setShowUpload] = useState(false)
   const [storageStats, setStorageStats] = useState({ count: 0, estimatedSize: '0 MB', images: 0, videos: 0 })
-  const { media, clearMedia, loadMedia, getStorageStats, updateCustomName, isInitialized, usingRailway } = useEnvironmentStore()
+  const { media, clearMedia, loadMedia, getStorageStats, updateCustomName } = useRailwayMediaStore()
 
   // 컴포넌트 마운트시 미디어 로드
   useEffect(() => {
     const initializeMedia = async () => {
-      if (!isInitialized) return
-
       try {
-        console.log(`🔄 오버뷰 탭: ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 중...`)
+        console.log('🔄 오버뷰 탭: Railway 미디어 로드 중...')
 
         await loadMedia()
 
@@ -28,14 +26,14 @@ export default function OverviewTab() {
           images: stats.images,
           videos: stats.videos
         })
-        console.log(`📊 ${usingRailway ? 'Railway' : 'Local'} 스토리지 통계:`, stats)
+        console.log('📊 Railway 스토리지 통계:', stats)
       } catch (error) {
-        console.error(`❌ 오버뷰 탭: ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 실패:`, error)
+        console.error('❌ 오버뷰 탭: Railway 미디어 로드 실패:', error)
       }
     }
 
     initializeMedia()
-  }, [loadMedia, isInitialized, usingRailway])
+  }, [loadMedia])
 
   // 미디어 상태 변화 감지하여 통계 실시간 업데이트
   useEffect(() => {

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
 
 interface VersionInfo {
   version: string
@@ -15,7 +14,6 @@ interface VersionInfo {
 export default function VersionDisplay() {
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const { usingRailway } = useEnvironmentStore()
 
   useEffect(() => {
     const fetchVersionInfo = async () => {
@@ -25,14 +23,14 @@ export default function VersionDisplay() {
         setVersionInfo(data)
       } catch (error) {
         console.error('⚠️ Version 정보 로드 실패:', error)
-        // 🚀 Fallback: package.json에서 기본 정보 제공
+        // 🚀 Fallback: Railway 환경 기본 정보 제공
         setVersionInfo({
           version: '1.0.0',
           buildDate: new Date().toISOString(),
           gitCommit: 'unknown',
-          environment: usingRailway ? 'production' : 'development',
+          environment: 'production',
           nodeVersion: process.version || 'unknown',
-          deploymentPlatform: usingRailway ? 'Railway' : 'Local'
+          deploymentPlatform: 'Railway'
         })
       } finally {
         setIsLoading(false)
@@ -40,7 +38,7 @@ export default function VersionDisplay() {
     }
 
     fetchVersionInfo()
-  }, [usingRailway])
+  }, [])
 
   if (isLoading) {
     return (

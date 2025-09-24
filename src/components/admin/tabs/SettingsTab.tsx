@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 
 export default function SettingsTab() {
   const [isClearing, setIsClearing] = useState(false)
@@ -15,11 +15,10 @@ export default function SettingsTab() {
     ratioConfig,
     updateRatioConfig,
     shuffleByMode,
-    usingRailway,
     clearAllMedia,
     clearVideos,
     clearImages
-  } = useEnvironmentStore()
+  } = useRailwayMediaStore()
   const [storageStats, setStorageStats] = useState<{count: number; estimatedSize: string; images: number; videos: number} | null>(null)
 
   const refreshStats = useCallback(async () => {
@@ -45,17 +44,11 @@ export default function SettingsTab() {
     if (confirm('⚠️ WARNING: This will delete ALL uploaded media (images and videos). This action cannot be undone. Are you sure?')) {
       setIsClearing(true)
       try {
-        console.log(`🗑️ ${usingRailway ? 'Railway' : 'Local'} 모든 미디어 삭제 중...`)
+        console.log('🗑️ Railway 모든 미디어 삭제 중...')
 
-        if (usingRailway && clearAllMedia) {
-          // Railway 환경: 새로운 벌크 삭제 함수 사용
-          await clearAllMedia()
-          console.log('✅ Railway: 벌크 삭제를 통한 모든 미디어 삭제 완료')
-        } else {
-          // 로컬 환경: 기존 clearMedia 사용
-          await clearMedia()
-          console.log('✅ Local: IndexedDB 모든 미디어 삭제 완료')
-        }
+        // Railway 환경: 벌크 삭제 함수 사용
+        await clearAllMedia()
+        console.log('✅ Railway: 벌크 삭제를 통한 모든 미디어 삭제 완료')
 
         // 통계 새로고침
         await refreshStats()
@@ -77,19 +70,17 @@ export default function SettingsTab() {
         console.log('🔍 데이터 검증 시작...')
 
         // 캐시 무효화 및 최신 데이터 강제 로드
-        if (usingRailway) {
-          const syncResponse = await fetch('/api/railway/storage?action=sync', {
-            method: 'GET',
-            cache: 'no-cache'
-          })
+        const syncResponse = await fetch('/api/railway/storage?action=sync', {
+          method: 'GET',
+          cache: 'no-cache'
+        })
 
-          if (!syncResponse.ok) {
-            throw new Error('Sync failed')
-          }
-
-          const syncData = await syncResponse.json()
-          console.log('🔄 DB-파일시스템 동기화 결과:', syncData)
+        if (!syncResponse.ok) {
+          throw new Error('Sync failed')
         }
+
+        const syncData = await syncResponse.json()
+        console.log('🔄 DB-파일시스템 동기화 결과:', syncData)
 
         // 최신 데이터 로드
         await loadMedia()
@@ -110,7 +101,7 @@ export default function SettingsTab() {
 • 동기화 완료
 • 캐시 무효화 완료
 
-${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' : '💾 로컬 환경: IndexedDB 정리 완료'}
+🚂 Railway 환경: DB와 파일시스템 동기화 완료
         `
         alert(message)
       } catch (error) {
@@ -126,23 +117,11 @@ ${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' :
     if (confirm('Delete all images? Videos will be kept. This cannot be undone.')) {
       setIsClearing(true)
       try {
-        console.log(`🗑️ ${usingRailway ? 'Railway' : 'Local'} 모든 이미지 삭제 중...`)
+        console.log('🗑️ Railway 모든 이미지 삭제 중...')
 
-        if (usingRailway && clearImages) {
-          // Railway 환경: 새로운 벌크 삭제 함수 사용
-          await clearImages()
-          console.log('✅ Railway: 벌크 삭제를 통한 모든 이미지 삭제 완료')
-        } else {
-          // 로컬 환경: 개별 삭제 방식 사용
-          const imageIds = media.filter(m => m.type === 'image').map(m => m.id)
-          console.log(`🗑️ ${imageIds.length}개 이미지 삭제 시작...`)
-
-          for (const id of imageIds) {
-            await removeMedia(id)
-          }
-
-          console.log(`✅ Local: 모든 이미지 삭제 완료`)
-        }
+        // Railway 환경: 벌크 삭제 함수 사용
+        await clearImages()
+        console.log('✅ Railway: 벌크 삭제를 통한 모든 이미지 삭제 완료')
 
         // 통계 새로고침
         await refreshStats()
@@ -161,23 +140,11 @@ ${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' :
     if (confirm('Delete all videos? Images will be kept. This cannot be undone.')) {
       setIsClearing(true)
       try {
-        console.log(`🗑️ ${usingRailway ? 'Railway' : 'Local'} 모든 비디오 삭제 중...`)
+        console.log('🗑️ Railway 모든 비디오 삭제 중...')
 
-        if (usingRailway && clearVideos) {
-          // Railway 환경: 새로운 벌크 삭제 함수 사용
-          await clearVideos()
-          console.log('✅ Railway: 벌크 삭제를 통한 모든 비디오 삭제 완료')
-        } else {
-          // 로컬 환경: 개별 삭제 방식 사용
-          const videoIds = media.filter(m => m.type === 'video').map(m => m.id)
-          console.log(`🗑️ ${videoIds.length}개 비디오 삭제 시작...`)
-
-          for (const id of videoIds) {
-            await removeMedia(id)
-          }
-
-          console.log(`✅ Local: 모든 비디오 삭제 완료`)
-        }
+        // Railway 환경: 벌크 삭제 함수 사용
+        await clearVideos()
+        console.log('✅ Railway: 벌크 삭제를 통한 모든 비디오 삭제 완료')
 
         // 통계 새로고침
         await refreshStats()
@@ -491,7 +458,7 @@ ${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' :
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Storage Type:</span>
-            <span className="font-medium">{usingRailway ? 'Railway Volume + PostgreSQL' : 'IndexedDB (Local)'}</span>
+            <span className="font-medium">Railway Volume + PostgreSQL</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Supported Image Formats:</span>
@@ -528,8 +495,8 @@ ${usingRailway ? '🚂 Railway 환경: DB와 파일시스템 동기화 완료' :
       <div className="bg-blue-50 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-blue-900 mb-3">💡 Tips</h3>
         <ul className="space-y-2 text-sm text-blue-800">
-          <li>• {usingRailway ? 'All media is stored in Railway Volume with PostgreSQL metadata' : 'All media is stored locally in IndexedDB'}</li>
-          <li>• {usingRailway ? 'Data persists on Railway cloud platform' : 'Data is stored locally in your browser'}</li>
+          <li>• All media is stored in Railway Volume with PostgreSQL metadata</li>
+          <li>• Data persists on Railway cloud platform</li>
           <li>• Use separate image/video tabs for organized uploads</li>
           <li>• Press Ctrl+U anywhere for quick upload access</li>
           <li>• Large files are automatically optimized for performance</li>

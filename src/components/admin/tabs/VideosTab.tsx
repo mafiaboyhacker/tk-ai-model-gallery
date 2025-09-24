@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import AdminModelCard from '@/components/AdminModelCard'
 import UploadProgressPanel from '@/components/admin/UploadProgressPanel'
 import type { UploadProgressEvent } from '@/types'
@@ -21,26 +21,25 @@ export default function VideosTab() {
     removeMedia,
     loadMedia,
     updateCustomName,
-    usingRailway,
     uploadQueue = [],
     overallProgress = 0,
     isClearingQueue = false,
     clearUploadQueue,
     clearUploadQueueByType
-  } = useEnvironmentStore()
+  } = useRailwayMediaStore()
 
   useEffect(() => {
     const initializeMedia = async () => {
       try {
-        console.log(`🔄 비디오 탭: ${usingRailway ? 'Railway' : 'Local'}에서 미디어 로드 중...`)
+        console.log('🔄 비디오 탭: Railway에서 미디어 로드 중...')
         await loadMedia()
       } catch (error) {
-        console.error(`❌ 비디오 탭: ${usingRailway ? 'Railway' : 'Local'} 로드 실패:`, error)
+        console.error('❌ 비디오 탭: Railway 로드 실패:', error)
       }
     }
 
     initializeMedia()
-  }, [loadMedia, usingRailway])
+  }, [loadMedia])
 
   const videos = media.filter((item) => item.type === 'video')
 

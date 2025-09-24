@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import VideoPlayer from '@/components/VideoPlayer'
 import useMediaObjectUrl from '@/hooks/useMediaObjectUrl'
 
@@ -19,7 +19,7 @@ export default function ModelDetailPage() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [isContactOpen, setIsContactOpen] = useState(false)
   const contactRef = useRef<HTMLDivElement>(null)
-  const { media: uploadedMedia, loadMedia } = useEnvironmentStore()
+  const { media: uploadedMedia, loadMedia } = useRailwayMediaStore()
   // updateCustomName은 어드민 페이지에서만 사용 (메인 페이지에서 제거)
 
   const resolvedMediaSource = useMediaObjectUrl({
@@ -76,10 +76,10 @@ export default function ModelDetailPage() {
 
     const initializeMedia = async () => {
       try {
-        console.log('🔄 모델 상세 페이지: 환경 감지 시스템으로 미디어 로드 중...')
+        console.log('🔄 모델 상세 페이지: Railway 미디어 로드 중...')
         await loadMedia()
       } catch (error) {
-        console.error('❌ 모델 상세 페이지: 미디어 로드 실패:', error)
+        console.error('❌ 모델 상세 페이지: Railway 미디어 로드 실패:', error)
       }
     }
 

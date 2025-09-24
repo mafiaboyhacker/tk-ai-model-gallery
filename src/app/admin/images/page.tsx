@@ -2,30 +2,27 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import ImagesTab from '@/components/admin/tabs/ImagesTab'
 
 export default function AdminImagesPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia, isInitialized, usingRailway } = useEnvironmentStore()
+  const { media, loadMedia } = useRailwayMediaStore()
 
   useEffect(() => {
     const initializeMedia = async () => {
-      // 환경 초기화가 완료될 때까지 대기
-      if (!isInitialized) return
-
       try {
         await loadMedia()
-        console.log(`✅ 어드민 이미지: ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 성공:`, media.length, '개')
+        console.log(`✅ Admin Railway 미디어 로드 성공:`, media.length, '개')
       } catch (error) {
-        console.error(`❌ 어드민 이미지: ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 실패:`, error)
+        console.error(`❌ Admin Railway 미디어 로드 실패:`, error)
       } finally {
         setIsLoaded(true)
       }
     }
 
     initializeMedia()
-  }, [loadMedia, isInitialized, usingRailway])
+  }, [])
 
   // 탭별 미디어 카운트 계산
   const imageCount = media.filter(m => m.type === 'image').length
@@ -44,14 +41,13 @@ export default function AdminImagesPage() {
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            {media.length > 0 && (
-              <div className="text-sm text-gray-300 text-right">
-                <div className="font-medium">{media.length} total files</div>
-                <div className="text-xs text-gray-400">
-                  {usingRailway ? 'Railway Storage' : 'Local Storage'}
-                </div>
+            {/* 스토리지 상태 표시 */}
+            <div className="text-sm text-gray-300 text-right">
+              <div className="font-medium">{media.length} total files</div>
+              <div className="text-xs text-gray-400">
+                🚀 Railway PostgreSQL
               </div>
-            )}
+            </div>
             <Link
               href="/"
               className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"

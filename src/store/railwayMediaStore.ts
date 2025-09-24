@@ -56,7 +56,11 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       }
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`⚠️ Railway: API 실패 (${response.status}), 빈 배열로 fallback`)
+        }
+        set({ media: [], isLoading: false })
+        return
       }
 
       const data = await response.json()
@@ -65,7 +69,11 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to load media')
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`⚠️ Railway: API 실패 (${data.error}), 빈 배열로 fallback`)
+        }
+        set({ media: [], isLoading: false })
+        return
       }
 
       // 🚀 API 데이터를 Gallery 형식으로 변환 (title → customName 매핑)

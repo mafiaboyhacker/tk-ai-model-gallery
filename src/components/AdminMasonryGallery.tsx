@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Masonry from 'react-responsive-masonry'
 import AdminModelCard from './AdminModelCard'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 
 interface Model {
   id: string
@@ -28,7 +28,7 @@ interface AdminMasonryGalleryProps {
 export default function AdminMasonryGallery({ models, loading = false, onNameUpdate }: AdminMasonryGalleryProps) {
   const [columnsCount, setColumnsCount] = useState(2)
   const [mounted, setMounted] = useState(false)
-  const { removeMedia, usingRailway } = useEnvironmentStore()
+  const { removeMedia } = useRailwayMediaStore()
 
   useEffect(() => {
     setMounted(true)
@@ -37,14 +37,14 @@ export default function AdminMasonryGallery({ models, loading = false, onNameUpd
   // 미디어 삭제 핸들러
   const handleDeleteMedia = useCallback(async (mediaId: string) => {
     try {
-      const storageType = usingRailway ? 'Railway' : 'IndexedDB'
+      const storageType = 'Railway'
       console.log(`🗑️ ${storageType}를 통한 미디어 삭제 중:`, mediaId)
       await removeMedia(mediaId)
       console.log(`✅ ${storageType} 미디어 삭제 완료:`, mediaId)
     } catch (error) {
       console.error('❌ 미디어 삭제 실패:', error)
     }
-  }, [removeMedia, usingRailway])
+  }, [removeMedia])
 
   // props로 받은 models 데이터만 사용 (중복 제거)
   const allMedia = useMemo(() => {

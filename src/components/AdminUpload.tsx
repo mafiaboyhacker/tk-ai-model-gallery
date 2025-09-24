@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import UploadProgressPanel from '@/components/admin/UploadProgressPanel'
 import type { UploadProgressEvent } from '@/types'
 
@@ -29,11 +29,10 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
 
   const {
     addMedia,
-    usingRailway,
     uploadQueue = [],
     overallProgress = 0,
     clearUploadQueue
-  } = useEnvironmentStore()
+  } = useRailwayMediaStore()
 
   const handleProgressEvent = useCallback((event: UploadProgressEvent) => {
       const { overallProgress, fileName, processed, total, fileProgress, status, error } = event
@@ -88,7 +87,7 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
         setCurrentFile('완료!')
         setFileProgress(100)
 
-        console.log(`✅ ${usingRailway ? 'Railway' : 'Local'} 업로드 완료: ${fileArray.length}개 파일`)
+        console.log(`✅ Railway 업로드 완료: ${fileArray.length}개 파일`)
 
         await new Promise((resolve) => setTimeout(resolve, 400))
         setUploading(false)
@@ -101,7 +100,7 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
         alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
     },
-    [addMedia, handleProgressEvent, onClose, usingRailway]
+    [addMedia, handleProgressEvent, onClose]
   )
 
   const handleDrop = useCallback(
@@ -143,9 +142,7 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Admin Upload</h2>
             <p className="text-sm text-gray-500 mt-1">
-              {usingRailway
-                ? 'Railway Storage로 업로드합니다.'
-                : '로컬 IndexedDB로 업로드합니다.'}
+              Railway Storage로 업로드합니다.
             </p>
           </div>
           <button
@@ -201,7 +198,7 @@ export default function AdminUpload({ isVisible, onClose }: AdminUploadProps) {
 
                 <div className="flex items-center justify-center space-x-2 pt-2 text-sm text-gray-600">
                   <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                  <span>{usingRailway ? 'Railway Storage' : 'Local Storage'} 업로드 중...</span>
+                  <span>Railway Storage 업로드 중...</span>
                 </div>
               </div>
 

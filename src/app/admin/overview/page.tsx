@@ -2,30 +2,28 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useEnvironmentStore } from '@/hooks/useEnvironmentStore'
+import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import OverviewTab from '@/components/admin/tabs/OverviewTab'
 import VersionDisplay from '@/components/admin/VersionDisplay'
 
 export default function AdminOverviewPage() {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { media, loadMedia, isInitialized, usingRailway } = useEnvironmentStore()
+  const { media, loadMedia } = useRailwayMediaStore()
 
   useEffect(() => {
     const initializeMedia = async () => {
-      if (!isInitialized) return
-
       try {
         await loadMedia()
-        console.log(`✅ Admin ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 성공:`, media.length, '개')
+        console.log(`✅ Admin Railway 미디어 로드 성공:`, media.length, '개')
       } catch (error) {
-        console.error(`❌ Admin ${usingRailway ? 'Railway' : 'Local'} 미디어 로드 실패:`, error)
+        console.error(`❌ Admin Railway 미디어 로드 실패:`, error)
       } finally {
         setIsLoaded(true)
       }
     }
 
     initializeMedia()
-  }, [loadMedia, isInitialized, usingRailway])
+  }, [])
 
   // 탭별 미디어 카운트 계산
   const imageCount = media.filter(m => m.type === 'image').length
@@ -48,7 +46,7 @@ export default function AdminOverviewPage() {
             <div className="text-sm text-gray-300 text-right">
               <div className="font-medium">{media.length} total files</div>
               <div className="text-xs text-gray-400">
-                {usingRailway ? '🚀 Railway PostgreSQL' : '💾 Local IndexedDB'}
+                🚀 Railway PostgreSQL
               </div>
             </div>
 
