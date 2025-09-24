@@ -48,36 +48,35 @@ export default function OverviewTab() {
         const stats = await getStorageStats()
 
         // Railway 환경에서는 실제 media 배열과 비교하여 검증
-          const actualImages = media.filter(m => m.type === 'image').length
-          const actualVideos = media.filter(m => m.type === 'video').length
+        const actualImages = media.filter(m => m.type === 'image').length
+        const actualVideos = media.filter(m => m.type === 'video').length
 
-          console.log('🔍 Railway 환경 통계 검증:', {
-            'getStorageStats 결과': stats,
-            '실제 media 배열': {
-              total: media.length,
-              images: actualImages,
-              videos: actualVideos
-            },
-            '일치 여부': {
-              count: stats.count === media.length,
-              images: stats.images === actualImages,
-              videos: stats.videos === actualVideos
-            }
-          })
-
-          // Railway 환경에서 불일치 발견 시 실제 데이터 우선 사용
-          if (stats.count !== media.length || stats.images !== actualImages || stats.videos !== actualVideos) {
-            console.log('⚠️ Railway 통계 불일치 감지 - 실제 데이터 사용')
-            const correctedStats = {
-              count: media.length,
-              estimatedSize: stats.estimatedSize, // 파일 크기는 getStorageStats 사용
-              images: actualImages,
-              videos: actualVideos
-            }
-            setStorageStats(correctedStats)
-            console.log('✅ 수정된 통계 적용:', correctedStats)
-            return
+        console.log('🔍 Railway 환경 통계 검증:', {
+          'getStorageStats 결과': stats,
+          '실제 media 배열': {
+            total: media.length,
+            images: actualImages,
+            videos: actualVideos
+          },
+          '일치 여부': {
+            count: stats.count === media.length,
+            images: stats.images === actualImages,
+            videos: stats.videos === actualVideos
           }
+        })
+
+        // Railway 환경에서 불일치 발견 시 실제 데이터 우선 사용
+        if (stats.count !== media.length || stats.images !== actualImages || stats.videos !== actualVideos) {
+          console.log('⚠️ Railway 통계 불일치 감지 - 실제 데이터 사용')
+          const correctedStats = {
+            count: media.length,
+            estimatedSize: stats.estimatedSize, // 파일 크기는 getStorageStats 사용
+            images: actualImages,
+            videos: actualVideos
+          }
+          setStorageStats(correctedStats)
+          console.log('✅ 수정된 통계 적용:', correctedStats)
+          return
         }
 
         setStorageStats({
