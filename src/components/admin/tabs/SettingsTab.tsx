@@ -12,8 +12,6 @@ export default function SettingsTab() {
     removeMedia,
     loadMedia,
     getStorageStats,
-    ratioConfig,
-    updateRatioConfig,
     shuffleByMode,
     clearAllMedia,
     clearVideos,
@@ -187,122 +185,32 @@ export default function SettingsTab() {
       {/* 갤러리 레이아웃 설정 */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 갤러리 레이아웃 설정</h3>
-        <p className="text-gray-600 mb-6">메인 갤러리 페이지에서 미디어가 표시되는 방식을 설정합니다</p>
-
-        {/* 배치 모드 선택 */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            레이아웃 모드
-          </label>
-          <div className="space-y-3">
-            <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-              <input
-                type="radio"
-                checked={ratioConfig?.shuffleMode === 'ratio-based'}
-                onChange={() => {
-                  updateRatioConfig?.({ shuffleMode: 'ratio-based' })
-                  setTimeout(() => shuffleByMode?.(), 100)
-                }}
-                className="mr-3"
-              />
-              <div>
-                <div className="font-medium text-gray-900">비율 기반 배치</div>
-                <div className="text-sm text-gray-600">비디오를 상단 우선 배치, 비율 조절 가능</div>
-              </div>
-            </label>
-            <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-              <input
-                type="radio"
-                checked={ratioConfig?.shuffleMode === 'random'}
-                onChange={() => {
-                  updateRatioConfig?.({ shuffleMode: 'random' })
-                  setTimeout(() => shuffleByMode?.(), 100)
-                }}
-                className="mr-3"
-              />
-              <div>
-                <div className="font-medium text-gray-900">완전 랜덤</div>
-                <div className="text-sm text-gray-600">페이지 로드마다 완전히 랜덤하게 섞어서 배치</div>
-              </div>
-            </label>
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h4 className="text-sm font-medium text-blue-800 mb-1">자동 가중치 배치 적용됨</h4>
+              <p className="text-sm text-blue-600">
+                갤러리는 자동으로 <strong>가중치 랜덤 배치</strong>를 사용하여 동영상(25% 목표)과 이미지를 골고루 섞어서 표시합니다.
+                <br />
+                동영상 80개, 이미지 320개 기준으로 최적화된 비율입니다.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* 비율 기반 모드일 때만 추가 설정 표시 */}
-        {ratioConfig?.shuffleMode === 'ratio-based' && (
-          <div className="space-y-6 p-4 bg-gray-50 rounded-lg">
-            {/* 비디오 비율 설정 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                비디오 비율: <span className="font-bold text-blue-600">{((ratioConfig?.videoRatio || 0) * 100).toFixed(0)}%</span>
-              </label>
-              <input
-                type="range"
-                min="0.05"
-                max="0.5"
-                step="0.05"
-                value={ratioConfig?.videoRatio || 0}
-                onChange={(e) => {
-                  updateRatioConfig?.({ videoRatio: parseFloat(e.target.value) })
-                  setTimeout(() => shuffleByMode?.(), 100)
-                }}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>5%</span>
-                <span className="text-gray-700 font-medium">
-                  권장: 15% (일반적인 콘텐츠 비율에 맞춤)
-                </span>
-                <span>50%</span>
-              </div>
-            </div>
-
-            {/* 상단 비디오 개수 설정 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                상단 우선 비디오: <span className="font-bold text-purple-600">{ratioConfig?.topVideoCount || 0}개</span>
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                step="1"
-                value={ratioConfig?.topVideoCount || 0}
-                onChange={(e) => {
-                  updateRatioConfig?.({ topVideoCount: parseInt(e.target.value) })
-                  setTimeout(() => shuffleByMode?.(), 100)
-                }}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>1개</span>
-                <span className="text-gray-700 font-medium">
-                  항상 상단에 배치되는 비디오 개수
-                </span>
-                <span>10개</span>
-              </div>
-            </div>
-
-            {/* 현재 설정 요약 */}
-            <div className="mt-4 p-3 bg-white border border-gray-200 rounded">
-              <div className="text-sm text-gray-600">
-                <strong>현재 배치 설정:</strong> 상단 {ratioConfig?.topVideoCount || 0}개 비디오 고정,
-                하단에 {((ratioConfig?.videoRatio || 0) * 100).toFixed(0)}% 비디오와 이미지 혼합 배치
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 즉시 적용 버튼 */}
+        {/* 갤러리 새로고침 버튼 */}
         <div className="mt-6 pt-4 border-t border-gray-200">
           <button
-            onClick={() => shuffleByMode?.()}
+            onClick={() => shuffleByMode?.('weighted-random')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span>지금 배치 적용</span>
+            <span>갤러리 다시 섞기</span>
           </button>
         </div>
       </div>

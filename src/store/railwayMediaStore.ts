@@ -29,11 +29,11 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
   overallProgress: 0,
   isClearingQueue: false,
 
-  // 기본 비율 설정
+  // 기본 가중치 설정 (동영상이 더 자주 노출되도록)
   ratioConfig: {
-    videoRatio: 0.50,
-    topVideoCount: 15,
-    shuffleMode: 'ratio-based' as const
+    videoRatio: 0.25, // 동영상 25% 노출 (실제 20%보다 높게)
+    topVideoCount: 20, // 최상위 동영상 20개
+    shuffleMode: 'weighted-random' as const // 가중치 랜덤 배치
   },
 
   // 미디어 로드
@@ -415,7 +415,7 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     }
   },
 
-  // 비율 기반 배치 (랜덤 섞기) - URL 무결성 보장
+  // 가중치 랜덤 배치 - 동영상이 더 자주 나타나도록 조정
   arrangeByRatio: () => {
     const { media, ratioConfig } = get()
     if (!media.length || !ratioConfig) return
@@ -430,7 +430,6 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     // 🚀 URL 무결성 검증 및 복구
     const validateUrls = (mediaArray: typeof media) => {
       return mediaArray.map(item => {
-        // URL이 손상되었거나 누락된 경우 복구
         if (!item.url || !item.url.includes('/api/railway/storage/file/')) {
           const fixedUrl = `/api/railway/storage/file/${item.type}/${item.fileName}`
           if (process.env.NODE_ENV === 'development') {
@@ -442,28 +441,45 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       })
     }
 
-    // URL 검증 후 랜덤 배치
     const validatedVideos = validateUrls(videos)
     const validatedImages = validateUrls(images)
 
-    const shuffledVideos = [...validatedVideos].sort(() => Math.random() - 0.5)
+    // 🎯 가중치 랜덤 배치 알고리즘
+    const targetVideoRatio = ratioConfig.videoRatio || 0.25 // 25% 목표
+    const totalCount = media.length
+    const targetVideoCount = Math.floor(totalCount * targetVideoRatio)
+
+    // 동영상 풀을 확장 (가중치 적용을 위해)
+    const expandedVideos = []
+    if (validatedVideos.length > 0) {
+      // 목표 개수만큼 동영상을 반복해서 확장
+      for (let i = 0; i < targetVideoCount; i++) {
+        expandedVideos.push(validatedVideos[i % validatedVideos.length])
+      }
+    }
+
+    // 나머지는 이미지로 채우기
+    const remainingCount = totalCount - expandedVideos.length
     const shuffledImages = [...validatedImages].sort(() => Math.random() - 0.5)
+    const selectedImages = shuffledImages.slice(0, remainingCount)
 
-    // 모든 비디오와 이미지를 사용 (제한 없음)
-    const allMedia = [...shuffledVideos, ...shuffledImages]
-    const arrangedMedia = allMedia.sort(() => Math.random() - 0.5)
+    // 전체 배열을 랜덤 섞기
+    const arrangedMedia = [...expandedVideos, ...selectedImages].sort(() => Math.random() - 0.5)
 
-    // 🚀 상태 업데이트 추가
     set({ media: arrangedMedia })
+
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🎯 Railway: 비율 기반 배치 완료 - 비디오 ${validatedVideos.length}개, 이미지 ${validatedImages.length}개`)
+      const finalVideoCount = arrangedMedia.filter(m => m.type === 'video').length
+      const finalImageCount = arrangedMedia.filter(m => m.type === 'image').length
+      const actualVideoRatio = (finalVideoCount / arrangedMedia.length * 100).toFixed(1)
+      console.log(`🎯 Railway: 가중치 배치 완료 - 비디오 ${finalVideoCount}개(${actualVideoRatio}%), 이미지 ${finalImageCount}개`)
     }
   },
 
-  // 모드별 셔플 - URL 무결성 보장
-  shuffleByMode: (mode?: 'random' | 'ratio-based' | 'video-first' | 'image-first') => {
+  // 모드별 셔플 - 가중치 랜덤이 기본
+  shuffleByMode: (mode?: 'weighted-random' | 'random' | 'video-first' | 'image-first') => {
     const { media, arrangeByRatio, ratioConfig } = get()
-    const shuffleMode = mode || ratioConfig?.shuffleMode || 'random'
+    const shuffleMode = mode || ratioConfig?.shuffleMode || 'weighted-random'
 
     // 🚀 URL 무결성 검증 함수 (공통 사용)
     const validateUrls = (mediaArray: typeof media) => {
@@ -482,9 +498,9 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     let arrangedMedia: typeof media
 
     switch (shuffleMode) {
-      case 'ratio-based':
+      case 'weighted-random':
         if (arrangeByRatio) {
-          arrangeByRatio() // arrangeByRatio는 내부에서 set() 호출하고 URL 검증 포함
+          arrangeByRatio() // arrangeByRatio가 가중치 랜덤 로직 처리
           return
         } else {
           arrangedMedia = validateUrls([...media].sort(() => Math.random() - 0.5))

@@ -8,7 +8,7 @@ import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import type { Media } from '@/types'
 
 export default function Home() {
-  const { media, loadMedia } = useRailwayMediaStore()
+  const { media, loadMedia, shuffleByMode } = useRailwayMediaStore()
 
   // 데이터 변환
   const convertedMedia: Media[] = media.map(item => ({
@@ -25,9 +25,14 @@ export default function Home() {
     resolution: item.resolution
   }))
 
-  // 미디어 로드
+  // 미디어 로드 후 가중치 랜덤 배치 적용
   useEffect(() => {
-    loadMedia()
+    const initializeMedia = async () => {
+      await loadMedia()
+      // 가중치 랜덤 배치 적용 (동영상이 더 자주 나타나도록)
+      shuffleByMode('weighted-random')
+    }
+    initializeMedia()
   }, [])
 
   return (
