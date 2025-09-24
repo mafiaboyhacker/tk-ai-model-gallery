@@ -83,18 +83,21 @@ function SafeModelCard({
     }
 
     let timeoutId: NodeJS.Timeout | null = null
+    let isMounted = true // 컴포넌트 마운트 상태 추적
 
     const observer = new IntersectionObserver(
       entries => {
         const entry = entries[0]
-        if (!entry) return
+        if (!entry || !isMounted) return
 
         // Debounce to prevent rapid state changes
         if (timeoutId) clearTimeout(timeoutId)
 
         timeoutId = setTimeout(() => {
-          const isVisible = entry.isIntersecting && entry.intersectionRatio > 0.5
-          setIsVideoInView(isVisible)
+          if (isMounted) { // 상태 업데이트 전 마운트 상태 재확인
+            const isVisible = entry.isIntersecting && entry.intersectionRatio > 0.5
+            setIsVideoInView(isVisible)
+          }
         }, 150)
       },
       {
@@ -106,6 +109,7 @@ function SafeModelCard({
     observer.observe(currentCard)
 
     return () => {
+      isMounted = false // 언마운트 시 플래그 설정
       observer.disconnect()
       if (timeoutId) clearTimeout(timeoutId)
     }

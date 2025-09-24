@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
 import {
   Masonry,
   usePositioner,
@@ -11,25 +11,6 @@ import {
 import SafeModelCard from './SafeModelCard'
 // import { useImageStore } from '@/store/imageStore' // 더 이상 사용하지 않음
 
-// 🚀 Performance: Custom debounce hook
-const useDebounce = <T extends (...args: unknown[]) => void>(callback: T, delay: number) => {
-  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
-
-  const debouncedCallback = useCallback(
-    (...args: Parameters<T>) => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer)
-      }
-      const newTimer = setTimeout(() => {
-        callback(...args)
-      }, delay)
-      setDebounceTimer(newTimer)
-    },
-    [callback, delay, debounceTimer]
-  )
-
-  return debouncedCallback
-}
 
 interface Media {
   id: string
@@ -129,8 +110,8 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     rowGutter: 4
   }, [width, windowWidth, columnConfig.columnWidth])
 
-  // 🚀 Resize observer for dynamic height changes (client-only)
-  const resizeObserver = mounted ? useResizeObserver(positioner) : null
+  // 🚀 Resize observer for dynamic height changes
+  const resizeObserver = useResizeObserver(positioner)
 
   // Dynamic overscanBy calculation based on screen size and performance
   const dynamicOverscanBy = useMemo(() => {

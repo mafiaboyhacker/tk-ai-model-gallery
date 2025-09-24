@@ -66,12 +66,22 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // 성능 최적화 헤더
+  // 성능 최적화 헤더 (로컬 개발용 완화)
   async headers() {
+    const isDevelopment = process.env.NODE_ENV === 'development'
+
     return [
+      // 개발환경에서는 CSP 완화, 프로덕션에서는 보안 강화
       {
         source: '/:path*',
-        headers: [
+        headers: isDevelopment ? [
+          // 로컬 개발용: 최소한의 보안 헤더만 적용
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ] : [
+          // 프로덕션용: 전체 보안 헤더 적용
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
