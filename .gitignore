@@ -23,8 +23,8 @@ node_modules/
 .tmp.drivedownload/
 
 # 프로젝트와 관련 없는 임시 파일들
-image/
-video/
+/image/
+/video/
 test-image.txt
 test-upload/
 nul
