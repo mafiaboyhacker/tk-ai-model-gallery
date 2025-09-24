@@ -427,15 +427,15 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       console.log(`📊 Railway: 미디어 분석: 총 ${media.length}개 (비디오 ${videos.length}개, 이미지 ${images.length}개)`)
     }
 
-    // 🚀 URL 무결성 검증 및 복구
+    // 🚀 URL 직접 서빙으로 변경 (API 라우트 우회)
     const validateUrls = (mediaArray: typeof media) => {
       return mediaArray.map(item => {
-        if (!item.url || !item.url.includes('/api/railway/storage/file/')) {
-          const fixedUrl = `/api/railway/storage/file/${item.type}/${item.fileName}`
+        if (!item.url || item.url.includes('/api/railway/storage/file/')) {
+          const directUrl = `/uploads/${item.type}/${item.fileName}`
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔧 Railway: URL 복구 - ${item.fileName}: ${item.url} → ${fixedUrl}`)
+            console.log(`🔧 Railway: 직접 서빙 URL로 변경 - ${item.fileName}: ${item.url} → ${directUrl}`)
           }
-          return { ...item, url: fixedUrl }
+          return { ...item, url: directUrl }
         }
         return item
       })
@@ -481,15 +481,15 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     const { media, arrangeByRatio, ratioConfig } = get()
     const shuffleMode = mode || ratioConfig?.shuffleMode || 'weighted-random'
 
-    // 🚀 URL 무결성 검증 함수 (공통 사용)
+    // 🚀 URL 직접 서빙으로 변경 (공통 함수)
     const validateUrls = (mediaArray: typeof media) => {
       return mediaArray.map(item => {
-        if (!item.url || !item.url.includes('/api/railway/storage/file/')) {
-          const fixedUrl = `/api/railway/storage/file/${item.type}/${item.fileName}`
+        if (!item.url || item.url.includes('/api/railway/storage/file/')) {
+          const directUrl = `/uploads/${item.type}/${item.fileName}`
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔧 Railway: URL 복구 - ${item.fileName}: ${item.url} → ${fixedUrl}`)
+            console.log(`🔧 Railway: 직접 서빙 URL로 변경 - ${item.fileName}: ${item.url} → ${directUrl}`)
           }
-          return { ...item, url: fixedUrl }
+          return { ...item, url: directUrl }
         }
         return item
       })

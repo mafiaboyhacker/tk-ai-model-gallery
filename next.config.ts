@@ -32,19 +32,13 @@ const nextConfig: NextConfig = {
 
   // 🚀 500MB 파일 업로드 지원 - experimental 섹션 통합됨 (위에 있음)
 
-  // API Route 설정
+  // Railway Volume 직접 서빙을 위한 rewrites 설정
   async rewrites() {
     return [
+      // Railway 환경에서 /uploads를 정적 파일 API로 처리
       {
-        source: '/api/:path*',
-        destination: '/api/:path*',
-        has: [
-          {
-            type: 'header',
-            key: 'content-length',
-            value: '(?<size>.*)',
-          },
-        ],
+        source: '/uploads/:type/:filename',
+        destination: '/api/railway/storage/file/:type/:filename',
       },
     ]
   },

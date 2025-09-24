@@ -373,8 +373,8 @@ export async function GET(request: NextRequest) {
             if (existsSync(filePath)) {
               return {
                 ...media,
-                url: `/api/railway/storage/file/${media.type}/${media.fileName}`,
-                originalUrl: `/api/railway/storage/file/${media.type}/${media.fileName}`
+                url: `/uploads/${media.type}/${media.fileName}`,
+                originalUrl: `/uploads/${media.type}/${media.fileName}`
               }
             }
             return null
@@ -409,8 +409,8 @@ export async function GET(request: NextRequest) {
                 duration: null,
                 resolution: null,
                 uploadedAt: stats.birthtime,
-                url: `/api/railway/storage/file/image/${fileName}`,
-                originalUrl: `/api/railway/storage/file/image/${fileName}`
+                url: `/uploads/image/${fileName}`,
+                originalUrl: `/uploads/image/${fileName}`
               })
             } catch (e) {
               console.warn(`⚠️ 파일 처리 실패: ${fileName}`, e)
@@ -435,8 +435,8 @@ export async function GET(request: NextRequest) {
                 duration: null,
                 resolution: null,
                 uploadedAt: stats.birthtime,
-                url: `/api/railway/storage/file/video/${fileName}`,
-                originalUrl: `/api/railway/storage/file/video/${fileName}`
+                url: `/uploads/video/${fileName}`,
+                originalUrl: `/uploads/video/${fileName}`
               })
             } catch (e) {
               console.warn(`⚠️ 파일 처리 실패: ${fileName}`, e)
@@ -900,11 +900,11 @@ export async function POST(request: NextRequest) {
           invalidateCache('list')
           console.log('♻️ 업로드 완료 → 목록 캐시 무효화')
 
-          // 응답 데이터 구성
+          // 응답 데이터 구성 (직접 서빙 URL 사용)
           const responseData = {
             ...mediaRecord,
-            url: `/api/railway/storage/file/${mediaRecord.type}/${mediaRecord.fileName}`,
-            originalUrl: `/api/railway/storage/file/${mediaRecord.type}/${mediaRecord.fileName}`,
+            url: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
+            originalUrl: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
             processed: !!processedResult,
             processingInfo: processedResult ? {
               thumbnailUrl: finalMediaData.thumbnailUrl,
