@@ -21,13 +21,18 @@
 2. 빌드 로그에서는 정상 완료 메시지
 3. 실제 배포 상태는 FAILED
 
-### 🎯 가능한 원인들 (우선순위별)
-1. **PORT 환경변수 누락**: `next start --port ${PORT:-3000}` - Railway PORT 변수 없음
-2. **Heath Check**: `/api/health` 엔드포인트 문제
-3. **Database Connection**: PostgreSQL 연결 실패
-4. **Environment Variables**: NEXT_PUBLIC_ 변수가 빌드타임에 없을 수 있음
-5. **Module Resolution**: Node.js 모듈 찾기 실패
-6. **Memory/Resource**: 런타임 리소스 부족
+### 🎯 가능한 원인들 (우선순위별) - 업데이트
+1. ❌ ~~PORT 환경변수~~: 수정완료 (`next start`로 단순화)
+2. **ESLint 경고 → 에러**: Railway `CI=true` 환경에서 ESLint 경고가 빌드 실패 유발 ⭐
+3. **Heath Check**: `/api/health` 엔드포인트 문제
+4. **Database Connection**: PostgreSQL 연결 실패
+5. **Environment Variables**: NEXT_PUBLIC_ 변수가 빌드타임에 없을 수 있음
+6. **Module Resolution**: Node.js 모듈 찾기 실패
+7. **Memory/Resource**: 런타임 리소스 부족
+
+### ⭐ 최신 수정사항 (2025-09-25 19:50 KST)
+- **빌드 명령어 수정**: `CI=false next build` - ESLint 경고 무시
+- **이유**: Railway CI 환경에서 ESLint 경고가 빌드 실패를 유발하는 가장 흔한 원인
 
 ### 🔍 환경변수 상태
 - ✅ DATABASE_URL: 설정됨
