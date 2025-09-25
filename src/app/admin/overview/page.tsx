@@ -53,17 +53,19 @@ export default function AdminOverviewPage() {
             {/* 캐시 삭제 버튼 */}
             <button
               onClick={async () => {
-                if (confirm('⚠️ 모든 브라우저 저장소를 완전히 정리하시겠습니까?\n(IndexedDB, LocalStorage, 캐시 등 모든 데이터가 삭제됩니다)')) {
+                if (confirm('⚠️ 모든 미디어 파일을 완전히 삭제하시겠습니까?\n(DB의 모든 이미지와 비디오가 삭제됩니다)')) {
                   try {
-                    const response = await fetch('/api/force-clear-indexeddb', { method: 'POST' })
+                    const response = await fetch('/api/railway/storage?action=clear-all', { method: 'DELETE' })
                     const data = await response.json()
                     if (data.success) {
-                      // 스크립트 실행
-                      eval(data.script)
+                      alert(`✅ 삭제 완료: ${data.message}`)
+                      window.location.reload() // 페이지 새로고침
+                    } else {
+                      alert(`❌ 삭제 실패: ${data.error}`)
                     }
                   } catch (error) {
-                    console.error('캐시 삭제 실패:', error)
-                    alert('캐시 삭제에 실패했습니다.')
+                    console.error('미디어 삭제 실패:', error)
+                    alert('Failed to clear media. Please try again.')
                   }
                 }
               }}
