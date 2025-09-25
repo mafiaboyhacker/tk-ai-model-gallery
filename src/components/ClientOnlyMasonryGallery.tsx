@@ -314,6 +314,25 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     )
   }
 
+  // 🛡️ Empty Data Protection: Don't render Masonry with empty data
+  if (!safeItems || safeItems.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center space-y-4">
+            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">데이터를 불러오는 중입니다</h3>
+            <p className="text-gray-500">
+              잠시만 기다려주세요
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div ref={containerRef} className="container mx-auto px-4 py-8">
       <Masonry
