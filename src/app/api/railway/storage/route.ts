@@ -220,8 +220,8 @@ function getRailwayPaths() {
                     process.env.RAILWAY_VOLUME_MOUNT_PATH
 
   if (isRailway) {
-    // Railway 환경: Volume 루트 직접 사용
-    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
+    // Railway 환경: Volume 우선, 없으면 /app/uploads fallback
+    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/uploads'
     return {
       UPLOADS_DIR: volumeRoot,
       IMAGES_DIR: path.join(volumeRoot, 'images'),
@@ -260,13 +260,19 @@ async function ensureUploadDirs() {
     console.log(`📁 VIDEOS_DIR: ${VIDEOS_DIR}`)
     console.log(`🌍 RAILWAY_VOLUME_MOUNT_PATH: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
 
-    // Volume 루트 경로 강제 생성
-    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
+    // Volume 루트 경로 강제 생성 (fallback to /app/uploads)
+    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/uploads'
     if (!existsSync(volumeRoot)) {
-      console.log(`🏗️ Volume 루트 디렉토리 생성 중: ${volumeRoot}`)
+      console.log(`🏗️ 스토리지 루트 디렉토리 생성 중: ${volumeRoot}`)
       await mkdir(volumeRoot, { recursive: true })
-      console.log(`✅ Volume 루트 디렉토리 생성 완료: ${volumeRoot}`)
+      console.log(`✅ 스토리지 루트 디렉토리 생성 완료: ${volumeRoot}`)
     }
+
+    console.log(`📋 스토리지 루트 상태:`, {
+      volumeRoot,
+      exists: existsSync(volumeRoot),
+      hasVolumeEnv: !!process.env.RAILWAY_VOLUME_MOUNT_PATH
+    })
 
     if (!existsSync(UPLOADS_DIR)) {
       console.log(`📁 UPLOADS_DIR 생성 중: ${UPLOADS_DIR}`)
