@@ -205,8 +205,8 @@ const OptimizedImage = ({
       <Image
         src={optimizedSrc}
         alt={alt}
-        width={width}
-        height={height}
+        width={width || 400}
+        height={height || 300}
         className={`${className} transition-all duration-300 ease-out ${
           isLoading ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
         }`}
