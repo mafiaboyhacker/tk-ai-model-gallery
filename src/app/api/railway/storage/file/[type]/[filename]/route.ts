@@ -69,33 +69,40 @@ export async function GET(
     const targetDir = type === 'image' ? IMAGES_DIR : VIDEOS_DIR
     const filePath = path.join(targetDir, filename)
 
-    console.log(`🔍 파일 서빙 요청: ${type}/${filename}`)
-    console.log(`📁 UPLOADS_DIR: ${UPLOADS_DIR}`)
-    console.log(`📁 파일 경로: ${filePath}`)
-    console.log(`🌍 RAILWAY_VOLUME_MOUNT_PATH: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
-    console.log(`📂 파일 존재 여부: ${existsSync(filePath)}`)
+    // 개발환경에서만 상세 로그 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 파일 서빙 요청: ${type}/${filename}`)
+      console.log(`📁 UPLOADS_DIR: ${UPLOADS_DIR}`)
+      console.log(`📁 파일 경로: ${filePath}`)
+      console.log(`🌍 RAILWAY_VOLUME_MOUNT_PATH: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
+      console.log(`📂 파일 존재 여부: ${existsSync(filePath)}`)
+    }
 
-    // 디렉토리 구조 확인
-    try {
-      const { readdirSync } = require('fs')
-      if (process.env.RAILWAY_VOLUME_MOUNT_PATH) {
-        console.log(`📋 Volume 루트 디렉토리:`, readdirSync(process.env.RAILWAY_VOLUME_MOUNT_PATH))
-        const uploadsPath = path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
-        if (existsSync(uploadsPath)) {
-          console.log(`📋 uploads 디렉토리:`, readdirSync(uploadsPath))
-          const imagesPath = path.join(uploadsPath, 'images')
-          if (existsSync(imagesPath)) {
-            console.log(`📋 images 디렉토리:`, readdirSync(imagesPath))
+    // 개발환경에서만 디렉토리 구조 확인
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const { readdirSync } = require('fs')
+        if (process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+          console.log(`📋 Volume 루트 디렉토리:`, readdirSync(process.env.RAILWAY_VOLUME_MOUNT_PATH))
+          const uploadsPath = path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
+          if (existsSync(uploadsPath)) {
+            console.log(`📋 uploads 디렉토리:`, readdirSync(uploadsPath))
+            const imagesPath = path.join(uploadsPath, 'images')
+            if (existsSync(imagesPath)) {
+              console.log(`📋 images 디렉토리:`, readdirSync(imagesPath))
+            }
           }
         }
+      } catch (err) {
+        console.log(`❌ 디렉토리 구조 확인 실패:`, err)
       }
-    } catch (err) {
-      console.log(`❌ 디렉토리 구조 확인 실패:`, err)
     }
 
     // 🎯 정확한 파일 경로 확인 (업로드 API와 동일한 로직)
-    console.log(`🔍 파일 경로 확인: ${filePath}`)
-    console.log(`📂 파일 존재 여부: ${existsSync(filePath)}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 파일 경로 확인: ${filePath}`)
+      console.log(`📂 파일 존재 여부: ${existsSync(filePath)}`)
+    }
 
     if (!existsSync(filePath)) {
       // 🔍 추가 디버깅 정보
@@ -133,7 +140,9 @@ export async function GET(
       }, { status: 404 })
     }
 
-    console.log(`✅ 파일 발견: ${filePath}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ 파일 발견: ${filePath}`)
+    }
 
     // 파일 읽기
     const fileBuffer = await readFile(filePath)
