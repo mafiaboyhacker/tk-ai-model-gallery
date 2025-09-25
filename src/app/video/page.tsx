@@ -24,6 +24,7 @@ const ClientOnlyMasonryGallery = dynamic(
 
 // Disable static generation to prevent build-time prerendering errors
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function VideoPage() {
   const { media, loadMedia } = useRailwayMediaStore()
@@ -48,7 +49,7 @@ export default function VideoPage() {
   // 미디어 로드
   useEffect(() => {
     loadMedia()
-  }, [])
+  }, [loadMedia])
 
   return (
     <div className="min-h-screen bg-white">

@@ -37,14 +37,17 @@ function getRailwayPaths() {
 
 const { UPLOADS_DIR, IMAGES_DIR, VIDEOS_DIR, isRailway } = getRailwayPaths()
 
-console.log('🔧 파일 서빙 Railway 경로 설정:', {
-  isRailway,
-  UPLOADS_DIR,
-  IMAGES_DIR,
-  VIDEOS_DIR,
-  RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
-  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
-})
+// 개발환경에서만 로그 출력
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔧 파일 서빙 Railway 경로 설정:', {
+    isRailway,
+    UPLOADS_DIR,
+    IMAGES_DIR,
+    VIDEOS_DIR,
+    RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
+    RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
+  })
+}
 
 export async function GET(
   request: NextRequest,

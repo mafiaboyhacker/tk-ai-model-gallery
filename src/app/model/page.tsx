@@ -23,6 +23,7 @@ const ClientOnlyMasonryGallery = dynamic(
 
 // Disable static generation to prevent build-time prerendering errors
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function ModelPage() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -62,7 +63,7 @@ export default function ModelPage() {
     }
 
     initializeMedia()
-  }, [])
+  }, [loadMedia, shuffleMedia])
 
   return (
     <div className="min-h-screen bg-white">

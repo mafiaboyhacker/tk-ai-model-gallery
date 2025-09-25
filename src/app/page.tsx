@@ -25,6 +25,7 @@ const ClientOnlyMasonryGallery = dynamic(
 
 // Disable static generation to prevent build-time prerendering errors
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function Home() {
   const { media, loadMedia, shuffleByMode } = useRailwayMediaStore()
@@ -62,7 +63,7 @@ export default function Home() {
       shuffleByMode('weighted-random')
     }
     initializeMedia()
-  }, [])
+  }, [loadMedia, shuffleByMode])
 
   return (
     <div className="min-h-screen bg-white">

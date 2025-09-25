@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     // RAILPACK 빌더와 충돌 방지를 위해 임시 비활성화
     // optimizeCss: true,
   },
+
+  // 빌드 최적화 설정 (Next.js 15 기본 설정 사용)
   eslint: {
     // Railway 배포 시 린트 에러 무시 (로컬에서는 체크)
     ignoreDuringBuilds: process.env.RAILWAY_ENVIRONMENT === 'production',
