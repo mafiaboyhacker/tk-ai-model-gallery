@@ -563,6 +563,35 @@ export async function GET(request: NextRequest) {
           timestamp: new Date().toISOString()
         })
 
+      case 'force-clear-db':
+        // 🚨 강제 DB 정리 (안전 모드)
+        try {
+          console.log('🚨 강제 DB 정리 시작...')
+
+          // PostgreSQL에서 Media 테이블 완전 삭제
+          const deleteResult = await prisma.media.deleteMany({})
+          console.log(`✅ 강제 DB 정리 완료: ${deleteResult.count}개 레코드 삭제`)
+
+          // 캐시 완전 무효화
+          invalidateCache()
+          console.log('🧹 모든 캐시 무효화 완료')
+
+          return NextResponse.json({
+            success: true,
+            message: `강제 DB 정리 완료: ${deleteResult.count}개 레코드 삭제`,
+            deletedRecords: deleteResult.count,
+            timestamp: new Date().toISOString()
+          })
+        } catch (forceError) {
+          console.error('❌ 강제 DB 정리 실패:', forceError)
+          return NextResponse.json({
+            success: false,
+            error: '강제 DB 정리 실패',
+            details: forceError instanceof Error ? forceError.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+          }, { status: 500 })
+        }
+
       case 'sync':
         // 🔄 수동 DB-파일 동기화
         console.log('🔄 수동 동기화 요청됨')
