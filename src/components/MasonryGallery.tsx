@@ -98,11 +98,11 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
         left: 0,
         element: containerRef.current || document.documentElement,
         width: width > 0 ? width : windowWidth,
-        height: height > 0 ? height : windowHeight
+        height: windowHeight // height 변수가 정의되지 않았으므로 windowHeight 사용
       }
     }
     return offset
-  }, [offset, width, height, windowWidth, windowHeight])
+  }, [offset, width, windowWidth, windowHeight])
 
   const { scrollTop, isScrolling } = useScroller(safeOffset)
 

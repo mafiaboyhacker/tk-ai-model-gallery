@@ -7,6 +7,9 @@ import DebugPanel from '@/components/DebugPanel'
 import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import type { Media } from '@/types'
 
+// Disable static generation to prevent build-time prerendering errors
+export const dynamic = 'force-dynamic'
+
 export default function VideoPage() {
   const { media, loadMedia } = useRailwayMediaStore()
 

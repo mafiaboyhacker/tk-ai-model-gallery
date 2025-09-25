@@ -6,6 +6,9 @@ import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
 import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 
+// Disable static generation to prevent build-time prerendering errors
+export const dynamic = 'force-dynamic'
+
 export default function ModelPage() {
   const [isLoaded, setIsLoaded] = useState(false)
   const { media, loadMedia, shuffleMedia } = useRailwayMediaStore()
