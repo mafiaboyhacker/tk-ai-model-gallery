@@ -237,29 +237,71 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     )
   }
 
-  // 🛡️ SafeItems: Enhanced WeakMap protection
+  // 🛡️ SafeItems: Enhanced WeakMap protection with comprehensive validation
   const safeItems = allMedia
     .filter((item, index) => {
-      const isValid = item &&
-                     typeof item === 'object' &&
-                     item !== null &&
-                     (item.id !== null && item.id !== undefined)
+      // Comprehensive WeakMap compatibility validation
+      const isValidObject = item &&
+                           typeof item === 'object' &&
+                           item !== null &&
+                           !Array.isArray(item)
 
-      if (!isValid && process.env.NODE_ENV === 'development') {
-        console.warn(`🚨 Filtering out invalid item at index ${index}:`, item)
+      const hasValidId = item?.id !== null &&
+                        item?.id !== undefined &&
+                        (typeof item?.id === 'string' || typeof item?.id === 'number')
+
+      const hasValidDimensions = typeof item?.width === 'number' &&
+                               typeof item?.height === 'number' &&
+                               item?.width > 0 &&
+                               item?.height > 0
+
+      const isValid = isValidObject && hasValidId && hasValidDimensions
+
+      if (!isValid) {
+        console.warn(`🚨 Filtering out invalid item at index ${index}:`, {
+          item,
+          isValidObject,
+          hasValidId,
+          hasValidDimensions,
+          id: item?.id,
+          type: typeof item,
+        })
       }
 
       return isValid
     })
     .map((item, index) => {
-      return {
-        ...item,
+      // Create a completely new object to ensure WeakMap compatibility
+      const safeItem = {
+        id: String(item.id), // Ensure string ID
+        name: String(item.name || `Media ${item.id}`),
+        imageUrl: String(item.imageUrl || ''),
+        originalUrl: String(item.originalUrl || ''),
+        imageAlt: String(item.imageAlt || `Media: ${item.name}`),
+        category: String(item.category || 'media'),
+        width: Number(item.width) || 300,
+        height: Number(item.height) || 300,
+        type: item.type || 'image',
+        duration: item.duration,
+        resolution: item.resolution,
+        // WeakMap safety markers
         __weakMapSafe: true,
         __index: index,
         __timestamp: Date.now(),
-        id: String(item.id),
+        __validated: true,
+      }
+
+      // Final validation - ensure the object can be used as WeakMap key
+      try {
+        const testWeakMap = new WeakMap()
+        testWeakMap.set(safeItem, 'test')
+        return safeItem
+      } catch (error) {
+        console.error(`🚨 Object cannot be used as WeakMap key:`, safeItem, error)
+        return null
       }
     })
+    .filter(item => item !== null) // Remove any objects that failed WeakMap test
 
   // 🛡️ SSR Protection: Don't render Masonry during SSR
   if (!mounted) {
