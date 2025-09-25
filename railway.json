@@ -1,7 +1,12 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "RAILPACK",
+    "buildCommand": "npx prisma generate && npm run build"
+  },
+  "deploy": {
+    "startCommand": "npm start",
+    "healthcheckPath": "/api/health"
   },
   "variables": {
     "NODE_ENV": "production",
@@ -10,7 +15,8 @@
     "NEXTAUTH_SECRET": "railway-prod-secret-ai-gallery-2025-secure-key-v2",
     "RAILWAY_VOLUME_MOUNT_PATH": "/data",
     "RAILWAY_ENVIRONMENT": "production",
-    "NEXT_TELEMETRY_DISABLED": "1"
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "RAILPACK_DEPLOY_APT_PACKAGES": "ffmpeg"
   },
   "volumes": [
     {

@@ -1,5 +1,9 @@
-[phases.setup]
-nixPkgs = ["...", "ffmpeg"]
+# DEPRECATED: This file is for NIXPACKS builder
+# Now using RAILPACK builder with FFmpeg via RAILPACK_DEPLOY_APT_PACKAGES
+# Keep for reference only
 
-[start]
-cmd = "npm start"
+# [phases.setup]
+# nixPkgs = ["...", "ffmpeg"]
+
+# [start]
+# cmd = "npm start"

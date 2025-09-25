@@ -276,19 +276,32 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     })
   }
 
-  // 🛡️ SafeItems: Filter out any invalid items that might cause WeakMap errors
-  const safeItems = allMedia.filter((item, index) => {
-    const isValid = item &&
-                   typeof item === 'object' &&
-                   item !== null &&
-                   (item.id !== null && item.id !== undefined)
+  // 🛡️ SafeItems: Enhanced WeakMap protection with object wrapping
+  const safeItems = allMedia
+    .filter((item, index) => {
+      const isValid = item &&
+                     typeof item === 'object' &&
+                     item !== null &&
+                     (item.id !== null && item.id !== undefined)
 
-    if (!isValid && process.env.NODE_ENV === 'development') {
-      console.warn(`🚨 Filtering out invalid item at index ${index}:`, item)
-    }
+      if (!isValid && process.env.NODE_ENV === 'development') {
+        console.warn(`🚨 Filtering out invalid item at index ${index}:`, item)
+      }
 
-    return isValid
-  })
+      return isValid
+    })
+    .map((item, index) => {
+      // 🔒 CRITICAL: Ensure each item is a unique object reference for WeakMap
+      // WeakMap requires object identity, not just object shape
+      return {
+        ...item,
+        __weakMapSafe: true,
+        __index: index,
+        __timestamp: Date.now(),
+        // Ensure id is always a valid object property
+        id: String(item.id), // Convert to string to ensure consistency
+      }
+    })
 
   return (
     <div ref={containerRef} className="container mx-auto px-4 py-8">
