@@ -1,10 +1,25 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import Header from '@/components/Header'
-import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
 import { useRailwayMediaStore } from '@/store/railwayMediaStore'
+
+// 🛡️ SSR Safe: Dynamic import for browser-only component
+const ClientOnlyMasonryGallery = dynamic(
+  () => import('@/components/ClientOnlyMasonryGallery'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+        </div>
+      </div>
+    )
+  }
+)
 
 // Disable static generation to prevent build-time prerendering errors
 export const dynamic = 'force-dynamic'
@@ -62,7 +77,7 @@ export default function ModelPage() {
 
           {isLoaded ? (
             imageModels.length > 0 ? (
-              <MasonryGallery models={imageModels} />
+              <ClientOnlyMasonryGallery models={imageModels} />
             ) : (
               <div className="text-center py-16">
                 <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

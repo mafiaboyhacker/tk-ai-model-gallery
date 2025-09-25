@@ -1,11 +1,26 @@
 'use client'
 
 import { useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import Header from '@/components/Header'
-import MasonryGallery from '@/components/MasonryGallery'
 import DebugPanel from '@/components/DebugPanel'
 import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import type { Media } from '@/types'
+
+// 🛡️ SSR Safe: Dynamic import for browser-only component
+const ClientOnlyMasonryGallery = dynamic(
+  () => import('@/components/ClientOnlyMasonryGallery'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+        </div>
+      </div>
+    )
+  }
+)
 
 // Disable static generation to prevent build-time prerendering errors
 export const dynamic = 'force-dynamic'
@@ -44,7 +59,7 @@ export default function VideoPage() {
             <h1 className="nav-text text-2xl text-black/90 mb-2 ml-4" style={{letterSpacing: '0.1em'}}>VIDEO GALLERY &lt;</h1>
           </div>
 
-          <MasonryGallery models={videoMedia} />
+          <ClientOnlyMasonryGallery models={videoMedia} />
         </div>
       </main>
       <DebugPanel />
