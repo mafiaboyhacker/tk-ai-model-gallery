@@ -1,8 +1,8 @@
 import dynamic from 'next/dynamic'
 
 // 🛡️ SSR Safe: Dynamic import for client component
-const VideoPageClient = dynamic(
-  () => import('@/components/VideoPageClient'),
+const VideoClient = dynamic(
+  () => import('./VideoClient'),
   {
     ssr: false,
     loading: () => (
@@ -22,5 +22,5 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default function VideoPage() {
-  return <VideoPageClient />
+  return <VideoClient />
 }

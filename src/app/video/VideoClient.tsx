@@ -23,7 +23,7 @@ const ClientOnlyMasonryGallery = dynamic(
 const Header = dynamic(() => import('@/components/Header'), { ssr: false })
 const DebugPanel = dynamic(() => import('@/components/DebugPanel'), { ssr: false })
 
-export default function VideoPageClient() {
+export default function VideoClient() {
   const { media, loadMedia } = useRailwayMediaStore()
 
   // 데이터 변환 후 비디오만 필터링
