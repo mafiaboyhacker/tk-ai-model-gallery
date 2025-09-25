@@ -143,7 +143,8 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
   }, [width, windowWidth, columnConfig.columnWidth])
 
   // 🚀 Resize observer for dynamic height changes - SSR safe
-  const resizeObserver = useResizeObserver(mounted ? positioner : null)
+  // Only use ResizeObserver when mounted and positioner is available
+  const resizeObserver = useResizeObserver(mounted && positioner ? positioner : null)
 
   // Dynamic overscanBy calculation
   const dynamicOverscanBy = useMemo(() => {
@@ -259,6 +260,17 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
         id: String(item.id),
       }
     })
+
+  // 🛡️ SSR Protection: Don't render Masonry during SSR
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${columnConfig.columnCount}, 1fr)`, gap: '2px' }}>
+          {SkeletonLoader}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div ref={containerRef} className="container mx-auto px-4 py-8">

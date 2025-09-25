@@ -1,11 +1,29 @@
 'use client'
 
 import { useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useRailwayMediaStore } from '@/store/railwayMediaStore'
 import type { Media } from '@/types'
-import ClientOnlyMasonryGallery from '@/components/ClientOnlyMasonryGallery'
 import Header from '@/components/Header'
 import DebugPanel from '@/components/DebugPanel'
+
+// 🚀 Dynamic import with SSR completely disabled
+const ClientOnlyMasonryGallery = dynamic(
+  () => import('@/components/ClientOnlyMasonryGallery'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
+            <div className="text-gray-500">갤러리 로딩 중...</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+)
 
 export default function VideoClient() {
   const { media, loadMedia } = useRailwayMediaStore()
