@@ -2,86 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 MANDATORY DEBUG_LOG.md WORKFLOW
-
-### STEP 1: ALWAYS READ DEBUG_LOG.md FIRST
-**BEFORE doing ANYTHING else, you MUST:**
-```bash
-# Run this command FIRST:
-cat DEBUG_LOG.md
-```
-**This contains:**
-- Current loading issue status (1+ week old problem)
-- What has already been tried and FAILED
-- What NOT to repeat
-- Current working theories
-- Last session's findings
-
-### STEP 2: UPDATE DEBUG_LOG.md DURING WORK
-**Every time you:**
-- Try a new approach → Update DEBUG_LOG.md
-- Find new info → Update DEBUG_LOG.md
-- Make changes → Update DEBUG_LOG.md
-- Hit an error → Update DEBUG_LOG.md
-
-### STEP 3: SAVE CONTEXT BEFORE ENDING
-**Before ending session, you MUST:**
-```bash
-# Update DEBUG_LOG.md with:
-# - What you tried this session
-# - What worked/failed
-# - Next steps to try
-# - Current status
-```
-
-### DEBUGGING RULES
-1. **READ DEBUG_LOG.md** before any debugging task
-2. **READ DEBUG_LOG.md** after /compact or context compression
-3. **UPDATE DEBUG_LOG.md** after every significant action
-4. **NEVER repeat** failed approaches without noting why it might work now
-5. **DOCUMENT ALL** error messages and symptoms in DEBUG_LOG.md
-6. **SAVE STATE** in DEBUG_LOG.md before session ends
-
-### 🚨 CRITICAL: POST-COMPACT WORKFLOW
-**After /compact command or any context compression:**
-```bash
-# IMMEDIATELY run this command:
-cat DEBUG_LOG.md
-```
-**Why?** Context compression removes session memory. DEBUG_LOG.md restores:
-- What was being worked on
-- Current problem status
-- Failed attempts to avoid
-- Next steps to take
-
-**🚫 If you start debugging without reading DEBUG_LOG.md, you WILL waste time repeating failed approaches.**
-
 ## Development Commands
 
 ### Essential Commands
 - `npm run dev` - Start development server on http://localhost:3000
-- `npm run dev:backend` - Start backend development server on port 3001
-- `npm run build` - Build the application (includes Prisma generation)
+- `npm run build` - Build the application (includes Prisma DB push and generation)
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
-- `npm run security-check` - Run security validation
-- `npm run pre-deploy` - Run security, lint, and build checks
-
-### Database & Environment
-- `npm run validate-env` - Validate environment variables and DB connection
-- `npm run health-check` - Check system health status
-- `npm run deploy-safe` - Comprehensive pre-deployment validation
-- `npx prisma generate` - Generate Prisma client
-- `npx prisma db push` - Push schema changes to database
-- `npx prisma studio` - Open Prisma Studio for database management
-
-### Testing & Deployment
 - `npm test` - Run Playwright E2E tests
 - `npm run test:headed` - Run tests with browser UI
 - `npm run test:ui` - Run tests in interactive UI mode
+
+### Database & Environment
+- `npx prisma generate` - Generate Prisma client
+- `npx prisma db push` - Push schema changes to database
+- `npx prisma studio` - Open Prisma Studio for database management
+- `npm run validate-env` - Validate environment variables and DB connection
+
+### Testing & Deployment
+- `npm run deploy-safe` - Comprehensive pre-deployment validation
 - `npm run deploy-railway` - Deploy to Railway with validation
 - `npm run post-deploy` - Post-deployment health check
-- `npm run batch-upload` - Batch upload media files
 
 ## Architecture Overview
 
@@ -93,9 +34,9 @@ cat DEBUG_LOG.md
 - **State Management**: Zustand stores
 - **UI Components**: Masonic for virtualized masonry gallery
 - **File Storage**: Railway Volume + PostgreSQL metadata
-- **Media Processing**: Sharp for images, FFmpeg for videos (via nixpacks.toml)
+- **Media Processing**: Sharp for images, FFmpeg for videos
 - **Testing**: Playwright for E2E testing
-- **Deployment**: Railway platform with Nixpacks build system
+- **Deployment**: Railway platform with Railpack build system
 
 ### Key Directories Structure
 ```
@@ -146,7 +87,7 @@ The app uses a unified environment detection system:
 
 #### Core Components
 - **MasonryGallery.tsx** - Main virtualized gallery using Masonic with advanced hooks integration
-- **SafeModelCard.tsx** - Individual media item display with Chrome stability fixes and performance memoization
+- **SafeModelCard.tsx** - Individual media item display with Chrome stability fixes
 - **OptimizedImage.tsx** - Performance-optimized image component
 - **VideoPlayer.tsx** - Custom video player component
 
@@ -157,7 +98,6 @@ The app uses a unified environment detection system:
 - Advanced Masonic virtualization with hooks (usePositioner, useContainerPosition, useScroller, useResizeObserver)
 - Smart ratio-based arrangement (videos prioritized)
 - Chrome stability fixes with reduced intersection observer complexity
-- Memory leak prevention with proper cleanup functions
 
 ### Mobile Navigation System
 
@@ -178,6 +118,9 @@ The app uses a unified environment detection system:
 - `GET ?action=list` - List all media files with caching
 - `POST ?action=upload` - Upload with optional video/image processing
 - `DELETE ?id={id}` - Delete specific media file
+- `DELETE ?action=clear-all` - Delete all media files
+- `DELETE ?action=clear-images` - Delete only images
+- `DELETE ?action=clear-videos` - Delete only videos
 - `GET /file/{type}/{filename}` - Serve media files
 - `GET ?action=sync` - DB-filesystem synchronization
 - `GET ?action=health` - Storage system health check
@@ -269,23 +212,17 @@ The app uses a unified environment detection system:
 - `NODE_ENV` - Environment (development/production)
 
 #### Railway-Specific Configuration
-- Automatic environment detection via Nixpacks build system
+- Automatic environment detection via Railpack build system
 - Volume-based file storage in `/app/uploads`
 - PostgreSQL metadata storage
-- FFmpeg installation via `nixpacks.toml` for video processing
+- FFmpeg installation via nixpacks configuration for video processing
 - Auto-recovery system for deployment issues
 
-#### FFmpeg Integration (2025)
-- **nixpacks.toml** configures FFmpeg installation on Railway deployment
-- **VideoProcessor.ts** handles video compression, thumbnail generation, and metadata extraction
-- **ImageProcessor.ts** handles Sharp-based image optimization and WebP conversion
-- Automatic fallback to original files if processing fails
+### Critical Development Rules
 
-## 🚨 Critical Development Rules
+#### File Management Rules
 
-### File Management Rules
-
-#### Backup Folder Policy
+**Backup Folder Policy**
 - **ai-model-gallery-backup/** folder is for reference ONLY
 - **NEVER commit or push the backup folder to Git**
 - Use backup files for understanding legacy implementations
