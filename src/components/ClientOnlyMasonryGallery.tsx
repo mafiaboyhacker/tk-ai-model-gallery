@@ -30,8 +30,9 @@ interface MasonryGalleryProps {
   loading?: boolean
 }
 
-// 🚀 Client-only Masonic implementation - SSR safe
+// 🚀 Client-only Masonic implementation - SSR safe with error boundary
 const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models, loading = false }: MasonryGalleryProps) {
+  const [hasError, setHasError] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [windowWidth, setWindowWidth] = useState(1200)
   const [windowHeight, setWindowHeight] = useState(800)
@@ -336,22 +337,69 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     )
   }
 
-  return (
-    <div ref={containerRef} className="container mx-auto px-4 py-8">
-      {mounted && positioner ? (
+  // 🛡️ Error boundary for Masonry rendering
+  if (hasError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="text-gray-400 mb-4 text-4xl">⚠️</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">갤러리 로드 오류</h3>
+            <p className="text-gray-500 mb-4">갤러리를 불러오는 중 문제가 발생했습니다.</p>
+            <button 
+              onClick={() => {
+                setHasError(false)
+                window.location.reload()
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderMasonry = () => {
+    try {
+      return (
         <Masonry
           items={safeItems}
           positioner={positioner}
-          scrollTop={scrollTop != null ? scrollTop : 0}
+          scrollTop={typeof scrollTop === 'number' ? Math.max(0, scrollTop) : 0}
           isScrolling={typeof isScrolling === 'boolean' ? isScrolling : false}
-          height={windowHeight}
-          overscanBy={dynamicOverscanBy}
+          height={Math.max(400, windowHeight)}
+          overscanBy={Math.max(1, Math.min(20, dynamicOverscanBy))}
           resizeObserver={resizeObserver}
           render={MasonryCard}
         />
+      )
+    } catch (error) {
+      console.error('🚨 Masonry rendering error:', error)
+      setHasError(true)
+      return null
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="container mx-auto px-4 py-8">
+      {mounted && positioner && safeItems.length > 0 ? (
+        <div className="masonry-wrapper">
+          {renderMasonry()}
+        </div>
       ) : (
         <div className="grid" style={{ gridTemplateColumns: `repeat(${columnConfig.columnCount}, 1fr)`, gap: '2px' }}>
-          {SkeletonLoader}
+          {safeItems.length === 0 ? (
+            <div className="col-span-full flex items-center justify-center min-h-[50vh]">
+              <div className="text-center">
+                <div className="text-gray-400 mb-2">📷</div>
+                <div className="text-gray-500">미디어가 없습니다</div>
+              </div>
+            </div>
+          ) : (
+            SkeletonLoader
+          )}
         </div>
       )}
 
