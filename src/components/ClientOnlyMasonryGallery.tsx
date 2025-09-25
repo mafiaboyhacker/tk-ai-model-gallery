@@ -140,8 +140,8 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     rowGutter: 4
   }, [width, windowWidth, columnConfig.columnWidth])
 
-  // 🚀 Resize observer for dynamic height changes (client-only)
-  const resizeObserver = useResizeObserver(positioner)
+  // 🚀 Resize observer for dynamic height changes - SSR safe
+  const resizeObserver = useResizeObserver(mounted ? positioner : null)
 
   // Dynamic overscanBy calculation
   const dynamicOverscanBy = useMemo(() => {

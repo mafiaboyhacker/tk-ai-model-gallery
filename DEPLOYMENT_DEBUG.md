@@ -61,6 +61,89 @@
 
 ---
 
+---
+
+## 2025-09-25 19:55 KST - 새 프로젝트 생성
+
+### 🆕 Railway 프로젝트 정보
+- **Project Token**: `885817b1-fc08-4410-ba4d-144834c33cc9`
+- **New Project**: `tk-ai-mode-web` (생성완료)
+- **이전 프로젝트**: `50dbb956-a656-4dce-9dd6-cd5f36b6afae` (삭제됨)
+- **결정**: 기존 프로젝트 완전 삭제 후 새로 시작
+- **이유**: 10+ 배포 실패, 설정 충돌 지속, 무한루프 패턴
+
+### 🔑 Railway CLI 토큰 인증 가능 범위
+
+#### 1. Project Token (`RAILWAY_TOKEN`) 기능
+```bash
+# 환경변수 설정
+export RAILWAY_TOKEN=885817b1-fc08-4410-ba4d-144834c33cc9
+
+# 배포 관련 명령어
+railway up                    # 코드 업로드 및 배포
+railway deploy               # 배포
+railway redeploy            # 재배포
+railway down                # 최근 배포 삭제
+
+# 프로젝트 관리
+railway status              # 프로젝트 상태 확인
+railway logs               # 배포 로그 확인
+railway variables          # 환경변수 조회
+railway open               # 대시보드 열기
+
+# 서비스 관리
+railway service            # 서비스 선택/관리
+railway add                # 서비스 추가 (PostgreSQL, Redis 등)
+railway connect           # 데이터베이스 연결 (psql, mongosh)
+
+# 도메인 관리
+railway domain            # 커스텀 도메인 추가/관리
+
+# 볼륨 관리
+railway volume            # 프로젝트 볼륨 관리
+```
+
+#### 2. Account Token (`RAILWAY_API_TOKEN`) 기능
+```bash
+# 환경변수 설정
+export RAILWAY_API_TOKEN=계정토큰
+
+# 계정 관리
+railway whoami            # 현재 로그인 사용자 확인
+railway list              # 모든 프로젝트 목록
+railway init              # 새 프로젝트 생성
+railway link              # 프로젝트 연결
+railway unlink            # 프로젝트 연결 해제
+
+# 환경 관리
+railway environment       # 환경 생성/삭제/연결
+```
+
+#### 3. CI/CD 환경에서 토큰 사용
+```bash
+# GitHub Actions 예제
+- name: Deploy to Railway
+  env:
+    RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+  run: railway up --detach
+
+# Docker 환경에서
+docker run -e RAILWAY_TOKEN=$RAILWAY_TOKEN railwayapp/cli railway up
+```
+
+#### 4. 토큰으로 불가능한 작업
+- 프로젝트 생성 (Account Token 필요)
+- 팀 관리 (웹 대시보드만 가능)
+- 결제 정보 수정 (웹 대시보드만 가능)
+- 계정 설정 변경 (웹 대시보드만 가능)
+```
+
+### 📝 삭제된 항목들
+- [ ] 기존 Railway 프로젝트 (steadfast-dream 등)
+- [ ] PostgreSQL 데이터베이스 (테스트 데이터만 있었음)
+- [ ] 모든 환경변수 설정
+- [ ] 이전 배포 히스토리
+
 ## 추가 조사 필요 항목
 - [ ] Railway 대시보드 런타임 로그 확인
 - [ ] Next.js 시작 프로세스 에러 로그

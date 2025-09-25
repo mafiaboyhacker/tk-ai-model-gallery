@@ -153,8 +153,8 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     })
   }
 
-  // 🚀 Resize observer for dynamic height changes (client-only)
-  const resizeObserver = typeof window !== 'undefined' ? useResizeObserver(positioner) : null
+  // 🚀 Resize observer for dynamic height changes (always call hook, but handle SSR)
+  const resizeObserver = useResizeObserver(mounted ? positioner : null)
 
   // Dynamic overscanBy calculation based on screen size and performance
   const dynamicOverscanBy = useMemo(() => {
