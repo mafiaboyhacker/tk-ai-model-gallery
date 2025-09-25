@@ -69,42 +69,20 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     return filteredMedia
   }, [models, mounted])
 
-  // 🚀 Advanced Masonic hooks integration with WeakMap safety
+  // 🚀 Simplified Masonic hooks integration - avoid WeakMap issues completely  
   const { offset, width } = useContainerPosition(containerRef, [windowWidth, windowHeight])
-
-  // Error boundary for WeakMap issues
-  const [hasWeakMapError, setHasWeakMapError] = useState(false)
-
-  useEffect(() => {
-    const handleError = (error: ErrorEvent) => {
-      if (error.message.includes('weak map key') || error.message.includes('WeakMap')) {
-        console.error('🚨 WeakMap error detected:', error)
-        setHasWeakMapError(true)
-        // Try to recover by forcing a re-render
-        setTimeout(() => setHasWeakMapError(false), 1000)
-      }
+  
+  // 🛡️ Safe scroller with fallback values to prevent WeakMap errors
+  const scrollerTarget = useMemo(() => {
+    // Return a stable, valid object for WeakMap usage
+    if (mounted && offset && typeof offset === 'object' && offset !== null && !Array.isArray(offset)) {
+      return offset
     }
+    // Fallback: use containerRef or document.documentElement
+    return containerRef.current || document.documentElement
+  }, [mounted, offset])
 
-    window.addEventListener('error', handleError)
-    return () => window.removeEventListener('error', handleError)
-  }, [])
-
-  // 🛡️ WeakMap safety: Ensure offset is a valid object (not primitive)
-  const safeOffset = useMemo(() => {
-    // Always ensure we have a valid object reference for WeakMap
-    if (!offset || typeof offset !== 'object' || offset === null || Array.isArray(offset)) {
-      return {
-        top: 0,
-        left: 0,
-        element: containerRef.current || document.documentElement,
-        width: width > 0 ? width : windowWidth,
-        height: windowHeight // height 변수가 정의되지 않았으므로 windowHeight 사용
-      }
-    }
-    return offset
-  }, [offset, width, windowWidth, windowHeight])
-
-  const { scrollTop, isScrolling } = useScroller(safeOffset)
+  const { scrollTop, isScrolling } = useScroller(scrollerTarget)
 
   // Dynamic column calculation based on width
   const columnConfig = useMemo(() => {
@@ -153,8 +131,8 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     })
   }
 
-  // 🚀 Resize observer for dynamic height changes (always call hook, but handle SSR)
-  const resizeObserver = useResizeObserver(mounted ? positioner : null)
+  // 🚀 Resize observer for dynamic height changes with WeakMap safety
+  const resizeObserver = useResizeObserver(positioner)
 
   // Dynamic overscanBy calculation based on screen size and performance
   const dynamicOverscanBy = useMemo(() => {
@@ -250,15 +228,13 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     )
   }
 
-  if (!mounted || hasWeakMapError) {
+  if (!mounted) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[40vh]">
           <div className="flex flex-col items-center space-y-3">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
-            <div className="text-gray-500 text-sm">
-              {hasWeakMapError ? '갤러리 복구 중...' : '갤러리 로딩 중...'}
-            </div>
+            <div className="text-gray-500 text-sm">갤러리 로딩 중...</div>
           </div>
         </div>
       </div>
@@ -316,16 +292,30 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       }
     })
 
+  // 🛡️ Additional safety check for WeakMap compatibility
+  if (!safeItems || safeItems.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="flex flex-col items-center space-y-3">
+            <div className="text-gray-500 text-lg">📷</div>
+            <div className="text-gray-500 text-sm">미디어 파일을 불러오는 중...</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div ref={containerRef} className="container mx-auto px-4 py-8">
       <Masonry
         items={safeItems}
         positioner={positioner}
-        scrollTop={mounted && scrollTop != null ? scrollTop : 0}
-        isScrolling={mounted && typeof isScrolling === 'boolean' ? isScrolling : false}
+        scrollTop={typeof scrollTop === 'number' ? scrollTop : 0}
+        isScrolling={typeof isScrolling === 'boolean' ? isScrolling : false}
         height={windowHeight}
         overscanBy={dynamicOverscanBy}
-        {...(resizeObserver ? { resizeObserver } : {})}
+        resizeObserver={resizeObserver}
         render={MasonryCard}
       />
 

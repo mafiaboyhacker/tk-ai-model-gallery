@@ -147,8 +147,8 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
   const positioner = usePositioner(positionerConfig, [mounted, width, windowWidth, columnConfig.columnWidth])
 
   // 🚀 Resize observer for dynamic height changes - SSR safe
-  // Only use ResizeObserver when mounted and positioner is available
-  const resizeObserver = useResizeObserver(mounted && positioner ? positioner : null)
+  // Always call the hook, but with a safe fallback positioner
+  const resizeObserver = useResizeObserver(positioner)
 
   // Dynamic overscanBy calculation
   const dynamicOverscanBy = useMemo(() => {
@@ -250,14 +250,13 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
                            item !== null &&
                            !Array.isArray(item)
 
+      // 🛡️ Relaxed ID validation - allow any non-empty ID
       const hasValidId = item?.id !== null &&
                         item?.id !== undefined &&
-                        (typeof item?.id === 'string' || typeof item?.id === 'number')
+                        String(item.id).length > 0
 
-      const hasValidDimensions = typeof item?.width === 'number' &&
-                               typeof item?.height === 'number' &&
-                               item?.width > 0 &&
-                               item?.height > 0
+      // 🛡️ Allow all items regardless of dimensions - we'll provide defaults
+      const hasValidDimensions = true // Always true, we provide fallback dimensions
 
       const isValid = isValidObject && hasValidId && hasValidDimensions
 
@@ -283,8 +282,8 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
         originalUrl: String(item.originalUrl || ''),
         imageAlt: String(item.imageAlt || `Media: ${item.name}`),
         category: String(item.category || 'media'),
-        width: Number(item.width) || 300,
-        height: Number(item.height) || 300,
+        width: Number(item.width) || 300, // Default width if not provided
+        height: Number(item.height) || 300, // Default height if not provided
         type: item.type || 'image',
         duration: item.duration,
         resolution: item.resolution,
