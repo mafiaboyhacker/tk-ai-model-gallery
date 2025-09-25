@@ -1,9 +1,6 @@
-// SERVER COMPONENT ONLY
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
+// SERVER COMPONENT ONLY - SSG 최적화
 import HomeClient from './HomeClient'
 
-export default async function HomePage() {
+export default function HomePage() {
   return <HomeClient />
 }

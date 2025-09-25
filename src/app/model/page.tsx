@@ -1,9 +1,6 @@
-// SERVER COMPONENT ONLY
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
+// SERVER COMPONENT ONLY - SSG 최적화
 import ModelClient from './ModelClient'
 
-export default async function ModelPage() {
+export default function ModelPage() {
   return <ModelClient />
 }

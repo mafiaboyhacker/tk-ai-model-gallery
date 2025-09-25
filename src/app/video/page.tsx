@@ -1,9 +1,6 @@
-// SERVER COMPONENT ONLY
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
+// SERVER COMPONENT ONLY - SSG 최적화
 import VideoClient from './VideoClient'
 
-export default async function VideoPage() {
+export default function VideoPage() {
   return <VideoClient />
 }
