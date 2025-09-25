@@ -260,6 +260,14 @@ async function ensureUploadDirs() {
     console.log(`📁 VIDEOS_DIR: ${VIDEOS_DIR}`)
     console.log(`🌍 RAILWAY_VOLUME_MOUNT_PATH: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
 
+    // Volume 루트 경로 강제 생성
+    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
+    if (!existsSync(volumeRoot)) {
+      console.log(`🏗️ Volume 루트 디렉토리 생성 중: ${volumeRoot}`)
+      await mkdir(volumeRoot, { recursive: true })
+      console.log(`✅ Volume 루트 디렉토리 생성 완료: ${volumeRoot}`)
+    }
+
     if (!existsSync(UPLOADS_DIR)) {
       console.log(`📁 UPLOADS_DIR 생성 중: ${UPLOADS_DIR}`)
       await mkdir(UPLOADS_DIR, { recursive: true })
