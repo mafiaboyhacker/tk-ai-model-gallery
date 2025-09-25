@@ -32,12 +32,14 @@ interface MasonryGalleryProps {
 
 // 🚀 Client-only Masonic implementation - SSR safe
 const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models, loading = false }: MasonryGalleryProps) {
+  const [mounted, setMounted] = useState(false)
   const [windowWidth, setWindowWidth] = useState(1200)
   const [windowHeight, setWindowHeight] = useState(800)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // 🛡️ SSR Safe: Only access window after component mount
   useEffect(() => {
+    setMounted(true)
     if (typeof window === 'undefined') return
 
     const updateWindowSize = () => {
