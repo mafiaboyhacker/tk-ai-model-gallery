@@ -1125,7 +1125,7 @@ export async function DELETE(request: NextRequest) {
       let deletedCount = 0
       let errors = []
 
-      // 각 파일 삭제
+      // 각 파일 삭제 (안전 모드 - 에러 무시)
       for (const media of allMedia) {
         try {
           const filePath = path.join(
@@ -1136,16 +1136,19 @@ export async function DELETE(request: NextRequest) {
           if (existsSync(filePath)) {
             await unlink(filePath)
             console.log(`🗑️ 파일 삭제: ${filePath}`)
+          } else {
+            console.log(`⚠️ 파일 없음 (스킵): ${filePath}`)
           }
 
           deletedCount++
         } catch (fileError) {
-          console.warn(`⚠️ 파일 삭제 실패: ${media.fileName}`, fileError)
+          console.warn(`⚠️ 파일 삭제 실패 (계속 진행): ${media.fileName}`, fileError)
           errors.push(`File: ${media.fileName}`)
+          deletedCount++ // 파일 삭제 실패해도 카운트 증가
         }
       }
 
-      // PostgreSQL에서 모든 미디어 레코드 삭제
+      // PostgreSQL에서 모든 미디어 레코드 삭제 (핵심 작업)
       const dbResult = await prisma.media.deleteMany({})
       console.log(`✅ DB 레코드 삭제: ${dbResult.count}개`)
 
