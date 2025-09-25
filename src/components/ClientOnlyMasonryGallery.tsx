@@ -104,7 +104,8 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     return offset
   }, [offset, width, windowWidth, windowHeight])
 
-  const { scrollTop, isScrolling } = useScroller(safeOffset)
+  // 🛡️ Safe scroller to prevent hydration mismatch
+  const { scrollTop, isScrolling } = useScroller(mounted ? safeOffset : { top: 0, left: 0, element: null, width: 1200, height: 800 })
 
   // Dynamic column calculation based on width
   const columnConfig = useMemo(() => {
@@ -135,12 +136,15 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     return { columnCount, columnWidth }
   }, [width, windowWidth])
 
-  const positioner = usePositioner({
-    width: width > 0 ? width : windowWidth,
+  // 🛡️ Safe positioner configuration to prevent SSR/hydration mismatch
+  const positionerConfig = useMemo(() => ({
+    width: mounted ? (width > 0 ? width : windowWidth) : 1200, // Safe fallback for SSR
     columnWidth: columnConfig.columnWidth,
     columnGutter: 4,
     rowGutter: 4
-  }, [width, windowWidth, columnConfig.columnWidth])
+  }), [mounted, width, windowWidth, columnConfig.columnWidth])
+
+  const positioner = usePositioner(positionerConfig, [mounted, width, windowWidth, columnConfig.columnWidth])
 
   // 🚀 Resize observer for dynamic height changes - SSR safe
   // Only use ResizeObserver when mounted and positioner is available
@@ -335,16 +339,22 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
 
   return (
     <div ref={containerRef} className="container mx-auto px-4 py-8">
-      <Masonry
-        items={safeItems}
-        positioner={positioner}
-        scrollTop={scrollTop != null ? scrollTop : 0}
-        isScrolling={typeof isScrolling === 'boolean' ? isScrolling : false}
-        height={windowHeight}
-        overscanBy={dynamicOverscanBy}
-        resizeObserver={resizeObserver}
-        render={MasonryCard}
-      />
+      {mounted && positioner ? (
+        <Masonry
+          items={safeItems}
+          positioner={positioner}
+          scrollTop={scrollTop != null ? scrollTop : 0}
+          isScrolling={typeof isScrolling === 'boolean' ? isScrolling : false}
+          height={windowHeight}
+          overscanBy={dynamicOverscanBy}
+          resizeObserver={resizeObserver}
+          render={MasonryCard}
+        />
+      ) : (
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${columnConfig.columnCount}, 1fr)`, gap: '2px' }}>
+          {SkeletonLoader}
+        </div>
+      )}
 
       {safeItems.length > 0 && (
         <div className="text-center mt-8 py-4 text-gray-500 text-sm">
