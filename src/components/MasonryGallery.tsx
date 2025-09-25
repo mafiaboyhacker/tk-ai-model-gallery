@@ -72,27 +72,38 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
   // 🚀 Advanced Masonic hooks integration with WeakMap safety
   const { offset, width } = useContainerPosition(containerRef, [windowWidth, windowHeight])
 
-  // ✅ DEBUGGING: Log offset type and value for WeakMap troubleshooting
-  if (process.env.NODE_ENV === 'development' && offset) {
-    console.log('🔍 Offset debug:', {
-      type: typeof offset,
-      value: offset,
-      isObject: typeof offset === 'object',
-      isNull: offset === null,
-      constructor: offset?.constructor?.name
-    })
-  }
+  // Error boundary for WeakMap issues
+  const [hasWeakMapError, setHasWeakMapError] = useState(false)
+
+  useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      if (error.message.includes('weak map key') || error.message.includes('WeakMap')) {
+        console.error('🚨 WeakMap error detected:', error)
+        setHasWeakMapError(true)
+        // Try to recover by forcing a re-render
+        setTimeout(() => setHasWeakMapError(false), 1000)
+      }
+    }
+
+    window.addEventListener('error', handleError)
+    return () => window.removeEventListener('error', handleError)
+  }, [])
 
   // 🛡️ WeakMap safety: Ensure offset is a valid object (not primitive)
-  const createSafeOffset = () => {
-    if (offset && typeof offset === 'object' && offset !== null && !Array.isArray(offset)) {
-      return offset
+  const safeOffset = useMemo(() => {
+    // Always ensure we have a valid object reference for WeakMap
+    if (!offset || typeof offset !== 'object' || offset === null || Array.isArray(offset)) {
+      return {
+        top: 0,
+        left: 0,
+        element: containerRef.current || document.documentElement,
+        width: width > 0 ? width : windowWidth,
+        height: height > 0 ? height : windowHeight
+      }
     }
-    // Return a safe default object that WeakMap can use as key
-    return { top: 0, left: 0, element: containerRef.current }
-  }
+    return offset
+  }, [offset, width, height, windowWidth, windowHeight])
 
-  const safeOffset = createSafeOffset()
   const { scrollTop, isScrolling } = useScroller(safeOffset)
 
   // Dynamic column calculation based on width
@@ -239,13 +250,15 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     )
   }
 
-  if (!mounted) {
+  if (!mounted || hasWeakMapError) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[40vh]">
           <div className="flex flex-col items-center space-y-3">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
-            <div className="text-gray-500 text-sm">갤러리 로딩 중...</div>
+            <div className="text-gray-500 text-sm">
+              {hasWeakMapError ? '갤러리 복구 중...' : '갤러리 로딩 중...'}
+            </div>
           </div>
         </div>
       </div>
