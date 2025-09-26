@@ -1112,6 +1112,7 @@ export async function POST(request: NextRequest) {
             failed: failedCount
           }
         })
+        break
 
       default:
         return NextResponse.json({
