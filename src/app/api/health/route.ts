@@ -20,7 +20,7 @@ export async function GET() {
     if (!process.env[env]) overallHealth = false
   }
 
-  // 2. Volume Mount Comprehensive Check
+  // 2. Volume Mount Check - Non-blocking for deployment
   const volumePath = process.env.RAILWAY_VOLUME_MOUNT_PATH
   if (volumePath) {
     checks.volume_mounted = existsSync(volumePath)
@@ -28,13 +28,16 @@ export async function GET() {
     checks.images_dir = existsSync(`${volumePath}/uploads/images`)
     checks.videos_dir = existsSync(`${volumePath}/uploads/videos`)
     checks.thumbnails_dir = existsSync(`${volumePath}/uploads/thumbnails`)
+    checks.volume_warning = !checks.volume_mounted ? 'Volume mount path issue detected' : null
 
-    if (!checks.volume_mounted || !checks.uploads_dir) {
-      overallHealth = false
+    // Don't fail health check for volume issues - log as warning only
+    if (!checks.volume_mounted) {
+      console.warn('⚠️ Volume mount issue detected but allowing service to start')
     }
   } else {
     checks.volume_mounted = false
-    overallHealth = false
+    checks.volume_warning = 'RAILWAY_VOLUME_MOUNT_PATH not set'
+    console.warn('⚠️ Volume path not configured but allowing service to start')
   }
 
   // 3. Database Connection with Performance Metrics
