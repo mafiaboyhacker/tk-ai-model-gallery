@@ -53,17 +53,33 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     return () => window.removeEventListener('resize', updateWindowSize)
   }, [])
 
-  // Filtered media based on current page
+  // Filtered media based on current page (with WeakMap safety)
   const allMedia = useMemo(() => {
     // Always process data, don't wait for mounted state
     const isModelPage = mounted && typeof window !== 'undefined' && window.location.pathname === '/model'
     const isVideoPage = mounted && typeof window !== 'undefined' && window.location.pathname === '/video'
 
-    let filteredMedia = models
+    // 🛡️ Safe filtering: Remove null/undefined items first, then apply page filters
+    const safeModels = models
+      .filter(item => item && item.id) // null/undefined 항목 필터링
+      .map(item => ({
+        ...item,
+        id: String(item.id), // 문자열로 확실히 변환
+        name: item.name || item.fileName || `Media ${item.id}`,
+        imageUrl: item.imageUrl || '',
+        imageAlt: item.imageAlt || `Media: ${item.name || item.id}`,
+        category: item.category || item.type || 'image',
+        width: Number(item.width) || 400, // 기본 너비
+        height: Number(item.height) || 300, // 기본 높이
+        type: item.type || 'image'
+      }))
+      .filter(item => item.imageUrl && item.width > 0 && item.height > 0) // 유효한 데이터만
+
+    let filteredMedia = safeModels
     if (isModelPage) {
-      filteredMedia = models.filter(media => media.type === 'image')
+      filteredMedia = safeModels.filter(media => media.type === 'image')
     } else if (isVideoPage) {
-      filteredMedia = models.filter(media => media.type === 'video')
+      filteredMedia = safeModels.filter(media => media.type === 'video')
     }
 
     return filteredMedia
