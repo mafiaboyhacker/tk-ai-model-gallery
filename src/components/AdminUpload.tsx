@@ -213,8 +213,19 @@ export default function AdminUpload({ isVisible = true, onClose, onUploadComplet
                 </div>
               </div>
 
-              <UploadProgressPanel
-                queue={uploadQueue}
+              <EnhancedUploadProgress
+                queue={uploadQueue.map(item => ({
+                  ...item,
+                  currentStage: item.status === 'uploading' ? 'upload' :
+                              item.status === 'processing' ? 'compression' :
+                              item.status === 'completed' ? 'complete' : 'upload',
+                  processingDetails: {
+                    uploadProgress: item.status === 'uploading' ? item.progress : 100,
+                    compressionProgress: item.status === 'processing' ? item.progress :
+                                       item.status === 'completed' ? 100 : 0,
+                    databaseProgress: item.status === 'completed' ? 100 : 0
+                  }
+                }))}
                 overallProgress={effectiveOverall}
                 onClear={clearUploadQueue}
                 className="mt-4"
@@ -256,8 +267,19 @@ export default function AdminUpload({ isVisible = true, onClose, onUploadComplet
         </div>
 
         {uploadQueue.length > 0 && !uploading && (
-          <UploadProgressPanel
-            queue={uploadQueue}
+          <EnhancedUploadProgress
+            queue={uploadQueue.map(item => ({
+              ...item,
+              currentStage: item.status === 'uploading' ? 'upload' :
+                          item.status === 'processing' ? 'compression' :
+                          item.status === 'completed' ? 'complete' : 'upload',
+              processingDetails: {
+                uploadProgress: item.status === 'uploading' ? item.progress : 100,
+                compressionProgress: item.status === 'processing' ? item.progress :
+                                   item.status === 'completed' ? 100 : 0,
+                databaseProgress: item.status === 'completed' ? 100 : 0
+              }
+            }))}
             overallProgress={effectiveOverall}
             onClear={clearUploadQueue}
             className="mt-6"

@@ -154,6 +154,14 @@ const ProgressStageIndicator = ({ item }: { item: EnhancedUploadStatus }) => {
 const DetailedProgressBar = ({ item }: { item: EnhancedUploadStatus }) => {
   const currentStage = PROCESSING_STAGES[item.currentStage]
 
+  // 비디오 파일인 경우 압축 단계 설명을 다르게 표시
+  const getStageDescription = () => {
+    if (item.currentStage === 'compression' && item.type === 'video') {
+      return '비디오 압축, 썸네일 추출 및 메타데이터 처리 중...'
+    }
+    return currentStage.description
+  }
+
   return (
     <div className="mt-3">
       <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -168,7 +176,7 @@ const DetailedProgressBar = ({ item }: { item: EnhancedUploadStatus }) => {
         />
       </div>
 
-      <p className="text-xs text-gray-500 mt-1">{currentStage.description}</p>
+      <p className="text-xs text-gray-500 mt-1">{getStageDescription()}</p>
     </div>
   )
 }
@@ -180,14 +188,35 @@ const CompressionInfo = ({ item }: { item: EnhancedUploadStatus }) => {
   const originalSize = formatBytes(item.size)
   const finalSize = formatBytes(item.finalSize)
 
+  // 비디오와 이미지에 따라 다른 아이콘과 텍스트 표시
+  const getCompressionText = () => {
+    if (item.type === 'video') {
+      return {
+        icon: '🎬',
+        label: '비디오 최적화 완료',
+        description: '압축, 썸네일 추출 및 메타데이터 처리 완료'
+      }
+    }
+    return {
+      icon: '🎨',
+      label: '이미지 최적화 완료',
+      description: 'WebP 변환 및 압축 완료'
+    }
+  }
+
+  const compressionText = getCompressionText()
+
   return (
     <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-green-700 font-medium">🎨 압축 완료</span>
+        <span className="text-green-700 font-medium">{compressionText.icon} {compressionText.label}</span>
         <span className="text-green-600">{savingsPercent}% 절약</span>
       </div>
       <div className="text-xs text-green-600 mt-1">
         {originalSize} → {finalSize}
+      </div>
+      <div className="text-xs text-green-500 mt-1">
+        {compressionText.description}
       </div>
     </div>
   )
@@ -304,7 +333,10 @@ export default function EnhancedUploadProgress({
                     </div>
 
                     <div className="flex items-center space-x-3 mt-1 text-xs text-gray-500">
-                      <span>{item.type.toUpperCase()}</span>
+                      <span className="flex items-center space-x-1">
+                        <span>{item.type === 'video' ? '🎬' : '🖼️'}</span>
+                        <span>{item.type.toUpperCase()}</span>
+                      </span>
                       <span>{formatBytes(item.size)}</span>
                       <span>{formatDuration(item.startedAt, item.completedAt)}</span>
                     </div>
@@ -352,15 +384,17 @@ export default function EnhancedUploadProgress({
                     {item.processingDetails && (
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="text-center">
-                          <div className="text-gray-600">업로드</div>
+                          <div className="text-gray-600">📤 업로드</div>
                           <div className="font-medium">{item.processingDetails.uploadProgress}%</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-gray-600">압축</div>
+                          <div className="text-gray-600">
+                            {item.type === 'video' ? '🎬 비디오 처리' : '🎨 이미지 압축'}
+                          </div>
                           <div className="font-medium">{item.processingDetails.compressionProgress}%</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-gray-600">저장</div>
+                          <div className="text-gray-600">💾 저장</div>
                           <div className="font-medium">{item.processingDetails.databaseProgress}%</div>
                         </div>
                       </div>
@@ -377,8 +411,9 @@ export default function EnhancedUploadProgress({
                     {item.status === 'completed' && (
                       <div className="bg-green-50 border border-green-200 rounded p-2">
                         <p className="text-sm text-green-700">
-                          ✅ 업로드 완료 • {item.storageType === 'database' ? 'DB 저장' : '파일시스템 저장'}
+                          ✅ {item.type === 'video' ? '비디오' : '이미지'} 업로드 완료 • {item.storageType === 'database' ? 'DB 저장' : '파일시스템 저장'}
                           {item.finalSize && ` • 최종 크기: ${formatBytes(item.finalSize)}`}
+                          {item.type === 'video' && ' • 썸네일 및 메타데이터 추출 완료'}
                         </p>
                       </div>
                     )}
