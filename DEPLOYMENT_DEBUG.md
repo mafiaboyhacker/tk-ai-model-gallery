@@ -32,9 +32,9 @@
 
 ### ⭐ 최신 수정사항 (2025-09-25 19:50 KST)
 - **빌드 명령어 수정**: `CI=false next build` - ESLint 경고 무시
-- **🔥 CRITICAL 발견**: `nixpacks.toml` DEPRECATED 파일이 배포 실패 원인!
-- **해결책**: `nixpacks.toml` 삭제 후 `railway.toml`만 사용
-- **이유**: Railway가 DEPRECATED된 nixpacks 설정을 읽으려 해서 실패
+- **🔥 CRITICAL 해결됨**: `nixpacks.toml` 제거 완료
+- **현재 상태**: `railway.toml`의 Railpack 빌더만 사용
+- **결과**: 빌드 시스템 충돌 해결됨
 
 ### 🔍 환경변수 상태
 - ✅ DATABASE_URL: 설정됨

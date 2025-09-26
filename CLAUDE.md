@@ -195,7 +195,7 @@ The app uses a unified environment detection system:
 
 **Video Processing Issues:**
 - **"비디오를 재생할 수 없습니다" error**: Usually indicates FFmpeg not available or video processing failed
-- **FFmpeg installation**: Ensure `nixpacks.toml` is properly configured with `nixPkgs = ["...", "ffmpeg"]`
+- **FFmpeg installation**: FFmpeg is pre-installed in Railway Railpack environment
 - **Video upload but no thumbnail**: Check FFmpeg installation and VideoProcessor.checkFFmpegInstallation() result
 
 **Performance Issues:**
@@ -215,7 +215,7 @@ The app uses a unified environment detection system:
 - Automatic environment detection via Railpack build system
 - Volume-based file storage in `/app/uploads`
 - PostgreSQL metadata storage
-- FFmpeg installation via nixpacks configuration for video processing
+- FFmpeg pre-installed in Railway Railpack environment for video processing
 - Auto-recovery system for deployment issues
 
 ### Critical Development Rules
