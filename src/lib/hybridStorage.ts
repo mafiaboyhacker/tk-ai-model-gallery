@@ -95,7 +95,7 @@ export function getStoragePath(): {
           thumbnailsDir,
           isVolumeAvailable: true,
           storageType: 'volume',
-          retryCount: 5 - retries
+          retryCount: 0
         }
       } catch (error) {
         console.error('❌ Railway volume directory creation failed:', error)
