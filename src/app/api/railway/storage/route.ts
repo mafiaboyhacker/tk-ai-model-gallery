@@ -656,7 +656,28 @@ export async function GET(request: NextRequest) {
             healthStatus = 'degraded'
           }
 
-          // 3. 파일 시스템 권한 확인
+          // 3. FFmpeg 설치 확인
+          try {
+            const ffmpegAvailable = await VideoProcessor.checkFFmpegInstallation()
+            healthChecks.ffmpeg = {
+              status: ffmpegAvailable ? 'ok' : 'error',
+              available: ffmpegAvailable,
+              message: ffmpegAvailable ? 'FFmpeg available for video processing' : 'FFmpeg not available - video processing disabled'
+            }
+
+            if (!ffmpegAvailable) {
+              healthStatus = 'degraded'
+            }
+          } catch (ffmpegError) {
+            healthChecks.ffmpeg = {
+              status: 'error',
+              available: false,
+              error: ffmpegError instanceof Error ? ffmpegError.message : 'FFmpeg check failed'
+            }
+            healthStatus = 'degraded'
+          }
+
+          // 4. 파일 시스템 권한 확인
           try {
             const testFilePath = path.join(UPLOADS_DIR, '.health-check')
             await writeFile(testFilePath, 'health check')
@@ -671,7 +692,7 @@ export async function GET(request: NextRequest) {
             healthStatus = 'unhealthy'
           }
 
-          // 4. DB-파일 동기화 상태 확인
+          // 5. DB-파일 동기화 상태 확인
           const syncCheck = await syncMediaStorage()
           healthChecks.sync = {
             status: syncCheck.success ? 'ok' : 'warning',
@@ -684,7 +705,7 @@ export async function GET(request: NextRequest) {
             healthStatus = 'degraded'
           }
 
-          // 5. 전체 상태 요약
+          // 6. 전체 상태 요약
           const totalLatency = Date.now() - healthStartTime
 
           return NextResponse.json({
