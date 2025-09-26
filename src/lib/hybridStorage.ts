@@ -22,29 +22,42 @@ export function getStoragePath(): {
   // Enhanced Railway volume mount with retry logic and debugging
   if (volumePath) {
     console.log(`🔍 Volume path from env: ${volumePath}`)
-    let retries = 5
-    let volumeExists = false
 
-    // Wait and retry logic for Railway volume mount race condition
-    while (retries > 0 && !volumeExists) {
-      volumeExists = existsSync(volumePath)
-      console.log(`🔍 Volume exists check: ${volumePath} = ${volumeExists}`)
+    // First check if the volume path exists
+    let volumeExists = existsSync(volumePath)
+    console.log(`🔍 Initial volume exists check: ${volumePath} = ${volumeExists}`)
 
-      if (!volumeExists) {
-        console.log(`⏳ Waiting for Railway volume mount: ${volumePath} (${retries} retries left)`)
-        // Synchronous wait for Railway startup
-        try {
-          require('child_process').execSync('sleep 1', { timeout: 2000 })
-        } catch (error) {
-          console.warn('⚠️ Sleep command failed, using setTimeout fallback')
-          // Fallback to busy wait
-          const start = Date.now()
-          while (Date.now() - start < 1000) {
-            // Busy wait for 1 second
-          }
-        }
-        retries--
+    // If volume doesn't exist, try to create it
+    if (!volumeExists) {
+      console.log(`🔧 Attempting to create volume path: ${volumePath}`)
+      try {
+        const fs = require('fs')
+        fs.mkdirSync(volumePath, { recursive: true })
+        volumeExists = existsSync(volumePath)
+        console.log(`🔧 Volume creation result: ${volumeExists}`)
+      } catch (createError) {
+        console.warn(`⚠️ Volume creation failed: ${createError.message}`)
       }
+    }
+
+    // Additional diagnostic information
+    console.log(`📋 Volume diagnostic:`)
+    console.log(`  - Process CWD: ${process.cwd()}`)
+    console.log(`  - Volume path exists: ${volumeExists}`)
+
+    // List available mount points for debugging
+    try {
+      const fs = require('fs')
+      const rootContents = fs.readdirSync('/')
+      console.log(`📋 Root directory contents:`, rootContents)
+
+      if (rootContents.includes('data')) {
+        console.log(`✅ /data directory found in root`)
+        const dataContents = fs.readdirSync('/data')
+        console.log(`📋 /data contents:`, dataContents)
+      }
+    } catch (debugError) {
+      console.warn(`⚠️ Debug listing failed: ${debugError.message}`)
     }
 
     if (volumeExists) {

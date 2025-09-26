@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, readdir, unlink, mkdir, stat } from 'fs/promises'
+import { writeFile, readdir, unlink, mkdir, stat, readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
@@ -102,6 +102,90 @@ function logPerformanceMetrics(operation: string, startTime: number, additionalI
   if (duration > 500) {
     console.warn(`⚠️ 느린 작업 감지: ${operation} (${duration}ms)`)
   }
+}
+
+// 🔄 임시 파일 복구 함수
+async function recoverTempFiles() {
+  console.log('🔍 /tmp/uploads에서 파일 복구 시작...')
+
+  const tempUploadsDir = '/tmp/uploads'
+  const tempImagesDir = '/tmp/uploads/images'
+  const tempVideosDir = '/tmp/uploads/videos'
+
+  let recoveredCount = 0
+
+  try {
+    // /tmp/uploads 확인
+    if (existsSync(tempUploadsDir)) {
+      console.log(`✅ /tmp/uploads 디렉토리 발견`)
+
+      // 파일 목록 조회
+      const tempFiles = await readdir(tempUploadsDir)
+      console.log(`📁 /tmp/uploads 파일 목록:`, tempFiles)
+
+      // 이미지 파일 복구
+      if (existsSync(tempImagesDir)) {
+        const tempImages = await readdir(tempImagesDir)
+        console.log(`🖼️ 임시 이미지 파일: ${tempImages.length}개`)
+
+        for (const imageFile of tempImages) {
+          try {
+            const sourcePath = path.join(tempImagesDir, imageFile)
+            const targetPath = path.join(IMAGES_DIR, imageFile)
+
+            // 대상 디렉토리 확인/생성
+            if (!existsSync(IMAGES_DIR)) {
+              await mkdir(IMAGES_DIR, { recursive: true })
+            }
+
+            // 파일 복사
+            const fileData = await readFile(sourcePath)
+            await writeFile(targetPath, fileData)
+
+            console.log(`✅ 이미지 복구: ${imageFile}`)
+            recoveredCount++
+          } catch (error) {
+            console.warn(`⚠️ 이미지 복구 실패: ${imageFile}`, error)
+          }
+        }
+      }
+
+      // 비디오 파일 복구
+      if (existsSync(tempVideosDir)) {
+        const tempVideos = await readdir(tempVideosDir)
+        console.log(`🎬 임시 비디오 파일: ${tempVideos.length}개`)
+
+        for (const videoFile of tempVideos) {
+          try {
+            const sourcePath = path.join(tempVideosDir, videoFile)
+            const targetPath = path.join(VIDEOS_DIR, videoFile)
+
+            // 대상 디렉토리 확인/생성
+            if (!existsSync(VIDEOS_DIR)) {
+              await mkdir(VIDEOS_DIR, { recursive: true })
+            }
+
+            // 파일 복사
+            const fileData = await readFile(sourcePath)
+            await writeFile(targetPath, fileData)
+
+            console.log(`✅ 비디오 복구: ${videoFile}`)
+            recoveredCount++
+          } catch (error) {
+            console.warn(`⚠️ 비디오 복구 실패: ${videoFile}`, error)
+          }
+        }
+      }
+
+      console.log(`✅ 파일 복구 완료: ${recoveredCount}개`)
+    } else {
+      console.log(`❌ /tmp/uploads 디렉토리 없음`)
+    }
+  } catch (error) {
+    console.error('❌ 파일 복구 중 오류:', error)
+  }
+
+  return recoveredCount
 }
 
 // 🔄 DB-파일 동기화 함수 (핵심 기능)
@@ -580,6 +664,11 @@ export async function GET(request: NextRequest) {
       case 'sync':
         // 🔄 수동 DB-파일 동기화
         console.log('🔄 수동 동기화 요청됨')
+
+        // First try to recover files from /tmp/uploads
+        console.log('🔍 임시 파일 복구 시도...')
+        await recoverTempFiles()
+
         const manualSyncResult = await syncMediaStorage()
 
         if (manualSyncResult.success) {
