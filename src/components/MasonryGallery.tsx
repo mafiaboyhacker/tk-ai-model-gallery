@@ -84,31 +84,34 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
 
   const { scrollTop, isScrolling } = useScroller(scrollerTarget)
 
-  // Dynamic column calculation based on width
+  // 스마트 컬럼 계산 - 상단에 4-5개 이미지가 잘 보이도록 최적화
   const columnConfig = useMemo(() => {
-    // Ensure we always have a valid width for column calculation
     const availableWidth = width > 0 ? width : windowWidth
     let columnCount = 2
     let columnWidth = 300
 
-    if (availableWidth >= 1536) {
-      columnCount = 6
-      columnWidth = Math.floor((availableWidth - 64) / 6) - 4
+    // 데스크탑에서 4-5개 컬럼이 상단에 잘 보이도록 조정
+    if (availableWidth >= 1920) {
+      columnCount = 5 // 4K에서 5개
+      columnWidth = Math.floor((availableWidth - 80) / 5) - 8
+    } else if (availableWidth >= 1536) {
+      columnCount = 5 // 큰 데스크탑에서 5개
+      columnWidth = Math.floor((availableWidth - 80) / 5) - 8
     } else if (availableWidth >= 1280) {
-      columnCount = 6
-      columnWidth = Math.floor((availableWidth - 64) / 6) - 4
+      columnCount = 4 // 일반 데스크탑에서 4개
+      columnWidth = Math.floor((availableWidth - 64) / 4) - 8
     } else if (availableWidth >= 1024) {
-      columnCount = 5
-      columnWidth = Math.floor((availableWidth - 64) / 5) - 4
+      columnCount = 4 // 작은 데스크탑에서도 4개 유지
+      columnWidth = Math.floor((availableWidth - 64) / 4) - 6
     } else if (availableWidth >= 768) {
-      columnCount = 4
-      columnWidth = Math.floor((availableWidth - 64) / 4) - 4
+      columnCount = 3 // 태블릿에서 3개
+      columnWidth = Math.floor((availableWidth - 48) / 3) - 6
     } else if (availableWidth >= 640) {
-      columnCount = 3
-      columnWidth = Math.floor((availableWidth - 64) / 3) - 4
+      columnCount = 2 // 큰 모바일에서 2개
+      columnWidth = Math.floor((availableWidth - 32) / 2) - 6
     } else {
-      columnCount = 2
-      columnWidth = Math.floor((availableWidth - 64) / 2) - 4
+      columnCount = 2 // 작은 모바일에서 2개
+      columnWidth = Math.floor((availableWidth - 24) / 2) - 4
     }
 
     return { columnCount, columnWidth }
@@ -146,14 +149,30 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
   }, [mounted, windowHeight, allMedia.length])
 
   const MasonryCard = useCallback(({ index, data, width }: { index: number, data: Media, width: number }) => {
-    // 16:9 landscape images get larger height for better visibility
+    // 스마트 종횡비 감지 및 배치 시스템 (16:9 ~ 9:16)
     const aspectRatio = data.width / data.height
+
     const calculateHeight = () => {
-      if (aspectRatio >= 1.6) {
-        // For 16:9 and wider landscape images, ensure minimum height (much smaller)
-        return Math.max(120, width / aspectRatio)
+      // 16:9 초광각 (1.78:1 이상)
+      if (aspectRatio >= 1.78) {
+        return Math.max(width * 0.4, width / aspectRatio) // 최소 높이 보장
       }
-      return width / aspectRatio
+      // 4:3 가로 (1.33:1 이상)
+      else if (aspectRatio >= 1.33) {
+        return width / aspectRatio
+      }
+      // 정사각형 근처 (0.75:1 ~ 1.33:1)
+      else if (aspectRatio >= 0.75) {
+        return width / aspectRatio
+      }
+      // 3:4 세로 (0.75:1 ~ 0.56:1)
+      else if (aspectRatio >= 0.56) {
+        return Math.min(width * 1.8, width / aspectRatio) // 최대 높이 제한
+      }
+      // 9:16 초세로 (0.56:1 미만)
+      else {
+        return Math.min(width * 2.2, width / aspectRatio) // 더 큰 최대 높이
+      }
     }
 
     return (
