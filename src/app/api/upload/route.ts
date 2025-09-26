@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { ImageProcessor } from '@/lib/ImageProcessor'
+import { ImageProcessor } from '@/lib/imageProcessor'
 import { SecurityValidator } from '@/lib/SecurityValidator'
 import path from 'path'
 import { writeFile, mkdir, unlink } from 'fs/promises'
