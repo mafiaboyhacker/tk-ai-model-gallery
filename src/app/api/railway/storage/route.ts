@@ -825,26 +825,6 @@ export async function POST(request: NextRequest) {
                 // 원본 저장으로 fallback
               }
             }
-
-              // DB 저장용 데이터 준비
-              finalMediaData = {
-                fileName: path.basename(processedResult.compressed.path),
-                originalFileName: file.name,
-                fileSize: processedResult.compressed.size,
-                width: processedResult.metadata.width,
-                height: processedResult.metadata.height,
-                duration: processedResult.metadata.duration,
-                resolution: `${processedResult.metadata.width}x${processedResult.metadata.height}`,
-                thumbnailUrl: processedResult.thumbnail.url,
-                previewUrl: processedResult.preview.url
-              }
-
-              const compressionRatio = Math.round((1 - processedResult.compressed.size / file.size) * 100)
-              console.log(`✅ 비디오 처리 완료: ${file.name}`)
-              console.log(`📊 압축 결과: ${(file.size / (1024 * 1024)).toFixed(1)}MB → ${(processedResult.compressed.size / (1024 * 1024)).toFixed(1)}MB (${compressionRatio}% 절약)`)
-              console.log(`🎯 최종 파일: ${path.basename(processedResult.compressed.path)}`)
-
-            }
           }
 
           // 🔄 단순 파일 저장 모드
