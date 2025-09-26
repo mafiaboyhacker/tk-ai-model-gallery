@@ -1,6 +1,23 @@
-import sharp from 'sharp'
 import path from 'path'
 import { writeFile, mkdir } from 'fs/promises'
+
+// Sharp 동적 import 및 fallback 처리
+let sharp: any = null
+let sharpAvailable = false
+
+async function initializeSharp() {
+  if (sharp === null) {
+    try {
+      sharp = (await import('sharp')).default
+      sharpAvailable = true
+      console.log('✅ Sharp 초기화 성공')
+    } catch (error) {
+      console.warn('⚠️ Sharp 초기화 실패, fallback 모드로 동작:', error)
+      sharpAvailable = false
+    }
+  }
+  return sharpAvailable
+}
 
 export interface ImageDimensions {
   width: number
@@ -44,81 +61,109 @@ export class ImageProcessor {
   private static readonly JPEG_QUALITY = 85 // 90→85 (압축률 향상)
 
   /**
-   * 이미지 메타데이터 추출
+   * 이미지 메타데이터 추출 (Sharp 또는 fallback 사용)
    */
   static async getImageDimensions(buffer: Buffer): Promise<ImageDimensions> {
-    try {
-      const metadata = await sharp(buffer).metadata()
-      const width = metadata.width || 0
-      const height = metadata.height || 0
-      const aspectRatio = width > 0 && height > 0 ? width / height : 1
+    const sharpReady = await initializeSharp()
 
-      return { width, height, aspectRatio }
-    } catch (error) {
-      console.error('Error getting image dimensions:', error)
-      return { width: 800, height: 600, aspectRatio: 1.33 }
+    if (sharpReady && sharp) {
+      try {
+        const metadata = await sharp(buffer).metadata()
+        const width = metadata.width || 0
+        const height = metadata.height || 0
+        const aspectRatio = width > 0 && height > 0 ? width / height : 1
+
+        return { width, height, aspectRatio }
+      } catch (error) {
+        console.error('Sharp으로 이미지 차원 추출 실패:', error)
+      }
     }
+
+    // Fallback: 기본값 반환
+    console.warn('⚠️ Sharp 없이 기본 이미지 차원 사용')
+    return { width: 1200, height: 800, aspectRatio: 1.5 }
   }
 
   /**
-   * 이미지 리사이징 (최대 크기 제한)
+   * 이미지 리사이징 (Sharp 또는 fallback 사용)
    */
   static async resizeImage(
-    buffer: Buffer, 
+    buffer: Buffer,
     maxWidth: number = this.MAX_WIDTH,
     maxHeight: number = this.MAX_HEIGHT
   ): Promise<Buffer> {
-    try {
-      return await sharp(buffer)
-        .resize(maxWidth, maxHeight, {
-          fit: 'inside',
-          withoutEnlargement: true
-        })
-        .jpeg({ quality: this.JPEG_QUALITY, progressive: true })
-        .toBuffer()
-    } catch (error) {
-      console.error('Error resizing image:', error)
-      throw error
+    const sharpReady = await initializeSharp()
+
+    if (sharpReady && sharp) {
+      try {
+        return await sharp(buffer)
+          .resize(maxWidth, maxHeight, {
+            fit: 'inside',
+            withoutEnlargement: true
+          })
+          .jpeg({ quality: this.JPEG_QUALITY, progressive: true })
+          .toBuffer()
+      } catch (error) {
+        console.error('Sharp으로 이미지 리사이징 실패:', error)
+      }
     }
+
+    // Fallback: 원본 이미지 반환
+    console.warn('⚠️ Sharp 없이 원본 이미지 사용 (리사이징 생략)')
+    return buffer
   }
 
   /**
-   * 썸네일 생성
+   * 썸네일 생성 (Sharp 또는 fallback 사용)
    */
   static async generateThumbnail(
     buffer: Buffer,
     width: number = this.THUMBNAIL_WIDTH
   ): Promise<Buffer> {
-    try {
-      return await sharp(buffer)
-        .resize(width, null, {
-          fit: 'inside',
-          withoutEnlargement: false
-        })
-        .webp({ quality: this.WEBP_QUALITY })
-        .toBuffer()
-    } catch (error) {
-      console.error('Error generating thumbnail:', error)
-      throw error
+    const sharpReady = await initializeSharp()
+
+    if (sharpReady && sharp) {
+      try {
+        return await sharp(buffer)
+          .resize(width, null, {
+            fit: 'inside',
+            withoutEnlargement: false
+          })
+          .webp({ quality: this.WEBP_QUALITY })
+          .toBuffer()
+      } catch (error) {
+        console.error('Sharp으로 썸네일 생성 실패:', error)
+      }
     }
+
+    // Fallback: 원본 이미지 반환 (썸네일 대신)
+    console.warn('⚠️ Sharp 없이 원본 이미지를 썸네일로 사용')
+    return buffer
   }
 
   /**
-   * WebP 변환
+   * WebP 변환 (Sharp 또는 fallback 사용)
    */
   static async convertToWebP(buffer: Buffer): Promise<Buffer> {
-    try {
-      return await sharp(buffer)
-        .webp({
-          quality: this.WEBP_QUALITY,
-          effort: 3, // 🚀 최적화: 4→3 (20% 빠른 변환 속도)
-          nearLossless: false
-        })
-        .toBuffer()
-    } catch (error) {
-      console.error('Error converting to WebP:', error)
-      throw error
+    const sharpReady = await initializeSharp()
+
+    if (sharpReady && sharp) {
+      try {
+        return await sharp(buffer)
+          .webp({
+            quality: this.WEBP_QUALITY,
+            effort: 3, // 🚀 최적화: 4→3 (20% 빠른 변환 속도)
+            nearLossless: false
+          })
+          .toBuffer()
+      } catch (error) {
+        console.error('Sharp으로 WebP 변환 실패:', error)
+      }
     }
+
+    // Fallback: 원본 이미지 반환 (WebP 변환 생략)
+    console.warn('⚠️ Sharp 없이 원본 이미지 포맷 유지 (WebP 변환 생략)')
+    return buffer
   }
 
   /**
@@ -136,8 +181,18 @@ export class ImageProcessor {
     await this.ensureDirectoryExists(path.join(uploadDir, 'thumbnails'))
     await this.ensureDirectoryExists(path.join(uploadDir, 'webp'))
 
-    // 메타데이터 추출
-    const metadata = await sharp(buffer).metadata()
+    // 메타데이터 추출 (Sharp 또는 fallback 사용)
+    const sharpReady = await initializeSharp()
+    let metadata = null
+
+    if (sharpReady && sharp) {
+      try {
+        metadata = await sharp(buffer).metadata()
+      } catch (error) {
+        console.warn('Sharp 메타데이터 추출 실패:', error)
+      }
+    }
+
     const dimensions = await this.getImageDimensions(buffer)
 
     // 파일명 준비
@@ -192,56 +247,63 @@ export class ImageProcessor {
         url: `/uploads/webp/${webpFileName}`
       },
       metadata: {
-        format: metadata.format || 'unknown',
+        format: metadata?.format || 'unknown',
         size: buffer.length,
-        hasAlpha: metadata.hasAlpha || false,
-        colorSpace: metadata.space || 'sRGB'
+        hasAlpha: metadata?.hasAlpha || false,
+        colorSpace: metadata?.space || 'sRGB'
       }
     }
   }
 
   /**
-   * 이미지 압축 및 최적화
+   * 이미지 압축 및 최적화 (Sharp 또는 fallback 사용)
    */
   static async optimizeImage(buffer: Buffer, format: 'jpeg' | 'png' | 'webp' = 'jpeg'): Promise<Buffer> {
-    try {
-      const sharpInstance = sharp(buffer)
+    const sharpReady = await initializeSharp()
 
-      switch (format) {
-        case 'jpeg':
-          return await sharpInstance
-            .jpeg({ 
-              quality: this.JPEG_QUALITY, 
-              progressive: true,
-              mozjpeg: true 
-            })
-            .toBuffer()
+    if (sharpReady && sharp) {
+      try {
+        const sharpInstance = sharp(buffer)
 
-        case 'png':
-          return await sharpInstance
-            .png({ 
-              compressionLevel: 9,
-              palette: true,
-              quality: 90
-            })
-            .toBuffer()
+        switch (format) {
+          case 'jpeg':
+            return await sharpInstance
+              .jpeg({
+                quality: this.JPEG_QUALITY,
+                progressive: true,
+                mozjpeg: true
+              })
+              .toBuffer()
 
-        case 'webp':
-          return await sharpInstance
-            .webp({
-              quality: this.WEBP_QUALITY,
-              effort: 4, // 🚀 최적화: 6→4 (33% 빠른 최적화)
-              nearLossless: false
-            })
-            .toBuffer()
+          case 'png':
+            return await sharpInstance
+              .png({
+                compressionLevel: 9,
+                palette: true,
+                quality: 90
+              })
+              .toBuffer()
 
-        default:
-          throw new Error(`Unsupported format: ${format}`)
+          case 'webp':
+            return await sharpInstance
+              .webp({
+                quality: this.WEBP_QUALITY,
+                effort: 4, // 🚀 최적화: 6→4 (33% 빠른 최적화)
+                nearLossless: false
+              })
+              .toBuffer()
+
+          default:
+            throw new Error(`Unsupported format: ${format}`)
+        }
+      } catch (error) {
+        console.error('Sharp으로 이미지 최적화 실패:', error)
       }
-    } catch (error) {
-      console.error('Error optimizing image:', error)
-      throw error
     }
+
+    // Fallback: 원본 이미지 반환 (최적화 생략)
+    console.warn('⚠️ Sharp 없이 원본 이미지 사용 (최적화 생략)')
+    return buffer
   }
 
   /**
@@ -295,21 +357,28 @@ export class ImageProcessor {
   }
 
   /**
-   * 색상 팔레트 추출 (옵션)
+   * 색상 팔레트 추출 (Sharp 또는 fallback 사용)
    */
   static async extractColorPalette(buffer: Buffer, colors: number = 5): Promise<string[]> {
-    try {
-      const { data } = await sharp(buffer)
-        .resize(100, 100)
-        .raw()
-        .toBuffer({ resolveWithObject: true })
+    const sharpReady = await initializeSharp()
 
-      // 간단한 도미넌트 컬러 추출 (실제로는 더 복잡한 알고리즘 필요)
-      return ['#000000'] // 플레이스홀더
-    } catch (error) {
-      console.error('Error extracting color palette:', error)
-      return ['#000000']
+    if (sharpReady && sharp) {
+      try {
+        const { data } = await sharp(buffer)
+          .resize(100, 100)
+          .raw()
+          .toBuffer({ resolveWithObject: true })
+
+        // 간단한 도미넌트 컬러 추출 (실제로는 더 복잡한 알고리즘 필요)
+        return ['#000000'] // 플레이스홀더
+      } catch (error) {
+        console.error('Sharp으로 색상 팔레트 추출 실패:', error)
+      }
     }
+
+    // Fallback: 기본 색상 팔레트 반환
+    console.warn('⚠️ Sharp 없이 기본 색상 팔레트 사용')
+    return ['#000000']
   }
 }
 
