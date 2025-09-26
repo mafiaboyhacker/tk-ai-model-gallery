@@ -15,12 +15,13 @@ function getRailwayPaths() {
                     process.env.RAILWAY_VOLUME_MOUNT_PATH
 
   if (isRailway) {
-    // Railway 환경: Volume 루트 직접 사용
+    // Railway 환경: Volume 경로 수정 - uploads 하위 디렉토리 사용
     const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
+    const uploadsDir = path.join(volumeRoot, 'uploads')
     return {
-      UPLOADS_DIR: volumeRoot,
-      IMAGES_DIR: path.join(volumeRoot, 'images'),
-      VIDEOS_DIR: path.join(volumeRoot, 'videos'),
+      UPLOADS_DIR: uploadsDir,
+      IMAGES_DIR: path.join(uploadsDir, 'images'),
+      VIDEOS_DIR: path.join(uploadsDir, 'videos'),
       isRailway: true
     }
   } else {
