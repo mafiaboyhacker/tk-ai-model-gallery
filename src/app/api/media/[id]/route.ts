@@ -16,14 +16,15 @@ const prisma = new PrismaClient({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const startTime = Date.now() // 🚀 성능 측정 시작
 
   try {
-    const mediaId = params.id
+    const { id: mediaId } = await params
 
     if (!mediaId) {
+      console.error('❌ Media ID가 없음')
       return NextResponse.json({
         success: false,
         error: 'Media ID required'
@@ -31,6 +32,7 @@ export async function GET(
     }
 
     console.log(`🔍 파일 서빙 요청: ${mediaId}`)
+    console.log(`🔍 요청 URL: ${request.url}`)
 
     // PostgreSQL에서 미디어 정보 조회
     const media = await prisma.media.findUnique({
@@ -167,11 +169,11 @@ export async function GET(
  */
 export async function HEAD(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // HEAD 요청은 헤더만 반환 (파일 존재 여부 확인용)
   try {
-    const mediaId = params.id
+    const { id: mediaId } = await params
     const media = await prisma.media.findUnique({
       where: { id: mediaId },
       select: { id: true, storageType: true, fileData: true, uploadedAt: true }
