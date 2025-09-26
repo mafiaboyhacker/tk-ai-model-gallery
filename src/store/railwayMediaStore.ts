@@ -106,6 +106,8 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     return new Promise((resolve, reject) => {
       const formData = new FormData()
       formData.append('file', file)
+      // enableProcessing을 기본값으로 활성화 (WebP 변환 및 비디오 압축)
+      formData.append('enableProcessing', 'true')
 
       const xhr = new XMLHttpRequest()
 
@@ -246,11 +248,20 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
           emitProgress(file.name, 0, 'uploading', startSnapshot)
 
           return get().uploadFileWithProgress(file, (fileProgress) => {
-            const progressSnapshot = updateQueue(queueEntry.id, {
-              status: 'uploading',
-              progress: fileProgress
-            })
-            emitProgress(file.name, fileProgress, 'uploading', progressSnapshot)
+            // 업로드가 100%에 도달하면 processing 상태로 전환
+            if (fileProgress >= 100) {
+              const processingSnapshot = updateQueue(queueEntry.id, {
+                status: 'processing',
+                progress: 100
+              })
+              emitProgress(file.name, 100, 'processing', processingSnapshot)
+            } else {
+              const progressSnapshot = updateQueue(queueEntry.id, {
+                status: 'uploading',
+                progress: fileProgress
+              })
+              emitProgress(file.name, fileProgress, 'uploading', progressSnapshot)
+            }
           }).then((result) => ({ status: 'fulfilled' as const, value: result, queueEntry, file }))
             .catch((error) => ({ status: 'rejected' as const, reason: error, queueEntry, file }))
         })
@@ -266,14 +277,23 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
               customName: result.value.title
             }
             uploadResults.push(converted)
+
+            // 변환 정보가 있으면 압축률 정보 추가
+            const compressionSavings = result.value.processingInfo?.compressionRatio || 0
+            const finalSize = result.value.processingInfo?.finalSize || file.size
+
             const snapshot = updateQueue(queueEntry.id, {
               status: 'completed',
               progress: 100,
-              completedAt: Date.now()
+              completedAt: Date.now(),
+              compressionSavings,
+              finalSize,
+              storageType: 'filesystem'
             })
             emitProgress(file.name, 100, 'completed', snapshot)
             if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ Railway: ${file.name} 업로드 성공 - ${converted.customName}`)
+              const processingType = result.value.processingInfo?.type || 'none'
+              console.log(`✅ Railway: ${file.name} 업로드 성공 - ${converted.customName} (${processingType}, ${compressionSavings}% 절약)`)
             }
           } else {
             const message = result.reason instanceof Error ? result.reason.message : String(result.reason)

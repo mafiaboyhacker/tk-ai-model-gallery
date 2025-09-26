@@ -758,7 +758,7 @@ export async function POST(request: NextRequest) {
 
               console.log('✅ FFmpeg 설치 확인됨 - 비디오 압축 시작')
 
-              // 비디오 처리 실행
+              // 비디오 처리 실행 (진행률 콜백 포함)
               processedResult = await VideoProcessor.processVideo(
                 file,
                 targetDir,
@@ -771,8 +771,60 @@ export async function POST(request: NextRequest) {
                 },
                 (stage, percent) => {
                   console.log(`🎬 비디오 처리 진행: ${stage} ${percent}%`)
+                  // TODO: 실시간 진행률 전송을 위한 WebSocket/SSE 구현 예정
                 }
               )
+            } else if (isImage) {
+              // 🎨 이미지 WebP 변환 처리 시작
+              console.log(`🎨 이미지 WebP 변환 시작: ${file.name}`)
+              console.log(`📏 원본 이미지: ${(file.size / 1024).toFixed(1)}KB`)
+
+              try {
+                // Sharp 사용 가능성 확인
+                const sharp = require('sharp')
+                const arrayBuffer = await file.arrayBuffer()
+                const inputBuffer = Buffer.from(arrayBuffer)
+
+                console.log(`🎨 Sharp를 사용한 WebP 변환 진행: 0%`)
+
+                // WebP 변환 및 최적화
+                const webpBuffer = await sharp(inputBuffer)
+                  .webp({
+                    quality: 85,
+                    effort: 4,
+                    progressive: true
+                  })
+                  .toBuffer()
+
+                console.log(`🎨 WebP 변환 완료: 100%`)
+                console.log(`📊 변환 결과: ${(file.size / 1024).toFixed(1)}KB → ${(webpBuffer.length / 1024).toFixed(1)}KB`)
+
+                // 변환된 파일이 더 작으면 사용
+                if (webpBuffer.length < file.size * 0.9) {
+                  const webpFileName = uniqueFileName.replace(/\.(jpg|jpeg|png|gif)$/i, '.webp')
+                  const webpPath = path.join(targetDir, webpFileName)
+                  await writeFile(webpPath, webpBuffer)
+
+                  finalMediaData = {
+                    fileName: webpFileName,
+                    originalFileName: file.name,
+                    fileSize: webpBuffer.length,
+                    width: metadata.width || 800,
+                    height: metadata.height || 600,
+                    compressionSavings: Math.round((1 - webpBuffer.length / file.size) * 100)
+                  }
+
+                  console.log(`✅ WebP 변환 저장 완료: ${webpPath}`)
+                  processedResult = { converted: true, savings: finalMediaData.compressionSavings }
+                } else {
+                  console.log(`📷 원본 유지 (WebP 효과 미미)`)
+                  throw new Error('WebP conversion not beneficial')
+                }
+              } catch (sharpError) {
+                console.warn(`⚠️ WebP 변환 실패, 원본 저장: ${sharpError.message}`)
+                // 원본 저장으로 fallback
+              }
+            }
 
               // DB 저장용 데이터 준비
               finalMediaData = {
@@ -852,12 +904,19 @@ export async function POST(request: NextRequest) {
           invalidateCache('list')
           console.log('♻️ 업로드 완료 → 목록 캐시 무효화')
 
-          // 응답 데이터 구성 (단순화)
+          // 응답 데이터 구성 (변환 정보 포함)
           const responseData = {
             ...mediaRecord,
             url: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
             originalUrl: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
-            processed: true
+            processed: !!processedResult,
+            processingInfo: processedResult ? {
+              type: isVideo ? 'video_compression' : 'webp_conversion',
+              savings: processedResult.savings || finalMediaData?.compressionSavings || 0,
+              originalSize: file.size,
+              finalSize: finalMediaData?.fileSize || file.size,
+              compressionRatio: Math.round((1 - (finalMediaData?.fileSize || file.size) / file.size) * 100)
+            } : null
           }
 
           return NextResponse.json({
