@@ -116,8 +116,9 @@ export async function POST(request: NextRequest) {
         const baseName = path.parse(validation.sanitizedFileName).name
         const uniqueFileName = `${timestamp}-${randomId}-${baseName}${fileExtension}`
 
-        // 업로드 경로 설정
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', typeDir)
+        // 업로드 경로 설정 (Railway Volume 사용)
+        const baseUploadPath = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'public')
+        const uploadDir = path.join(baseUploadPath, 'uploads', typeDir)
         await mkdir(uploadDir, { recursive: true })
 
         let processedResult
@@ -260,9 +261,10 @@ export async function DELETE(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // 파일 시스템에서 실제 파일 삭제
+    // 파일 시스템에서 실제 파일 삭제 (Railway Volume 사용)
     const typeDir = media.type === 'image' ? 'images' : 'videos'
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', typeDir)
+    const baseUploadPath = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'public')
+    const uploadDir = path.join(baseUploadPath, 'uploads', typeDir)
     const mainFilePath = path.join(uploadDir, media.fileName)
 
     try {

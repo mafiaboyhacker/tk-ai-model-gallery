@@ -37,16 +37,17 @@ export async function GET(
       return new NextResponse('잘못된 파일 경로', { status: 400 })
     }
 
-    // 파일 경로 구성
+    // 파일 경로 구성 (Railway Volume 사용)
+    const baseUploadPath = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'public')
     const filePath = path.join(
-      process.cwd(),
-      'public',
+      baseUploadPath,
       'uploads',
       ...pathSegments
     )
 
     // 보안: 경로 탐색 공격 방지
-    if (!filePath.includes(path.join(process.cwd(), 'public', 'uploads'))) {
+    const allowedBasePath = path.join(baseUploadPath, 'uploads')
+    if (!filePath.includes(allowedBasePath)) {
       return new NextResponse('접근 권한 없음', { status: 403 })
     }
 

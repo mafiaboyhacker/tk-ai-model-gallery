@@ -5,7 +5,8 @@ import sharp from 'sharp'
 
 export async function GET(request: NextRequest) {
   try {
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+    const baseUploadPath = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'public')
+    const uploadsDir = path.join(baseUploadPath, 'uploads')
     
     // uploads 폴더가 없으면 생성
     try {

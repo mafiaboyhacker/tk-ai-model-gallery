@@ -10,8 +10,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No images provided' }, { status: 400 })
     }
 
-    // public/uploads 디렉토리 생성 (없으면)
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
+    // uploads 디렉토리 생성 (Railway Volume 사용)
+    const baseUploadPath = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'public')
+    const uploadDir = path.join(baseUploadPath, 'uploads')
     try {
       await mkdir(uploadDir, { recursive: true })
     } catch (error) {
