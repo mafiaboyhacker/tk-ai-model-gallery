@@ -18,6 +18,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const startTime = Date.now() // 🚀 성능 측정 시작
+
   try {
     const mediaId = params.id
 
@@ -62,15 +64,22 @@ export async function GET(
 
       try {
         const buffer = Buffer.from(media.fileData, 'base64')
-        console.log(`✅ Base64 디코딩 완료: ${(buffer.length / 1024).toFixed(1)}KB`)
+        const responseTime = Date.now() - startTime // 🚀 응답 시간 계산
+        console.log(`✅ Base64 디코딩 완료: ${(buffer.length / 1024).toFixed(1)}KB (${responseTime}ms)`)
 
         return new Response(buffer, {
           headers: {
             'Content-Type': media.mimeType || 'application/octet-stream',
             'Content-Length': buffer.length.toString(),
-            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Cache-Control': 'public, max-age=31536000, immutable, stale-while-revalidate=86400',
             'ETag': `"${media.id}-${media.uploadedAt?.getTime()}"`,
-            'Last-Modified': media.uploadedAt?.toUTCString() || new Date().toUTCString()
+            'Last-Modified': media.uploadedAt?.toUTCString() || new Date().toUTCString(),
+            'X-Content-Type-Options': 'nosniff',
+            'X-Storage-Type': 'database',
+            'X-Response-Time': `${responseTime}ms`,
+            'X-File-Size': `${(buffer.length / 1024).toFixed(1)}KB`,
+            'Accept-Ranges': 'bytes',
+            'Cross-Origin-Resource-Policy': 'cross-origin'
           }
         })
       } catch (decodeError) {
@@ -104,15 +113,22 @@ export async function GET(
 
       try {
         const fileBuffer = await readFile(filePath)
-        console.log(`✅ 파일 로드 완료: ${(fileBuffer.length / 1024).toFixed(1)}KB`)
+        const responseTime = Date.now() - startTime // 🚀 응답 시간 계산
+        console.log(`✅ 파일 로드 완료: ${(fileBuffer.length / 1024).toFixed(1)}KB (${responseTime}ms)`)
 
         return new Response(fileBuffer, {
           headers: {
             'Content-Type': media.mimeType || 'application/octet-stream',
             'Content-Length': fileBuffer.length.toString(),
-            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Cache-Control': 'public, max-age=31536000, immutable, stale-while-revalidate=86400',
             'ETag': `"${media.id}-${media.uploadedAt?.getTime()}"`,
-            'Last-Modified': media.uploadedAt?.toUTCString() || new Date().toUTCString()
+            'Last-Modified': media.uploadedAt?.toUTCString() || new Date().toUTCString(),
+            'X-Content-Type-Options': 'nosniff',
+            'X-Storage-Type': 'filesystem',
+            'X-Response-Time': `${responseTime}ms`,
+            'X-File-Size': `${(fileBuffer.length / 1024).toFixed(1)}KB`,
+            'Accept-Ranges': 'bytes',
+            'Cross-Origin-Resource-Policy': 'cross-origin'
           }
         })
       } catch (fileError) {

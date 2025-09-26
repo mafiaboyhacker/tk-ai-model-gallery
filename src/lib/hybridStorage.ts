@@ -75,25 +75,46 @@ export async function hybridStorageUpload(
   if (metadata.fileSize < FILE_SIZE_THRESHOLD) {
     console.log(`🗃️ 작은 파일 (${(metadata.fileSize / 1024).toFixed(1)}KB) - Database 저장`)
 
-    // Base64 인코딩하여 DB에 저장
-    const base64Data = file.toString('base64')
-
-    // 썸네일 생성 (이미지인 경우)
+    // 썸네일 생성 및 이미지 최적화 (이미지인 경우)
     let thumbnailData: string | undefined
+    let optimizedFile = file // 기본값은 원본 파일
+
     if (mimeType.startsWith('image/')) {
-      // Sharp를 사용하여 썸네일 생성 (100x100)
       try {
         const sharp = require('sharp')
+
+        // 📸 썸네일 생성 (150x150, 높은 품질)
         const thumbnailBuffer = await sharp(file)
-          .resize(100, 100, { fit: 'cover' })
-          .jpeg({ quality: 80 })
+          .resize(150, 150, { fit: 'cover', position: 'center' })
+          .jpeg({ quality: 85, progressive: true })
           .toBuffer()
         thumbnailData = thumbnailBuffer.toString('base64')
         console.log(`📸 썸네일 생성: ${(thumbnailBuffer.length / 1024).toFixed(1)}KB`)
+
+        // 🎨 이미지 최적화 (WebP 변환 + 압축)
+        const webpBuffer = await sharp(file)
+          .webp({
+            quality: 85,
+            effort: 4, // 압축 효율성 (0-6, 높을수록 더 압축)
+            progressive: true
+          })
+          .toBuffer()
+
+        // WebP가 더 작으면 사용, 아니면 원본 유지
+        if (webpBuffer.length < file.length * 0.9) {
+          optimizedFile = webpBuffer
+          console.log(`🎨 WebP 최적화: ${(file.length / 1024).toFixed(1)}KB → ${(webpBuffer.length / 1024).toFixed(1)}KB`)
+        } else {
+          console.log(`📷 원본 유지 (WebP 효과 미미): ${(file.length / 1024).toFixed(1)}KB`)
+        }
+
       } catch (error) {
-        console.warn('⚠️ 썸네일 생성 실패:', error)
+        console.warn('⚠️ 이미지 최적화 실패:', error)
       }
     }
+
+    // Base64 인코딩하여 DB에 저장 (최적화된 파일 사용)
+    const base64Data = optimizedFile.toString('base64')
 
     return {
       storageType: 'database',
@@ -115,9 +136,38 @@ export async function hybridStorageUpload(
       console.log(`📁 디렉토리 생성: ${targetDir}`)
     }
 
+    // 파일 최적화 및 저장
+    let fileToStore = file
+    let actualFilename = filename
+
+    // 이미지인 경우 최적화 적용
+    if (!isVideo && mimeType.startsWith('image/')) {
+      try {
+        const sharp = require('sharp')
+
+        // WebP 변환 시도
+        const webpBuffer = await sharp(file)
+          .webp({
+            quality: 85,
+            effort: 4,
+            progressive: true
+          })
+          .toBuffer()
+
+        // WebP가 더 효율적이면 사용
+        if (webpBuffer.length < file.length * 0.9) {
+          fileToStore = webpBuffer
+          actualFilename = filename.replace(/\.(jpg|jpeg|png|gif)$/i, '.webp')
+          console.log(`🎨 파일시스템 WebP 최적화: ${(file.length / 1024).toFixed(1)}KB → ${(webpBuffer.length / 1024).toFixed(1)}KB`)
+        }
+      } catch (error) {
+        console.warn('⚠️ 파일시스템 이미지 최적화 실패:', error)
+      }
+    }
+
     // 파일 저장
-    const filePath = path.join(targetDir, filename)
-    await writeFile(filePath, file)
+    const filePath = path.join(targetDir, actualFilename)
+    await writeFile(filePath, fileToStore)
 
     console.log(`💾 파일 저장: ${filePath}`)
     console.log(`📊 스토리지 타입: ${storage.storageType}`)

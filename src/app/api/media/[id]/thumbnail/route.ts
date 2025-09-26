@@ -59,9 +59,13 @@ export async function GET(
           headers: {
             'Content-Type': 'image/jpeg', // 썸네일은 항상 JPEG
             'Content-Length': buffer.length.toString(),
-            'Cache-Control': 'public, max-age=2592000, immutable', // 30일 캐시
+            'Cache-Control': 'public, max-age=2592000, immutable, stale-while-revalidate=86400', // 30일 캐시
             'ETag': `"thumb-${media.id}-${media.uploadedAt?.getTime()}"`,
-            'Last-Modified': media.uploadedAt?.toUTCString() || new Date().toUTCString()
+            'Last-Modified': media.uploadedAt?.toUTCString() || new Date().toUTCString(),
+            'X-Content-Type-Options': 'nosniff',
+            'X-Thumbnail-Type': 'optimized',
+            'Accept-Ranges': 'bytes',
+            'Cross-Origin-Resource-Policy': 'cross-origin'
           }
         })
       } catch (decodeError) {
