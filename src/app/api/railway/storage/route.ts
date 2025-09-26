@@ -9,7 +9,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { VideoProcessor } from '@/lib/videoProcessor'
-import { ImageProcessor } from '@/lib/imageProcessor'
+import { ImageProcessor } from '@/lib/ImageProcessor'
 import { hybridStorageUpload, getStoragePath, diagnoseStorageStatus } from '@/lib/hybridStorage'
 
 // 🚀 성능 최적화된 Prisma 클라이언트
