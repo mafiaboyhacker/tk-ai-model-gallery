@@ -9,7 +9,6 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { VideoProcessor } from '@/lib/videoProcessor'
-import { ImageProcessor } from '@/lib/ImageProcessor'
 import { hybridStorageUpload, getStoragePath, diagnoseStorageStatus } from '@/lib/hybridStorage'
 
 // 🚀 성능 최적화된 Prisma 클라이언트
@@ -818,86 +817,53 @@ export async function POST(request: NextRequest) {
               console.log(`📊 압축 결과: ${(file.size / (1024 * 1024)).toFixed(1)}MB → ${(processedResult.compressed.size / (1024 * 1024)).toFixed(1)}MB (${compressionRatio}% 절약)`)
               console.log(`🎯 최종 파일: ${path.basename(processedResult.compressed.path)}`)
 
-            } else if (isImage) {
-              console.log(`🖼️ 이미지 처리 시작: ${file.name}`)
-              console.log(`📏 원본 이미지: ${(file.size / (1024 * 1024)).toFixed(1)}MB, 포맷: ${file.type}`)
-              console.log('🔄 WebP 변환 + 썸네일 생성 시작...')
-
-              // 이미지 처리 실행
-              processedResult = await ImageProcessor.processImage(
-                file,
-                targetDir,
-                uniqueFileName
-              )
-
-              // DB 저장용 데이터 준비 (WebP 파일을 메인으로 사용)
-              finalMediaData = {
-                fileName: path.basename(processedResult.webp.path),
-                originalFileName: file.name,
-                fileSize: processedResult.webp.url.includes('webp') ? Math.round(file.size * 0.7) : file.size, // WebP 압축 고려
-                width: processedResult.webp.width,
-                height: processedResult.webp.height,
-                duration: null,
-                resolution: null,
-                thumbnailUrl: processedResult.thumbnail.url,
-                webpUrl: processedResult.webp.url
-              }
-
-              console.log(`✅ 이미지 처리 완료: ${file.name}`)
-              console.log(`📊 변환 결과:`)
-              console.log(`  └ WebP: ${path.basename(processedResult.webp.path)} (메인 표시용)`)
-              console.log(`  └ 썸네일: ${path.basename(processedResult.thumbnail.path)}`)
-              console.log(`  └ 원본: ${path.basename(processedResult.original.path)} (백업용)`)
-              console.log(`🎯 갤러리 표시 파일: ${path.basename(processedResult.webp.path)}`)
             }
           }
 
           // 🔄 하이브리드 스토리지 모드 (Phase 2 구현)
-          if (!processedResult) {
-            console.log(`🔄 하이브리드 스토리지 모드: ${file.name}`)
+          console.log(`🔄 하이브리드 스토리지 모드: ${file.name}`)
 
-            const arrayBuffer = await file.arrayBuffer()
-            const buffer = Buffer.from(arrayBuffer)
+          const arrayBuffer = await file.arrayBuffer()
+          const buffer = Buffer.from(arrayBuffer)
 
-            // 하이브리드 스토리지 업로드 실행
-            const hybridResult = await hybridStorageUpload({
-              file: buffer,
-              filename: uniqueFileName,
-              mimeType: file.type,
-              metadata: {
-                width: metadata.width || (isVideo ? 1920 : 800),
-                height: metadata.height || (isVideo ? 1080 : 600),
-                duration: isVideo ? metadata.duration : null,
-                fileSize: file.size
-              }
-            })
-
-            // 기본 메타데이터 설정
-            finalMediaData = {
-              fileName: uniqueFileName,
-              originalFileName: file.name,
-              fileSize: file.size,
+          // 하이브리드 스토리지 업로드 실행
+          const hybridResult = await hybridStorageUpload({
+            file: buffer,
+            filename: uniqueFileName,
+            mimeType: file.type,
+            metadata: {
               width: metadata.width || (isVideo ? 1920 : 800),
               height: metadata.height || (isVideo ? 1080 : 600),
               duration: isVideo ? metadata.duration : null,
-              resolution: isVideo ? metadata.resolution || '1920x1080' : null,
-              thumbnailUrl: null,
-              webpUrl: null,
-              previewUrl: null,
-              // 하이브리드 스토리지 필드 추가
-              storageType: hybridResult.storageType,
-              fileData: hybridResult.fileData,
-              filePath: hybridResult.filePath,
-              thumbnailData: hybridResult.thumbnailData
+              fileSize: file.size
             }
+          })
 
-            console.log(`✅ 하이브리드 스토리지 완료: ${hybridResult.storageType}`)
-            if (hybridResult.filePath) {
-              console.log(`📁 파일 경로: ${hybridResult.filePath}`)
-            }
-            if (hybridResult.fileData) {
-              console.log(`🗃️ DB 저장: ${(hybridResult.fileData.length / 1024).toFixed(1)}KB`)
-            }
+          // 기본 메타데이터 설정
+          finalMediaData = {
+            fileName: uniqueFileName,
+            originalFileName: file.name,
+            fileSize: file.size,
+            width: metadata.width || (isVideo ? 1920 : 800),
+            height: metadata.height || (isVideo ? 1080 : 600),
+            duration: isVideo ? metadata.duration : null,
+            resolution: isVideo ? metadata.resolution || '1920x1080' : null,
+            thumbnailUrl: null,
+            webpUrl: null,
+            previewUrl: null,
+            // 하이브리드 스토리지 필드 추가
+            storageType: hybridResult.storageType,
+            fileData: hybridResult.fileData,
+            filePath: hybridResult.filePath,
+            thumbnailData: hybridResult.thumbnailData
+          }
+
+          console.log(`✅ 하이브리드 스토리지 완료: ${hybridResult.storageType}`)
+          if (hybridResult.filePath) {
+            console.log(`📁 파일 경로: ${hybridResult.filePath}`)
+          }
+          if (hybridResult.fileData) {
+            console.log(`🗃️ DB 저장: ${(hybridResult.fileData.length / 1024).toFixed(1)}KB`)
           }
 
           // 🔄 DB 저장과 파일 저장 트랜잭션 처리
@@ -939,22 +905,14 @@ export async function POST(request: NextRequest) {
           invalidateCache('list')
           console.log('♻️ 업로드 완료 → 목록 캐시 무효화')
 
-          // 응답 데이터 구성 (직접 서빙 URL 사용)
+          // 응답 데이터 구성 (API 엔드포인트 사용)
           const responseData = {
             ...mediaRecord,
-            url: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
-            originalUrl: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
-            processed: !!processedResult,
-            processingInfo: processedResult ? {
-              thumbnailUrl: finalMediaData.thumbnailUrl,
-              webpUrl: finalMediaData.webpUrl,
-              previewUrl: finalMediaData.previewUrl,
-              compression: isVideo && processedResult ? {
-                originalSize: file.size,
-                compressedSize: processedResult.compressed.size,
-                compressionRatio: Math.round((1 - processedResult.compressed.size / file.size) * 100)
-              } : null
-            } : null
+            url: `/api/media/${mediaRecord.id}`,
+            originalUrl: `/api/media/${mediaRecord.id}`,
+            thumbnailUrl: `/api/media/${mediaRecord.id}/thumbnail`,
+            processed: true,
+            storageType: mediaRecord.storageType
           }
 
           return NextResponse.json({
