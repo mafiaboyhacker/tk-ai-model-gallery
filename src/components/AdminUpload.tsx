@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRailwayMediaStore } from '@/store/railwayMediaStore'
-import UploadProgressPanel from '@/components/admin/UploadProgressPanel'
+import EnhancedUploadProgress from '@/components/EnhancedUploadProgress'
 import type { UploadProgressEvent } from '@/types'
 
 interface AdminUploadProps {

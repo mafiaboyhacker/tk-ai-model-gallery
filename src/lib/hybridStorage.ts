@@ -19,14 +19,16 @@ export function getStoragePath(): {
 } {
   const volumePath = process.env.RAILWAY_VOLUME_MOUNT_PATH
 
-  // Enhanced Railway volume mount with retry logic
+  // Enhanced Railway volume mount with retry logic and debugging
   if (volumePath) {
+    console.log(`🔍 Volume path from env: ${volumePath}`)
     let retries = 5
     let volumeExists = false
 
     // Wait and retry logic for Railway volume mount race condition
     while (retries > 0 && !volumeExists) {
       volumeExists = existsSync(volumePath)
+      console.log(`🔍 Volume exists check: ${volumePath} = ${volumeExists}`)
 
       if (!volumeExists) {
         console.log(`⏳ Waiting for Railway volume mount: ${volumePath} (${retries} retries left)`)
