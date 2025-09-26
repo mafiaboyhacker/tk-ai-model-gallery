@@ -291,13 +291,12 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
         })
       }
 
-      set({
-        media: [...uploadResults, ...currentMedia],
-        isLoading: false
-      })
+      // 🚀 업로드 완료 후 전체 미디어 다시 로드 (갤러리 실시간 업데이트)
+      await get().loadMedia()
 
       if (process.env.NODE_ENV === 'development') {
         console.log(`✅ Railway: 총 ${uploadResults.length}/${files.length}개 파일 업로드 완료`)
+        console.log(`🔄 갤러리 자동 새로고침 완료`)
       }
 
       if (uploadResults.length < files.length) {
