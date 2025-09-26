@@ -9,7 +9,11 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { VideoProcessor } from '@/lib/videoProcessor'
-import { hybridStorageUpload, getStoragePath, diagnoseStorageStatus } from '@/lib/hybridStorage'
+// Simple storage paths - always use Railway volume
+const RAILWAY_VOLUME_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
+const UPLOADS_DIR = path.join(RAILWAY_VOLUME_PATH, 'uploads')
+const IMAGES_DIR = path.join(UPLOADS_DIR, 'images')
+const VIDEOS_DIR = path.join(UPLOADS_DIR, 'videos')
 
 // 🚀 성능 최적화된 Prisma 클라이언트
 const prisma = new PrismaClient({
@@ -104,89 +108,6 @@ function logPerformanceMetrics(operation: string, startTime: number, additionalI
   }
 }
 
-// 🔄 임시 파일 복구 함수
-async function recoverTempFiles() {
-  console.log('🔍 /tmp/uploads에서 파일 복구 시작...')
-
-  const tempUploadsDir = '/tmp/uploads'
-  const tempImagesDir = '/tmp/uploads/images'
-  const tempVideosDir = '/tmp/uploads/videos'
-
-  let recoveredCount = 0
-
-  try {
-    // /tmp/uploads 확인
-    if (existsSync(tempUploadsDir)) {
-      console.log(`✅ /tmp/uploads 디렉토리 발견`)
-
-      // 파일 목록 조회
-      const tempFiles = await readdir(tempUploadsDir)
-      console.log(`📁 /tmp/uploads 파일 목록:`, tempFiles)
-
-      // 이미지 파일 복구
-      if (existsSync(tempImagesDir)) {
-        const tempImages = await readdir(tempImagesDir)
-        console.log(`🖼️ 임시 이미지 파일: ${tempImages.length}개`)
-
-        for (const imageFile of tempImages) {
-          try {
-            const sourcePath = path.join(tempImagesDir, imageFile)
-            const targetPath = path.join(IMAGES_DIR, imageFile)
-
-            // 대상 디렉토리 확인/생성
-            if (!existsSync(IMAGES_DIR)) {
-              await mkdir(IMAGES_DIR, { recursive: true })
-            }
-
-            // 파일 복사
-            const fileData = await readFile(sourcePath)
-            await writeFile(targetPath, fileData)
-
-            console.log(`✅ 이미지 복구: ${imageFile}`)
-            recoveredCount++
-          } catch (error) {
-            console.warn(`⚠️ 이미지 복구 실패: ${imageFile}`, error)
-          }
-        }
-      }
-
-      // 비디오 파일 복구
-      if (existsSync(tempVideosDir)) {
-        const tempVideos = await readdir(tempVideosDir)
-        console.log(`🎬 임시 비디오 파일: ${tempVideos.length}개`)
-
-        for (const videoFile of tempVideos) {
-          try {
-            const sourcePath = path.join(tempVideosDir, videoFile)
-            const targetPath = path.join(VIDEOS_DIR, videoFile)
-
-            // 대상 디렉토리 확인/생성
-            if (!existsSync(VIDEOS_DIR)) {
-              await mkdir(VIDEOS_DIR, { recursive: true })
-            }
-
-            // 파일 복사
-            const fileData = await readFile(sourcePath)
-            await writeFile(targetPath, fileData)
-
-            console.log(`✅ 비디오 복구: ${videoFile}`)
-            recoveredCount++
-          } catch (error) {
-            console.warn(`⚠️ 비디오 복구 실패: ${videoFile}`, error)
-          }
-        }
-      }
-
-      console.log(`✅ 파일 복구 완료: ${recoveredCount}개`)
-    } else {
-      console.log(`❌ /tmp/uploads 디렉토리 없음`)
-    }
-  } catch (error) {
-    console.error('❌ 파일 복구 중 오류:', error)
-  }
-
-  return recoveredCount
-}
 
 // 🔄 DB-파일 동기화 함수 (핵심 기능)
 async function syncMediaStorage() {
@@ -298,70 +219,36 @@ async function syncMediaStorage() {
   }
 }
 
-// 🚀 하이브리드 스토리지 경로 설정 (Phase 2 구현)
-const storage = getStoragePath()
-const { storageRoot: UPLOADS_DIR, imagesDir: IMAGES_DIR, videosDir: VIDEOS_DIR } = storage
+// Simple Railway environment detection
 const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production'
 
-// 하이브리드 스토리지 상태 진단
-diagnoseStorageStatus()
+console.log(`📁 Storage paths:`)
+console.log(`  - Railway Volume: ${RAILWAY_VOLUME_PATH}`)
+console.log(`  - Uploads: ${UPLOADS_DIR}`)
+console.log(`  - Images: ${IMAGES_DIR}`)
+console.log(`  - Videos: ${VIDEOS_DIR}`)
 
-// 업로드 디렉토리 초기화
+// 업로드 디렉토리 초기화 (단순화)
 async function ensureUploadDirs() {
   try {
-    console.log(`🔍 디렉토리 초기화 시작:`)
-    console.log(`📁 UPLOADS_DIR: ${UPLOADS_DIR}`)
-    console.log(`📁 IMAGES_DIR: ${IMAGES_DIR}`)
-    console.log(`📁 VIDEOS_DIR: ${VIDEOS_DIR}`)
-    console.log(`🌍 RAILWAY_VOLUME_MOUNT_PATH: ${process.env.RAILWAY_VOLUME_MOUNT_PATH}`)
+    console.log(`🔍 디렉토리 초기화 시작`)
 
-    // Volume 루트 경로 강제 생성 (fallback to /app/uploads)
-    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/uploads'
-    if (!existsSync(volumeRoot)) {
-      console.log(`🏗️ 스토리지 루트 디렉토리 생성 중: ${volumeRoot}`)
-      await mkdir(volumeRoot, { recursive: true })
-      console.log(`✅ 스토리지 루트 디렉토리 생성 완료: ${volumeRoot}`)
+    // 볼륨 루트 생성
+    if (!existsSync(RAILWAY_VOLUME_PATH)) {
+      console.log(`📁 볼륨 루트 생성: ${RAILWAY_VOLUME_PATH}`)
+      await mkdir(RAILWAY_VOLUME_PATH, { recursive: true })
     }
 
-    console.log(`📋 스토리지 루트 상태:`, {
-      volumeRoot,
-      exists: existsSync(volumeRoot),
-      hasVolumeEnv: !!process.env.RAILWAY_VOLUME_MOUNT_PATH
-    })
-
-    if (!existsSync(UPLOADS_DIR)) {
-      console.log(`📁 UPLOADS_DIR 생성 중: ${UPLOADS_DIR}`)
-      await mkdir(UPLOADS_DIR, { recursive: true })
-      console.log(`✅ UPLOADS_DIR 생성 완료: ${UPLOADS_DIR}`)
-    } else {
-      console.log(`✅ UPLOADS_DIR 이미 존재: ${UPLOADS_DIR}`)
-    }
-
-    if (!existsSync(IMAGES_DIR)) {
-      console.log(`📁 IMAGES_DIR 생성 중: ${IMAGES_DIR}`)
-      await mkdir(IMAGES_DIR, { recursive: true })
-      console.log(`✅ IMAGES_DIR 생성 완료: ${IMAGES_DIR}`)
-    } else {
-      console.log(`✅ IMAGES_DIR 이미 존재: ${IMAGES_DIR}`)
-    }
-
-    if (!existsSync(VIDEOS_DIR)) {
-      console.log(`📁 VIDEOS_DIR 생성 중: ${VIDEOS_DIR}`)
-      await mkdir(VIDEOS_DIR, { recursive: true })
-      console.log(`✅ VIDEOS_DIR 생성 완료: ${VIDEOS_DIR}`)
-    } else {
-      console.log(`✅ VIDEOS_DIR 이미 존재: ${VIDEOS_DIR}`)
-    }
-
-    // 디렉토리 구조 최종 확인
-    console.log(`📋 최종 디렉토리 구조 확인:`)
-    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) {
-      const { readdirSync } = require('fs')
-      console.log(`📋 Volume 루트:`, readdirSync(process.env.RAILWAY_VOLUME_MOUNT_PATH))
-      if (existsSync(UPLOADS_DIR)) {
-        console.log(`📋 uploads:`, readdirSync(UPLOADS_DIR))
+    // 업로드 디렉토리들 생성
+    const dirs = [UPLOADS_DIR, IMAGES_DIR, VIDEOS_DIR]
+    for (const dir of dirs) {
+      if (!existsSync(dir)) {
+        console.log(`📁 생성: ${dir}`)
+        await mkdir(dir, { recursive: true })
       }
     }
+
+    console.log(`✅ 디렉토리 초기화 완료`)
   } catch (error) {
     console.error('❌ 디렉토리 생성 실패:', error)
     throw error
@@ -633,7 +520,7 @@ export async function GET(request: NextRequest) {
         })
 
       case 'force-clear-db':
-        // 🚨 강제 DB 정리 (안전 모드)
+        // 🚨 강제 DB 정리 (고아 레코드 정리 포함)
         try {
           console.log('🚨 강제 DB 정리 시작...')
 
@@ -645,9 +532,12 @@ export async function GET(request: NextRequest) {
           invalidateCache()
           console.log('🧹 모든 캐시 무효화 완료')
 
+          // 디렉토리 초기화 (깔끔한 시작을 위해)
+          await ensureUploadDirs()
+
           return NextResponse.json({
             success: true,
-            message: `강제 DB 정리 완료: ${deleteResult.count}개 레코드 삭제`,
+            message: `강제 DB 정리 완료: ${deleteResult.count}개 레코드 삭제. 이제 깔끔하게 새로 시작할 수 있습니다.`,
             deletedRecords: deleteResult.count,
             timestamp: new Date().toISOString()
           })
@@ -662,12 +552,8 @@ export async function GET(request: NextRequest) {
         }
 
       case 'sync':
-        // 🔄 수동 DB-파일 동기화
+        // 🔄 수동 DB-파일 동기화 (단순화)
         console.log('🔄 수동 동기화 요청됨')
-
-        // First try to recover files from /tmp/uploads
-        console.log('🔍 임시 파일 복구 시도...')
-        await recoverTempFiles()
 
         const manualSyncResult = await syncMediaStorage()
 
@@ -909,24 +795,16 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 🔄 하이브리드 스토리지 모드 (Phase 2 구현)
-          console.log(`🔄 하이브리드 스토리지 모드: ${file.name}`)
+          // 🔄 단순 파일 저장 모드
+          console.log(`💾 파일 저장: ${file.name}`)
 
           const arrayBuffer = await file.arrayBuffer()
           const buffer = Buffer.from(arrayBuffer)
+          const filePath = path.join(targetDir, uniqueFileName)
 
-          // 하이브리드 스토리지 업로드 실행
-          const hybridResult = await hybridStorageUpload({
-            file: buffer,
-            filename: uniqueFileName,
-            mimeType: file.type,
-            metadata: {
-              width: metadata.width || (isVideo ? 1920 : 800),
-              height: metadata.height || (isVideo ? 1080 : 600),
-              duration: isVideo ? metadata.duration : null,
-              fileSize: file.size
-            }
-          })
+          // 파일 저장
+          await writeFile(filePath, buffer)
+          console.log(`✅ 파일 저장 완료: ${filePath}`)
 
           // 기본 메타데이터 설정
           finalMediaData = {
@@ -936,23 +814,7 @@ export async function POST(request: NextRequest) {
             width: metadata.width || (isVideo ? 1920 : 800),
             height: metadata.height || (isVideo ? 1080 : 600),
             duration: isVideo ? metadata.duration : null,
-            resolution: isVideo ? metadata.resolution || '1920x1080' : null,
-            thumbnailUrl: null,
-            webpUrl: null,
-            previewUrl: null,
-            // 하이브리드 스토리지 필드 추가
-            storageType: hybridResult.storageType,
-            fileData: hybridResult.fileData,
-            filePath: hybridResult.filePath,
-            thumbnailData: hybridResult.thumbnailData
-          }
-
-          console.log(`✅ 하이브리드 스토리지 완료: ${hybridResult.storageType}`)
-          if (hybridResult.filePath) {
-            console.log(`📁 파일 경로: ${hybridResult.filePath}`)
-          }
-          if (hybridResult.fileData) {
-            console.log(`🗃️ DB 저장: ${(hybridResult.fileData.length / 1024).toFixed(1)}KB`)
+            resolution: isVideo ? metadata.resolution || '1920x1080' : null
           }
 
           // 🔄 DB 저장과 파일 저장 트랜잭션 처리
@@ -965,7 +827,7 @@ export async function POST(request: NextRequest) {
             const autoNumber = existingCount + 1
             const autoTitle = isVideo ? `VIDEO #${autoNumber}` : `MODEL #${autoNumber}`
 
-            // PostgreSQL에 메타데이터 저장 (하이브리드 스토리지 지원)
+            // PostgreSQL에 메타데이터 저장 (단순화)
             mediaRecord = await tx.media.create({
               data: {
                 id: finalMediaData.fileName.split('.')[0],
@@ -979,11 +841,7 @@ export async function POST(request: NextRequest) {
                 height: finalMediaData.height,
                 duration: finalMediaData.duration,
                 resolution: finalMediaData.resolution,
-                uploadedAt: new Date(),
-                // 하이브리드 스토리지 필드
-                storageType: finalMediaData.storageType || 'filesystem',
-                fileData: finalMediaData.fileData || null,
-                thumbnailData: finalMediaData.thumbnailData || null
+                uploadedAt: new Date()
               }
             })
           })
@@ -994,14 +852,12 @@ export async function POST(request: NextRequest) {
           invalidateCache('list')
           console.log('♻️ 업로드 완료 → 목록 캐시 무효화')
 
-          // 응답 데이터 구성 (API 엔드포인트 사용)
+          // 응답 데이터 구성 (단순화)
           const responseData = {
             ...mediaRecord,
-            url: `/api/media/${mediaRecord.id}`,
-            originalUrl: `/api/media/${mediaRecord.id}`,
-            thumbnailUrl: `/api/media/${mediaRecord.id}/thumbnail`,
-            processed: true,
-            storageType: mediaRecord.storageType
+            url: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
+            originalUrl: `/uploads/${mediaRecord.type}/${mediaRecord.fileName}`,
+            processed: true
           }
 
           return NextResponse.json({
@@ -1042,11 +898,7 @@ export async function POST(request: NextRequest) {
                   height: isVideo ? 1080 : 600,
                   duration: isVideo ? null : null,
                   resolution: isVideo ? '1920x1080' : null,
-                  uploadedAt: new Date(),
-                  // 하이브리드 스토리지 기본값 (fallback은 항상 filesystem)
-                  storageType: 'filesystem',
-                  fileData: null,
-                  thumbnailData: null
+                  uploadedAt: new Date()
                 }
               })
             })
