@@ -311,14 +311,75 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       }
     })
 
-  // 🛡️ Additional safety check for WeakMap compatibility
+  // 🛡️ Enhanced empty state handling - distinguish between loading and truly empty
   if (!safeItems || safeItems.length === 0) {
+    // Check if we have processed all data but found no valid items
+    const hasProcessedData = models && models.length > 0
+    const isEmptyAfterFiltering = hasProcessedData && allMedia.length === 0
+    const isReallyEmpty = !hasProcessedData || (hasProcessedData && allMedia.length === 0)
+
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="flex flex-col items-center space-y-3">
-            <div className="text-gray-500 text-lg">📷</div>
-            <div className="text-gray-500 text-sm">미디어 파일을 불러오는 중...</div>
+          <div className="flex flex-col items-center space-y-4 text-center">
+            {/* Different icons based on state */}
+            <div className="text-6xl text-gray-300">
+              {loading ? "⏳" : isEmptyAfterFiltering ? "🔍" : "📷"}
+            </div>
+
+            {/* Context-appropriate messages */}
+            <div className="space-y-2">
+              <div className="text-gray-600 text-lg font-medium">
+                {loading ? "미디어 로딩 중..." :
+                 isEmptyAfterFiltering ? "필터링된 결과가 없습니다" :
+                 "아직 업로드된 미디어가 없습니다"}
+              </div>
+
+              <div className="text-gray-500 text-sm max-w-md">
+                {loading ? "잠시만 기다려주세요..." :
+                 isEmptyAfterFiltering ? "다른 카테고리를 확인해보거나 전체 갤러리를 방문해보세요." :
+                 "관리자 페이지에서 이미지나 비디오를 업로드해보세요."}
+              </div>
+            </div>
+
+            {/* Action buttons for empty states */}
+            {!loading && isReallyEmpty && (
+              <div className="mt-6 space-y-3">
+                <button
+                  onClick={() => window.location.href = '/admin'}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  관리자 페이지로 이동
+                </button>
+                <div className="text-xs text-gray-400">
+                  관리자 권한이 필요합니다
+                </div>
+              </div>
+            )}
+
+            {/* Filter-specific guidance */}
+            {!loading && isEmptyAfterFiltering && (
+              <div className="mt-6 space-x-4">
+                <button
+                  onClick={() => window.location.href = '/'}
+                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  전체 갤러리
+                </button>
+                <button
+                  onClick={() => window.location.href = '/model'}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  모델 이미지
+                </button>
+                <button
+                  onClick={() => window.location.href = '/video'}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  비디오
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

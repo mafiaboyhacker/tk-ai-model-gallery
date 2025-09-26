@@ -60,6 +60,7 @@ const hybridStorage = async (file: Buffer, size: number) => {
 }
 ```
 
+
 ### **Phase 3: 파일 서빙 시스템 재구축 (우선순위: 높음)**
 **목표**: API 기반 파일 서빙 구축
 

@@ -8,8 +8,10 @@
     "dev:local": "next dev --port 3000",
     "build": "npx prisma generate && cross-env CI=false next build",
     "start": "npx prisma db push --accept-data-loss && next start",
+    "start:production": "node scripts/startup-check.js && npm start",
     "start:backend": "next start --hostname 0.0.0.0 --port 3001",
     "start:local": "next start --port 3000",
+    "startup-check": "node scripts/startup-check.js",
     "lint": "eslint",
     "security-check": "node scripts/security-check.js",
     "pre-deploy": "npm run security-check && npm run lint && npm run build",
@@ -19,8 +21,8 @@
     "validate-env": "node scripts/validate-environment-simple.js",
     "health-check": "node scripts/health-check.js",
     "deploy-safe": "npm run validate-env && npm run pre-deploy && echo '✅ 배포 준비 완료 - Railway로 배포하세요'",
-    "deploy-railway": "node scripts/deploy-railway.js",
-    "post-deploy": "sleep 10 && npm run health-check",
+    "deploy-railway": "node scripts/railway-deploy.js",
+    "post-deploy": "sleep 30 && npm run health-check",
     "batch-upload": "node scripts/batch-upload.js"
   },
   "dependencies": {

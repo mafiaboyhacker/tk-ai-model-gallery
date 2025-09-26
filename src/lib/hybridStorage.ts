@@ -7,36 +7,119 @@ import path from 'path'
 import { existsSync } from 'fs'
 import { writeFile, mkdir } from 'fs/promises'
 
-// 스토리지 경로 설정 함수
+// Enhanced 스토리지 경로 설정 함수 with Railway volume mount stability
 export function getStoragePath(): {
   storageRoot: string
   imagesDir: string
   videosDir: string
+  thumbnailsDir: string
   isVolumeAvailable: boolean
   storageType: 'volume' | 'ephemeral'
+  retryCount: number
 } {
-  // Railway Volume 마운트 경로 확인
   const volumePath = process.env.RAILWAY_VOLUME_MOUNT_PATH
 
-  if (volumePath && existsSync(volumePath)) {
-    // Volume 마운트 성공 - 우선 사용
-    return {
-      storageRoot: volumePath,
-      imagesDir: path.join(volumePath, 'images'),
-      videosDir: path.join(volumePath, 'videos'),
-      isVolumeAvailable: true,
-      storageType: 'volume'
+  // Enhanced Railway volume mount with retry logic
+  if (volumePath) {
+    let retries = 5
+    let volumeExists = false
+
+    // Wait and retry logic for Railway volume mount race condition
+    while (retries > 0 && !volumeExists) {
+      volumeExists = existsSync(volumePath)
+
+      if (!volumeExists) {
+        console.log(`⏳ Waiting for Railway volume mount: ${volumePath} (${retries} retries left)`)
+        // Synchronous wait for Railway startup
+        try {
+          require('child_process').execSync('sleep 1', { timeout: 2000 })
+        } catch (error) {
+          console.warn('⚠️ Sleep command failed, using setTimeout fallback')
+          // Fallback to busy wait
+          const start = Date.now()
+          while (Date.now() - start < 1000) {
+            // Busy wait for 1 second
+          }
+        }
+        retries--
+      }
     }
-  } else {
-    // Volume 마운트 실패 - ephemeral storage fallback
-    const ephemeralRoot = '/tmp/uploads'
-    return {
-      storageRoot: ephemeralRoot,
-      imagesDir: path.join(ephemeralRoot, 'images'),
-      videosDir: path.join(ephemeralRoot, 'videos'),
-      isVolumeAvailable: false,
-      storageType: 'ephemeral'
+
+    if (volumeExists) {
+      // Ensure upload directories exist with enhanced structure
+      const uploadsDir = path.join(volumePath, 'uploads')
+      const imagesDir = path.join(uploadsDir, 'images')
+      const videosDir = path.join(uploadsDir, 'videos')
+      const thumbnailsDir = path.join(uploadsDir, 'thumbnails')
+
+      try {
+        // Create directories synchronously to ensure they exist
+        const fs = require('fs')
+        if (!existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true })
+          console.log(`📁 Created uploads directory: ${uploadsDir}`)
+        }
+        if (!existsSync(imagesDir)) {
+          fs.mkdirSync(imagesDir, { recursive: true })
+          console.log(`📁 Created images directory: ${imagesDir}`)
+        }
+        if (!existsSync(videosDir)) {
+          fs.mkdirSync(videosDir, { recursive: true })
+          console.log(`📁 Created videos directory: ${videosDir}`)
+        }
+        if (!existsSync(thumbnailsDir)) {
+          fs.mkdirSync(thumbnailsDir, { recursive: true })
+          console.log(`📁 Created thumbnails directory: ${thumbnailsDir}`)
+        }
+
+        console.log(`✅ Railway volume mount successful: ${volumePath}`)
+        return {
+          storageRoot: uploadsDir,
+          imagesDir,
+          videosDir,
+          thumbnailsDir,
+          isVolumeAvailable: true,
+          storageType: 'volume',
+          retryCount: 5 - retries
+        }
+      } catch (error) {
+        console.error('❌ Railway volume directory creation failed:', error)
+      }
+    } else {
+      console.warn(`⚠️ Railway volume mount failed after 5 retries: ${volumePath}`)
     }
+  }
+
+  // Fallback to ephemeral storage with warning
+  console.warn('🚨 Using ephemeral storage - files will be lost on deployment refresh!')
+  const ephemeralRoot = '/tmp/uploads'
+
+  try {
+    const fs = require('fs')
+    if (!existsSync(ephemeralRoot)) {
+      fs.mkdirSync(ephemeralRoot, { recursive: true })
+    }
+    if (!existsSync(path.join(ephemeralRoot, 'images'))) {
+      fs.mkdirSync(path.join(ephemeralRoot, 'images'), { recursive: true })
+    }
+    if (!existsSync(path.join(ephemeralRoot, 'videos'))) {
+      fs.mkdirSync(path.join(ephemeralRoot, 'videos'), { recursive: true })
+    }
+    if (!existsSync(path.join(ephemeralRoot, 'thumbnails'))) {
+      fs.mkdirSync(path.join(ephemeralRoot, 'thumbnails'), { recursive: true })
+    }
+  } catch (error) {
+    console.error('❌ Ephemeral storage setup failed:', error)
+  }
+
+  return {
+    storageRoot: ephemeralRoot,
+    imagesDir: path.join(ephemeralRoot, 'images'),
+    videosDir: path.join(ephemeralRoot, 'videos'),
+    thumbnailsDir: path.join(ephemeralRoot, 'thumbnails'),
+    isVolumeAvailable: false,
+    storageType: 'ephemeral',
+    retryCount: 5
   }
 }
 
