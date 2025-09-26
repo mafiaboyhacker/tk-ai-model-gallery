@@ -980,7 +980,7 @@ export async function POST(request: NextRequest) {
             throw fallbackError
           }
         }
-
+        break
 
       case 'bulk-upload':
         const bulkFormData = await request.formData()
