@@ -10,6 +10,7 @@ import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { VideoProcessor } from '@/lib/videoProcessor'
 import { ImageProcessor } from '@/lib/imageProcessor'
+import { hybridStorageUpload, getStoragePath, diagnoseStorageStatus } from '@/lib/hybridStorage'
 
 // 🚀 성능 최적화된 Prisma 클라이언트
 const prisma = new PrismaClient({
@@ -214,42 +215,13 @@ async function syncMediaStorage() {
   }
 }
 
-// 🚀 Railway Volume 디렉토리 설정 (완전 개선)
-function getRailwayPaths() {
-  const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production' ||
-                    process.env.RAILWAY_VOLUME_MOUNT_PATH
+// 🚀 하이브리드 스토리지 경로 설정 (Phase 2 구현)
+const storage = getStoragePath()
+const { storageRoot: UPLOADS_DIR, imagesDir: IMAGES_DIR, videosDir: VIDEOS_DIR } = storage
+const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production'
 
-  if (isRailway) {
-    // Railway 환경: Volume 우선, 없으면 /app/uploads fallback
-    const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/uploads'
-    return {
-      UPLOADS_DIR: volumeRoot,
-      IMAGES_DIR: path.join(volumeRoot, 'images'),
-      VIDEOS_DIR: path.join(volumeRoot, 'videos'),
-      isRailway: true
-    }
-  } else {
-    // 로컬 환경: public/uploads 구조 사용
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
-    return {
-      UPLOADS_DIR: uploadsDir,
-      IMAGES_DIR: path.join(uploadsDir, 'images'),
-      VIDEOS_DIR: path.join(uploadsDir, 'videos'),
-      isRailway: false
-    }
-  }
-}
-
-const { UPLOADS_DIR, IMAGES_DIR, VIDEOS_DIR, isRailway } = getRailwayPaths()
-
-console.log('🔧 Railway 경로 설정:', {
-  isRailway,
-  UPLOADS_DIR,
-  IMAGES_DIR,
-  VIDEOS_DIR,
-  RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
-  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
-})
+// 하이브리드 스토리지 상태 진단
+diagnoseStorageStatus()
 
 // 업로드 디렉토리 초기화
 async function ensureUploadDirs() {
@@ -880,20 +852,25 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 처리 실패 또는 비활성화 시 원본 저장 모드
+          // 🔄 하이브리드 스토리지 모드 (Phase 2 구현)
           if (!processedResult) {
-            console.log(`📁 원본 저장 모드: ${file.name}`)
+            console.log(`🔄 하이브리드 스토리지 모드: ${file.name}`)
 
-            const filePath = path.join(targetDir, uniqueFileName)
             const arrayBuffer = await file.arrayBuffer()
             const buffer = Buffer.from(arrayBuffer)
-            await writeFile(filePath, buffer)
 
-            // 파일 저장 검증
-            const fileStats = await stat(filePath)
-            if (fileStats.size !== buffer.length) {
-              throw new Error(`파일 크기 불일치: 예상 ${buffer.length}, 실제 ${fileStats.size}`)
-            }
+            // 하이브리드 스토리지 업로드 실행
+            const hybridResult = await hybridStorageUpload({
+              file: buffer,
+              filename: uniqueFileName,
+              mimeType: file.type,
+              metadata: {
+                width: metadata.width || (isVideo ? 1920 : 800),
+                height: metadata.height || (isVideo ? 1080 : 600),
+                duration: isVideo ? metadata.duration : null,
+                fileSize: file.size
+              }
+            })
 
             // 기본 메타데이터 설정
             finalMediaData = {
@@ -906,10 +883,21 @@ export async function POST(request: NextRequest) {
               resolution: isVideo ? metadata.resolution || '1920x1080' : null,
               thumbnailUrl: null,
               webpUrl: null,
-              previewUrl: null
+              previewUrl: null,
+              // 하이브리드 스토리지 필드 추가
+              storageType: hybridResult.storageType,
+              fileData: hybridResult.fileData,
+              filePath: hybridResult.filePath,
+              thumbnailData: hybridResult.thumbnailData
             }
 
-            console.log(`✅ 원본 파일 저장 완료: ${filePath}`)
+            console.log(`✅ 하이브리드 스토리지 완료: ${hybridResult.storageType}`)
+            if (hybridResult.filePath) {
+              console.log(`📁 파일 경로: ${hybridResult.filePath}`)
+            }
+            if (hybridResult.fileData) {
+              console.log(`🗃️ DB 저장: ${(hybridResult.fileData.length / 1024).toFixed(1)}KB`)
+            }
           }
 
           // 🔄 DB 저장과 파일 저장 트랜잭션 처리
@@ -922,7 +910,7 @@ export async function POST(request: NextRequest) {
             const autoNumber = existingCount + 1
             const autoTitle = isVideo ? `VIDEO #${autoNumber}` : `MODEL #${autoNumber}`
 
-            // PostgreSQL에 메타데이터 저장
+            // PostgreSQL에 메타데이터 저장 (하이브리드 스토리지 지원)
             mediaRecord = await tx.media.create({
               data: {
                 id: finalMediaData.fileName.split('.')[0],
@@ -936,7 +924,11 @@ export async function POST(request: NextRequest) {
                 height: finalMediaData.height,
                 duration: finalMediaData.duration,
                 resolution: finalMediaData.resolution,
-                uploadedAt: new Date()
+                uploadedAt: new Date(),
+                // 하이브리드 스토리지 필드
+                storageType: finalMediaData.storageType || 'filesystem',
+                fileData: finalMediaData.fileData || null,
+                thumbnailData: finalMediaData.thumbnailData || null
               }
             })
           })
@@ -1003,7 +995,11 @@ export async function POST(request: NextRequest) {
                   height: isVideo ? 1080 : 600,
                   duration: isVideo ? null : null,
                   resolution: isVideo ? '1920x1080' : null,
-                  uploadedAt: new Date()
+                  uploadedAt: new Date(),
+                  // 하이브리드 스토리지 기본값 (fallback은 항상 filesystem)
+                  storageType: 'filesystem',
+                  fileData: null,
+                  thumbnailData: null
                 }
               })
             })

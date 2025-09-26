@@ -76,10 +76,12 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
         return
       }
 
-      // 🚀 API 데이터를 Gallery 형식으로 변환 (title → customName 매핑)
+      // 🚀 API 데이터를 Gallery 형식으로 변환 (API 엔드포인트 사용)
       const convertedMedia = data.data.map((item: any) => ({
         ...item,
-        customName: item.title // title을 customName으로 매핑 (MODEL #1, VIDEO #1 형식)
+        customName: item.title, // title을 customName으로 매핑 (MODEL #1, VIDEO #1 형식)
+        url: `/api/media/${item.id}`, // 변경: 직접 파일 경로 → API 엔드포인트
+        thumbnailUrl: `/api/media/${item.id}/thumbnail` // 썸네일 전용 API 엔드포인트
       }))
 
       if (process.env.NODE_ENV === 'development') {
@@ -427,15 +429,16 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
       console.log(`📊 Railway: 미디어 분석: 총 ${media.length}개 (비디오 ${videos.length}개, 이미지 ${images.length}개)`)
     }
 
-    // 🚀 URL 직접 서빙으로 변경 (API 라우트 우회)
+    // 🚀 API 엔드포인트 사용으로 변경 (하이브리드 스토리지 지원)
     const validateUrls = (mediaArray: typeof media) => {
       return mediaArray.map(item => {
-        if (!item.url || item.url.includes('/api/railway/storage/file/')) {
-          const directUrl = `/uploads/${item.type}/${item.fileName}`
+        if (!item.url || item.url.includes('/api/railway/storage/file/') || item.url.includes('/uploads/')) {
+          const apiUrl = `/api/media/${item.id}`
+          const thumbnailUrl = `/api/media/${item.id}/thumbnail`
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔧 Railway: 직접 서빙 URL로 변경 - ${item.fileName}: ${item.url} → ${directUrl}`)
+            console.log(`🔧 Railway: API 엔드포인트로 변경 - ${item.fileName}: ${item.url} → ${apiUrl}`)
           }
-          return { ...item, url: directUrl }
+          return { ...item, url: apiUrl, thumbnailUrl }
         }
         return item
       })
@@ -481,15 +484,16 @@ export const useRailwayMediaStore = create<RailwayMediaStore>((set, get) => ({
     const { media, arrangeByRatio, ratioConfig } = get()
     const shuffleMode = mode || ratioConfig?.shuffleMode || 'weighted-random'
 
-    // 🚀 URL 직접 서빙으로 변경 (공통 함수)
+    // 🚀 API 엔드포인트 사용으로 변경 (하이브리드 스토리지 지원)
     const validateUrls = (mediaArray: typeof media) => {
       return mediaArray.map(item => {
-        if (!item.url || item.url.includes('/api/railway/storage/file/')) {
-          const directUrl = `/uploads/${item.type}/${item.fileName}`
+        if (!item.url || item.url.includes('/api/railway/storage/file/') || item.url.includes('/uploads/')) {
+          const apiUrl = `/api/media/${item.id}`
+          const thumbnailUrl = `/api/media/${item.id}/thumbnail`
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔧 Railway: 직접 서빙 URL로 변경 - ${item.fileName}: ${item.url} → ${directUrl}`)
+            console.log(`🔧 Railway: API 엔드포인트로 변경 - ${item.fileName}: ${item.url} → ${apiUrl}`)
           }
-          return { ...item, url: directUrl }
+          return { ...item, url: apiUrl, thumbnailUrl }
         }
         return item
       })

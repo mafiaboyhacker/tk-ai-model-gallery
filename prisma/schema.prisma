@@ -286,7 +286,7 @@ enum BatchStatus {
   CANCELLED
 }
 
-// Railway Volume용 간단한 Media 모델
+// Railway Volume용 간단한 Media 모델 - 하이브리드 스토리지 지원
 model Media {
   id              String    @id @default(cuid())
   fileName        String    // 실제 파일명 (고유)
@@ -300,6 +300,11 @@ model Media {
   duration        Float?    // 비디오 재생 시간 (초)
   resolution      String?   // 해상도 (예: '1920x1080')
   uploadedAt      DateTime  @default(now())
+
+  // 하이브리드 스토리지 필드 (Phase 2 구현)
+  fileData        String?   @db.Text  // Base64 인코딩된 파일 데이터 (1MB 미만 파일용)
+  storageType     String    @default("filesystem") // "database" | "filesystem"
+  thumbnailData   String?   @db.Text  // Base64 인코딩된 썸네일 데이터
 
   @@map("media")
 }
