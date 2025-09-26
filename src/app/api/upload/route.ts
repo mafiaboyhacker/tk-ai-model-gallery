@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ImageProcessor } from '@/lib/imageProcessor'
-import { SecurityValidator } from '@/lib/SecurityValidator'
+import { SecurityValidator } from '@/lib/securityValidator'
 import path from 'path'
 import { writeFile, mkdir, unlink } from 'fs/promises'
 import { existsSync } from 'fs'

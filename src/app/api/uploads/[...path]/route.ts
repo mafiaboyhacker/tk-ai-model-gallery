@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFile, stat } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
-import { MediaOptimizer } from '@/lib/MediaOptimizer'
+import { MediaOptimizer } from '@/lib/mediaOptimizer'
 
 // MIME 타입 매핑
 const MIME_TYPES: Record<string, string> = {
