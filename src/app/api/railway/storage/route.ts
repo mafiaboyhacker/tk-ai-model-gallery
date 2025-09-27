@@ -8,7 +8,6 @@ import { writeFile, readdir, unlink, mkdir, stat, readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
-import { VideoProcessor } from '@/lib/videoProcessor'
 // Simple storage paths - always use Railway volume
 const RAILWAY_VOLUME_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data'
 const UPLOADS_DIR = path.join(RAILWAY_VOLUME_PATH, 'uploads')
@@ -177,8 +176,8 @@ async function syncMediaStorage() {
               mimeType: type === 'video' ? 'video/mp4' : 'image/jpeg',
               width: type === 'video' ? 1920 : 800,
               height: type === 'video' ? 1080 : 600,
-              duration: type === 'video' ? null : null,
-              resolution: type === 'video' ? '1920x1080' : null,
+              duration: null, // 비디오 처리 비활성화로 null 설정
+              resolution: null, // 비디오 처리 비활성화로 null 설정
               uploadedAt: fileStats.mtime
             }
           })
@@ -603,25 +602,11 @@ export async function GET(request: NextRequest) {
             healthStatus = 'degraded'
           }
 
-          // 3. FFmpeg 설치 확인
-          try {
-            const ffmpegAvailable = await VideoProcessor.checkFFmpegInstallation()
-            healthChecks.ffmpeg = {
-              status: ffmpegAvailable ? 'ok' : 'error',
-              available: ffmpegAvailable,
-              message: ffmpegAvailable ? 'FFmpeg available for video processing' : 'FFmpeg not available - video processing disabled'
-            }
-
-            if (!ffmpegAvailable) {
-              healthStatus = 'degraded'
-            }
-          } catch (ffmpegError) {
-            healthChecks.ffmpeg = {
-              status: 'error',
-              available: false,
-              error: ffmpegError instanceof Error ? ffmpegError.message : 'FFmpeg check failed'
-            }
-            healthStatus = 'degraded'
+          // 3. Video processing disabled - direct upload mode
+          healthChecks.ffmpeg = {
+            status: 'ok',
+            available: false,
+            message: 'Video processing disabled - direct upload mode'
           }
 
           // 4. 파일 시스템 권한 확인
@@ -744,110 +729,25 @@ export async function POST(request: NextRequest) {
         let finalMediaData = null
 
         try {
-          if (enableProcessing) {
-            // 🎬 파일 타입별 처리 활성화
-            if (isVideo) {
-              console.log(`🎬 비디오 처리 시작: ${file.name}`)
-              console.log(`📏 원본 비디오: ${(file.size / (1024 * 1024)).toFixed(1)}MB`)
+          // 🎬 모든 파일을 원본 그대로 저장 (비디오/이미지 처리 없이 직접 업로드)
+          console.log(`📁 파일 직접 저장: ${file.name}`)
+          console.log(`📏 파일 크기: ${(file.size / (1024 * 1024)).toFixed(1)}MB`)
 
-              // FFmpeg 설치 확인
-              const hasFFmpeg = await VideoProcessor.checkFFmpegInstallation()
-              if (!hasFFmpeg) {
-                console.warn('⚠️ FFmpeg 미설치 - 원본 저장 모드로 전환')
-                throw new Error('FFmpeg not available')
-              }
-
-              console.log('✅ FFmpeg 설치 확인됨 - 비디오 압축 시작')
-
-              // 비디오 처리 실행 (진행률 콜백 포함)
-              processedResult = await VideoProcessor.processVideo(
-                file,
-                targetDir,
-                uniqueFileName,
-                {
-                  maxWidth: metadata.maxWidth || 1920,
-                  maxHeight: metadata.maxHeight || 1080,
-                  quality: metadata.quality || 'medium',
-                  thumbnailTime: metadata.thumbnailTime || 1
-                },
-                (stage, percent) => {
-                  console.log(`🎬 비디오 처리 진행: ${stage} ${percent}%`)
-                  // TODO: 실시간 진행률 전송을 위한 WebSocket/SSE 구현 예정
-                }
-              )
-            } else if (isImage) {
-              // 🎨 이미지 WebP 변환 처리 시작
-              console.log(`🎨 이미지 WebP 변환 시작: ${file.name}`)
-              console.log(`📏 원본 이미지: ${(file.size / 1024).toFixed(1)}KB`)
-
-              try {
-                // Sharp 사용 가능성 확인
-                const sharp = require('sharp')
-                const arrayBuffer = await file.arrayBuffer()
-                const inputBuffer = Buffer.from(arrayBuffer)
-
-                console.log(`🎨 Sharp를 사용한 WebP 변환 진행: 0%`)
-
-                // WebP 변환 및 최적화
-                const webpBuffer = await sharp(inputBuffer)
-                  .webp({
-                    quality: 85,
-                    effort: 4,
-                    progressive: true
-                  })
-                  .toBuffer()
-
-                console.log(`🎨 WebP 변환 완료: 100%`)
-                console.log(`📊 변환 결과: ${(file.size / 1024).toFixed(1)}KB → ${(webpBuffer.length / 1024).toFixed(1)}KB`)
-
-                // 변환된 파일이 더 작으면 사용
-                if (webpBuffer.length < file.size * 0.9) {
-                  const webpFileName = uniqueFileName.replace(/\.(jpg|jpeg|png|gif)$/i, '.webp')
-                  const webpPath = path.join(targetDir, webpFileName)
-                  await writeFile(webpPath, webpBuffer)
-
-                  finalMediaData = {
-                    fileName: webpFileName,
-                    originalFileName: file.name,
-                    fileSize: webpBuffer.length,
-                    width: metadata.width || 800,
-                    height: metadata.height || 600,
-                    compressionSavings: Math.round((1 - webpBuffer.length / file.size) * 100)
-                  }
-
-                  console.log(`✅ WebP 변환 저장 완료: ${webpPath}`)
-                  processedResult = { converted: true, savings: finalMediaData.compressionSavings }
-                } else {
-                  console.log(`📷 원본 유지 (WebP 효과 미미)`)
-                  throw new Error('WebP conversion not beneficial')
-                }
-              } catch (sharpError) {
-                console.warn(`⚠️ WebP 변환 실패, 원본 저장: ${sharpError.message}`)
-                // 원본 저장으로 fallback
-              }
-            }
-          }
-
-          // 🔄 단순 파일 저장 모드
-          console.log(`💾 파일 저장: ${file.name}`)
-
+          const filePath = path.join(targetDir, uniqueFileName)
           const arrayBuffer = await file.arrayBuffer()
           const buffer = Buffer.from(arrayBuffer)
-          const filePath = path.join(targetDir, uniqueFileName)
-
-          // 파일 저장
           await writeFile(filePath, buffer)
           console.log(`✅ 파일 저장 완료: ${filePath}`)
 
-          // 기본 메타데이터 설정
+          // 기본 메타데이터 설정 (비디오 처리 없이 직접 업로드)
           finalMediaData = {
             fileName: uniqueFileName,
             originalFileName: file.name,
             fileSize: file.size,
-            width: metadata.width || (isVideo ? 1920 : 800),
-            height: metadata.height || (isVideo ? 1080 : 600),
-            duration: isVideo ? metadata.duration : null,
-            resolution: isVideo ? metadata.resolution || '1920x1080' : null
+            width: isVideo ? 1920 : 800,
+            height: isVideo ? 1080 : 600,
+            duration: null, // 비디오 처리 비활성화로 null 설정
+            resolution: null // 비디오 처리 비활성화로 null 설정
           }
 
           // 🔄 DB 저장과 파일 저장 트랜잭션 처리
@@ -936,8 +836,8 @@ export async function POST(request: NextRequest) {
                   mimeType: file.type,
                   width: isVideo ? 1920 : 800,
                   height: isVideo ? 1080 : 600,
-                  duration: isVideo ? null : null,
-                  resolution: isVideo ? '1920x1080' : null,
+                  duration: null, // 비디오 처리 비활성화로 null 설정
+                  resolution: null, // 비디오 처리 비활성화로 null 설정
                   uploadedAt: new Date()
                 }
               })
@@ -1039,8 +939,8 @@ export async function POST(request: NextRequest) {
                 mimeType: file.type,
                 width: isVideo ? 1920 : 800,
                 height: isVideo ? 1080 : 600,
-                duration: isVideo ? null : null,
-                resolution: isVideo ? '1920x1080' : null,
+                duration: null, // 비디오 처리 비활성화로 null 설정
+                resolution: null, // 비디오 처리 비활성화로 null 설정
                 uploadedAt: new Date()
               }
             })

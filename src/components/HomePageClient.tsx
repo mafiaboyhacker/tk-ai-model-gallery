@@ -47,8 +47,8 @@ export default function HomePageClient() {
         width: Number(item.width) || 400,
         height: Number(item.height) || 300,
         type: String(item.type || 'image') as 'image' | 'video',
-        duration: item.duration ? Number(item.duration) : undefined,
-        resolution: item.resolution || undefined,
+        duration: undefined, // 비디오 처리 비활성화로 undefined 설정
+        resolution: undefined, // 비디오 처리 비활성화로 undefined 설정
       }))
   }, [media])
 
