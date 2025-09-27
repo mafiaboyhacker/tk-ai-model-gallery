@@ -70,8 +70,11 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     return filteredMedia
   }, [models])
 
-  // 🚀 Masonic hooks integration
-  const { offset, width } = useContainerPosition(containerRef, [windowWidth, windowHeight])
+  // 🚀 Masonic hooks integration with guaranteed valid containerRef
+  const { offset, width } = useContainerPosition(
+    mounted && containerRef.current ? containerRef : { current: document.documentElement },
+    [windowWidth, windowHeight]
+  )
 
   // Error boundary for WeakMap issues
   const [hasWeakMapError, setHasWeakMapError] = useState(false)
@@ -91,62 +94,8 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     return () => window.removeEventListener('error', handleError)
   }, [])
 
-  // 🛡️ Ultra-safe WeakMap scroller with guaranteed object keys
-  const scrollerTarget = useMemo(() => {
-    // Enhanced WeakMap validation: NEVER return primitives
-    const createWeakMapSafeObject = (base: any, fallbackName: string) => {
-      // If base is already a valid object, use it
-      if (base && typeof base === 'object' && base !== null && !Array.isArray(base)) {
-        // Additional validation: ensure it's not a primitive wrapper
-        try {
-          const testWeakMap = new WeakMap()
-          testWeakMap.set(base, 'test')
-          return base
-        } catch {
-          // If WeakMap test fails, create wrapper
-        }
-      }
-
-      // Create a guaranteed WeakMap-compatible object
-      return {
-        __safeScrollTarget: true,
-        __fallbackName: fallbackName,
-        __timestamp: Date.now(),
-        __uniqueId: Symbol(`scroll_target_${fallbackName}`),
-        scrollTop: 0,
-        scrollLeft: 0,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        getBoundingClientRect: () => ({ top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 })
-      }
-    }
-
-    // Priority order with strict object validation
-    if (typeof window !== 'undefined' && mounted) {
-      // Try container ref first
-      if (containerRef.current) {
-        return createWeakMapSafeObject(containerRef.current, 'container')
-      }
-
-      // Try offset object (but ensure it's valid)
-      if (offset) {
-        return createWeakMapSafeObject(offset, 'offset')
-      }
-
-      // Try document.documentElement
-      if (document?.documentElement) {
-        return createWeakMapSafeObject(document.documentElement, 'document')
-      }
-
-      // Try window as last resort
-      if (window) {
-        return createWeakMapSafeObject(window, 'window')
-      }
-    }
-
-    // Absolute fallback: guaranteed WeakMap-safe object
-    return createWeakMapSafeObject(null, 'ultimate_fallback')
-  }, [mounted, offset, containerRef.current])
+  // 🛡️ FINAL FIX: Use offset directly from useContainerPosition (Context7 confirmed)
+  const scrollerTarget = offset
 
   // 🛡️ Always call Hook - never conditional
   const scrollerResult = useScroller(scrollerTarget)
