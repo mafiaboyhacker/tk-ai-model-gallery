@@ -32,17 +32,17 @@ export default function VideoClient() {
   const videoMedia: Media[] = media
     .filter(item => item.type === 'video')
     .map(item => ({
-      id: item.id,
+      id: String(item.id),
       name: item.fileName || `Video ${item.id}`,
-      imageUrl: item.url,
+      imageUrl: item.url || '',
       originalUrl: item.originalUrl,
-      imageAlt: `Video: ${item.fileName}`,
-      category: item.type,
-      width: item.width,
-      height: item.height,
-      type: item.type,
-      duration: item.duration,
-      resolution: item.resolution
+      imageAlt: `Video: ${item.fileName || item.id}`,
+      category: item.type || 'video',
+      width: Number(item.width) || 640,
+      height: Number(item.height) || 360,
+      type: item.type as 'video',
+      duration: Number(item.duration) || undefined,
+      resolution: item.resolution || undefined
     }))
 
   // 미디어 로드

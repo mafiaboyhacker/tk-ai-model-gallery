@@ -30,15 +30,15 @@ export default function ModelClient() {
 
   // 이미지만 필터링 (모델 카테고리는 이미지만)
   const imageModels = media.filter(item => item.type === 'image').map(image => ({
-    id: image.id,
+    id: String(image.id),
     name: image.customName || image.fileName || `Model ${image.id}`,
-    imageUrl: image.url,           // 이미지 썸네일
+    imageUrl: image.url || '',           // 이미지 썸네일
     originalUrl: image.originalUrl, // 원본 이미지
-    imageAlt: `Model: ${image.fileName}`,
+    imageAlt: `Model: ${image.fileName || image.id}`,
     category: 'model',
-    width: image.width,
-    height: image.height,
-    type: image.type
+    width: Number(image.width) || 400,
+    height: Number(image.height) || 300,
+    type: image.type as 'image'
   }))
 
   useEffect(() => {
