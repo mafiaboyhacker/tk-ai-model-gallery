@@ -88,17 +88,54 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
   // 🚀 Simplified Masonic hooks integration - avoid WeakMap issues completely  
   const { offset, width } = useContainerPosition(containerRef, [windowWidth, windowHeight])
   
-  // 🛡️ Safe scroller with fallback values to prevent WeakMap errors
+  // 🛡️ Enhanced WeakMap-safe scroller with strict object validation
   const scrollerTarget = useMemo(() => {
-    // Return a stable, valid object for WeakMap usage
-    if (mounted && offset && typeof offset === 'object' && offset !== null && !Array.isArray(offset)) {
+    // Strict validation: Must be a valid DOM element or object for WeakMap
+    const isValidWeakMapKey = (obj: any): obj is object => {
+      return obj !== null &&
+             obj !== undefined &&
+             typeof obj === 'object' &&
+             !Array.isArray(obj) &&
+             (obj instanceof Element || obj instanceof Window || typeof obj.addEventListener === 'function')
+    }
+
+    // First try: validate offset object
+    if (mounted && isValidWeakMapKey(offset)) {
       return offset
     }
-    // Fallback: use containerRef or document.documentElement
-    return containerRef.current || document.documentElement
+
+    // Second try: validate containerRef.current
+    if (containerRef.current && isValidWeakMapKey(containerRef.current)) {
+      return containerRef.current
+    }
+
+    // Third try: ensure document.documentElement is valid
+    if (typeof document !== 'undefined' && isValidWeakMapKey(document.documentElement)) {
+      return document.documentElement
+    }
+
+    // Final fallback: create a minimal valid object for WeakMap
+    // This ensures we never pass a primitive value to WeakMap
+    return { __fallbackScrollTarget: true, scrollTop: 0, addEventListener: () => {}, removeEventListener: () => {} }
   }, [mounted, offset])
 
-  const { scrollTop, isScrolling } = useScroller(scrollerTarget)
+  // 🛡️ Safe scroller hook usage with additional error boundary
+  let scrollTop = 0
+  let isScrolling = false
+
+  try {
+    const scrollerResult = useScroller(scrollerTarget)
+    scrollTop = typeof scrollerResult.scrollTop === 'number' ? scrollerResult.scrollTop : 0
+    isScrolling = typeof scrollerResult.isScrolling === 'boolean' ? scrollerResult.isScrolling : false
+  } catch (error) {
+    // WeakMap error caught - log and use safe defaults
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🚨 WeakMap error in useScroller caught and recovered:', error)
+      console.warn('ScrollerTarget type:', typeof scrollerTarget, scrollerTarget)
+    }
+    scrollTop = 0
+    isScrolling = false
+  }
 
   // 스마트 컬럼 계산 - 상단에 4-5개 이미지가 잘 보이도록 최적화
   const columnConfig = useMemo(() => {
@@ -133,12 +170,39 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
     return { columnCount, columnWidth }
   }, [width, windowWidth])
 
-  const positioner = usePositioner({
-    width: width > 0 ? width : windowWidth,
-    columnWidth: columnConfig.columnWidth,
-    columnGutter: 4,
-    rowGutter: 4
-  }, [width, windowWidth, columnConfig.columnWidth])
+  // 🛡️ Enhanced WeakMap-safe positioner with validation
+  let positioner: any = null
+
+  try {
+    positioner = usePositioner({
+      width: width > 0 ? width : windowWidth,
+      columnWidth: columnConfig.columnWidth,
+      columnGutter: 4,
+      rowGutter: 4
+    }, [width, windowWidth, columnConfig.columnWidth])
+
+    // Validate positioner is a valid object for WeakMap usage
+    if (!positioner || typeof positioner !== 'object' || positioner === null) {
+      throw new Error('Invalid positioner object returned')
+    }
+
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🚨 Positioner error caught, using fallback:', error)
+    }
+
+    // Create a minimal fallback positioner
+    positioner = {
+      __fallbackPositioner: true,
+      getSize: () => ({ width: columnConfig.columnWidth, height: 200 }),
+      items: [],
+      range: () => ({ start: 0, end: 0 }),
+      set: () => {},
+      get: () => ({ width: columnConfig.columnWidth, height: 200, left: 0, top: 0 }),
+      update: () => {},
+      estimateHeight: () => 1000
+    }
+  }
 
   // ✅ DEBUGGING: Validate positioner for WeakMap compatibility
   if (process.env.NODE_ENV === 'development') {
@@ -146,12 +210,31 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
       type: typeof positioner,
       isObject: typeof positioner === 'object',
       isNull: positioner === null,
-      hasKeys: positioner ? Object.keys(positioner).length : 0
+      hasKeys: positioner ? Object.keys(positioner).length : 0,
+      isFallback: positioner?.__fallbackPositioner || false
     })
   }
 
-  // 🚀 Resize observer for dynamic height changes with WeakMap safety
-  const resizeObserver = useResizeObserver(positioner)
+  // 🛡️ Enhanced WeakMap-safe resize observer
+  let resizeObserver: any = null
+
+  try {
+    // Only use resize observer if positioner is valid and not a fallback
+    if (positioner && !positioner.__fallbackPositioner) {
+      resizeObserver = useResizeObserver(positioner)
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🚨 ResizeObserver error caught, using fallback:', error)
+    }
+    // Create a minimal fallback resize observer
+    resizeObserver = {
+      __fallbackResizeObserver: true,
+      observe: () => {},
+      unobserve: () => {},
+      disconnect: () => {}
+    }
+  }
 
   // Dynamic overscanBy calculation based on screen size and performance
   const dynamicOverscanBy = useMemo(() => {
@@ -404,16 +487,86 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
 
   return (
     <div ref={containerRef} className="container mx-auto px-4 py-8">
-      <Masonry
-        items={safeItems}
-        positioner={positioner}
-        scrollTop={typeof scrollTop === 'number' ? scrollTop : 0}
-        isScrolling={typeof isScrolling === 'boolean' ? isScrolling : false}
-        height={windowHeight}
-        overscanBy={dynamicOverscanBy}
-        resizeObserver={resizeObserver}
-        render={MasonryCard}
-      />
+      {/* 🛡️ Enhanced WeakMap-safe Masonry rendering with error boundary */}
+      {(() => {
+        try {
+          // Final validation before rendering Masonry
+          const isValidMasonryProps = positioner &&
+                                    typeof positioner === 'object' &&
+                                    !positioner.__fallbackPositioner &&
+                                    safeItems &&
+                                    Array.isArray(safeItems)
+
+          if (!isValidMasonryProps) {
+            // Fallback to simple grid layout
+            return (
+              <div className="grid gap-4" style={{
+                gridTemplateColumns: `repeat(${columnConfig.columnCount}, 1fr)`
+              }}>
+                {safeItems.map((item, index) => (
+                  <SafeModelCard
+                    key={item.id}
+                    id={item.id}
+                    name={item.name}
+                    imageUrl={item.imageUrl}
+                    originalUrl={item.originalUrl}
+                    imageAlt={item.imageAlt}
+                    category={item.category}
+                    width={columnConfig.columnWidth}
+                    height={columnConfig.columnWidth * 1.2} // Default aspect ratio
+                    type={item.type}
+                    duration={item.duration}
+                    resolution={item.resolution}
+                    isAdminMode={false}
+                  />
+                ))}
+              </div>
+            )
+          }
+
+          return (
+            <Masonry
+              items={safeItems}
+              positioner={positioner}
+              scrollTop={typeof scrollTop === 'number' ? scrollTop : 0}
+              isScrolling={typeof isScrolling === 'boolean' ? isScrolling : false}
+              height={windowHeight}
+              overscanBy={dynamicOverscanBy}
+              resizeObserver={resizeObserver}
+              render={MasonryCard}
+            />
+          )
+        } catch (error) {
+          // Final error boundary - render simple grid
+          if (process.env.NODE_ENV === 'development') {
+            console.error('🚨 Masonry rendering error caught, falling back to simple grid:', error)
+          }
+
+          return (
+            <div className="grid gap-4" style={{
+              gridTemplateColumns: `repeat(${columnConfig.columnCount}, 1fr)`
+            }}>
+              {safeItems.map((item, index) => (
+                <SafeModelCard
+                  key={item.id}
+                  id={item.id}
+                  name={item.name}
+                  imageUrl={item.imageUrl}
+                  originalUrl={item.originalUrl}
+                  imageAlt={item.imageAlt}
+                  category={item.category}
+                  width={columnConfig.columnWidth}
+                  height={columnConfig.columnWidth * 1.2}
+                  type={item.type}
+                  duration={item.duration}
+                  resolution={item.resolution}
+                  isAdminMode={false}
+                />
+              ))}
+            </div>
+          )
+        }
+      })()}
 
       {/* 로딩 완료 인디케이터 */}
       {safeItems.length > 0 && (
@@ -423,7 +576,7 @@ const MasonryGallery = memo(function MasonryGallery({ models, loading = false }:
           <span className="text-xs text-gray-400">
             {columnConfig.columnCount}열 그리드 · overscan: {dynamicOverscanBy} ·
             {isScrolling ? '스크롤 중' : '정적'} ·
-            고급 가상화 활성화
+            {positioner?.__fallbackPositioner ? '단순 그리드 모드' : '고급 가상화 활성화'}
           </span>
         </div>
       )}

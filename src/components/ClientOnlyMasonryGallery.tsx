@@ -91,22 +91,53 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     return () => window.removeEventListener('error', handleError)
   }, [])
 
-  // 🛡️ WeakMap safety: Ensure offset is a valid object
-  const safeOffset = useMemo(() => {
-    if (!offset || typeof offset !== 'object' || offset === null || Array.isArray(offset)) {
-      return {
-        top: 0,
-        left: 0,
-        element: containerRef.current || (typeof document !== 'undefined' ? document.documentElement : null),
-        width: width > 0 ? width : windowWidth,
-        height: windowHeight
-      }
+  // 🛡️ Enhanced WeakMap-safe scroller with strict object validation
+  const scrollerTarget = useMemo(() => {
+    // Strict validation: Must be a valid DOM element or object for WeakMap
+    const isValidWeakMapKey = (obj: any): obj is object => {
+      return obj !== null &&
+             obj !== undefined &&
+             typeof obj === 'object' &&
+             !Array.isArray(obj) &&
+             (obj instanceof Element || obj instanceof Window || typeof obj.addEventListener === 'function')
     }
-    return offset
-  }, [offset, width, windowWidth, windowHeight])
 
-  // 🛡️ Safe scroller to prevent hydration mismatch
-  const { scrollTop, isScrolling } = useScroller(mounted ? safeOffset : { top: 0, left: 0, element: null, width: 1200, height: 800 })
+    // First try: validate offset object
+    if (mounted && isValidWeakMapKey(offset)) {
+      return offset
+    }
+
+    // Second try: validate containerRef.current
+    if (containerRef.current && isValidWeakMapKey(containerRef.current)) {
+      return containerRef.current
+    }
+
+    // Third try: ensure document.documentElement is valid
+    if (typeof document !== 'undefined' && isValidWeakMapKey(document.documentElement)) {
+      return document.documentElement
+    }
+
+    // Final fallback: create a minimal valid object for WeakMap
+    return { __fallbackScrollTarget: true, scrollTop: 0, addEventListener: () => {}, removeEventListener: () => {} }
+  }, [mounted, offset])
+
+  // 🛡️ Safe scroller hook usage with additional error boundary
+  let scrollTop = 0
+  let isScrolling = false
+
+  try {
+    const scrollerResult = useScroller(scrollerTarget)
+    scrollTop = typeof scrollerResult.scrollTop === 'number' ? scrollerResult.scrollTop : 0
+    isScrolling = typeof scrollerResult.isScrolling === 'boolean' ? scrollerResult.isScrolling : false
+  } catch (error) {
+    // WeakMap error caught - log and use safe defaults
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🚨 WeakMap error in useScroller caught and recovered:', error)
+      console.warn('ScrollerTarget type:', typeof scrollerTarget, scrollerTarget)
+    }
+    scrollTop = 0
+    isScrolling = false
+  }
 
   // Dynamic column calculation based on width
   const columnConfig = useMemo(() => {
@@ -145,11 +176,55 @@ const ClientOnlyMasonryGallery = memo(function ClientOnlyMasonryGallery({ models
     rowGutter: 4
   }), [mounted, width, windowWidth, columnConfig.columnWidth])
 
-  const positioner = usePositioner(positionerConfig, [mounted, width, windowWidth, columnConfig.columnWidth])
+  // 🛡️ Enhanced WeakMap-safe positioner with validation
+  let positioner: any = null
 
-  // 🚀 Resize observer for dynamic height changes - SSR safe
-  // Always call the hook, but with a safe fallback positioner
-  const resizeObserver = useResizeObserver(positioner)
+  try {
+    positioner = usePositioner(positionerConfig, [mounted, width, windowWidth, columnConfig.columnWidth])
+
+    // Validate positioner is a valid object for WeakMap usage
+    if (!positioner || typeof positioner !== 'object' || positioner === null) {
+      throw new Error('Invalid positioner object returned')
+    }
+
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🚨 Positioner error caught, using fallback:', error)
+    }
+
+    // Create a minimal fallback positioner
+    positioner = {
+      __fallbackPositioner: true,
+      getSize: () => ({ width: columnConfig.columnWidth, height: 200 }),
+      items: [],
+      range: () => ({ start: 0, end: 0 }),
+      set: () => {},
+      get: () => ({ width: columnConfig.columnWidth, height: 200, left: 0, top: 0 }),
+      update: () => {},
+      estimateHeight: () => 1000
+    }
+  }
+
+  // 🛡️ Enhanced WeakMap-safe resize observer
+  let resizeObserver: any = null
+
+  try {
+    // Only use resize observer if positioner is valid and not a fallback
+    if (positioner && !positioner.__fallbackPositioner) {
+      resizeObserver = useResizeObserver(positioner)
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🚨 ResizeObserver error caught, using fallback:', error)
+    }
+    // Create a minimal fallback resize observer
+    resizeObserver = {
+      __fallbackResizeObserver: true,
+      observe: () => {},
+      unobserve: () => {},
+      disconnect: () => {}
+    }
+  }
 
   // Dynamic overscanBy calculation
   const dynamicOverscanBy = useMemo(() => {
