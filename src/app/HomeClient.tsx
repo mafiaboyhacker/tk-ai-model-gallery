@@ -13,23 +13,49 @@ export default function HomeClient() {
   const searchParams = useSearchParams()
   const filter = searchParams.get('filter')
 
-  // 데이터 변환 (WeakMap 에러 방지를 위한 안전한 기본값 설정)
-  const convertedMedia: Media[] = media
-    .filter(item => item && item.id) // null/undefined 항목 필터링
-    .map(item => ({
-      id: String(item.id), // 문자열로 확실히 변환
-      name: item.fileName || item.customName || `Media ${item.id}`,
-      imageUrl: item.url || '',
-      originalUrl: item.originalUrl || item.url || '',
-      imageAlt: `Media: ${item.fileName || item.id}`,
-      category: item.type || 'image',
-      width: Number(item.width) || 400, // 기본 너비
-      height: Number(item.height) || 300, // 기본 높이
-      type: item.type || 'image',
-      duration: item.duration || undefined,
-      resolution: item.resolution || undefined
-    }))
-    .filter(item => item.imageUrl && item.width > 0 && item.height > 0) // 유효한 데이터만
+  // 🛡️ Enhanced data conversion with comprehensive WeakMap safety
+  const convertedMedia: Media[] = useMemo(() => {
+    return media
+      .filter(item => {
+        // Strict validation for WeakMap compatibility
+        return item &&
+               item.id !== null &&
+               item.id !== undefined &&
+               typeof item === 'object' &&
+               !Array.isArray(item)
+      })
+      .map((item, index) => {
+        // Create completely new object for WeakMap safety
+        const safeItem = {
+          id: String(item.id), // Ensure string ID
+          name: String(item.fileName || item.customName || `Media ${item.id}`),
+          imageUrl: String(item.url || ''),
+          originalUrl: String(item.originalUrl || item.url || ''),
+          imageAlt: String(`Media: ${item.fileName || item.id}`),
+          category: String(item.type || 'image'),
+          width: Math.max(100, Number(item.width) || 400), // Minimum width
+          height: Math.max(100, Number(item.height) || 300), // Minimum height
+          type: item.type || 'image',
+          duration: item.duration || undefined,
+          resolution: item.resolution || undefined,
+          // WeakMap safety markers
+          __weakMapSafe: true,
+          __index: index,
+          __timestamp: Date.now()
+        }
+
+        // Validate the object can be used as WeakMap key
+        try {
+          const testWeakMap = new WeakMap()
+          testWeakMap.set(safeItem, 'test')
+          return safeItem
+        } catch (error) {
+          console.warn(`🚨 Object cannot be used as WeakMap key:`, safeItem, error)
+          return null
+        }
+      })
+      .filter(item => item !== null && item.imageUrl && item.width > 0 && item.height > 0) // Remove null items and validate
+  }, [media])
 
   // 필터링된 미디어 (video 필터 적용)
   const filteredMedia = useMemo(() => {
