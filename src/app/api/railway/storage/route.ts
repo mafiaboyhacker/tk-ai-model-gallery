@@ -298,25 +298,26 @@ export async function GET(request: NextRequest) {
 
           console.log(`📊 PostgreSQL 조회 성공: ${mediaList.length}개`)
 
-          // DB에서 가져온 데이터로 유효성 검사 및 URL 생성
+          // DB에서 가져온 데이터로 URL 생성 (파일 존재 여부와 관계없이)
           const validationPromises = mediaList.map(async (media) => {
             const filePath = path.join(
               media.type === 'video' ? VIDEOS_DIR : IMAGES_DIR,
               media.fileName
             )
 
-            if (existsSync(filePath)) {
-              return {
-                ...media,
-                url: `/uploads/${media.type}/${media.fileName}`,
-                originalUrl: `/uploads/${media.type}/${media.fileName}`
-              }
+            // 파일이 있으면 정상 URL, 없으면 대체 URL 사용
+            const fileExists = existsSync(filePath)
+
+            return {
+              ...media,
+              url: fileExists ? `/uploads/${media.type}/${media.fileName}` : `/api/media/${media.id}`,
+              originalUrl: fileExists ? `/uploads/${media.type}/${media.fileName}` : `/api/media/${media.id}`,
+              fileExists // 디버깅용 정보 추가
             }
-            return null
           })
 
           const validationResults = await Promise.all(validationPromises)
-          validMedia = validationResults.filter(result => result !== null)
+          validMedia = validationResults // 모든 DB 레코드 포함
 
         } catch (dbError) {
           // 🚨 DB 연결 실패 - 즉시 파일시스템 fallback으로 전환
