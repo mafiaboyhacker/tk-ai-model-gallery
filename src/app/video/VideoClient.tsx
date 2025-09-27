@@ -8,8 +8,8 @@ import Header from '@/components/Header'
 import DebugPanel from '@/components/DebugPanel'
 
 // 🚀 Dynamic import with SSR completely disabled
-const ClientOnlyMasonryGallery = dynamic(
-  () => import('@/components/ClientOnlyMasonryGallery'),
+const MasonryGallery = dynamic(
+  () => import('@/components/MasonryGallery'),
   {
     ssr: false,
     loading: () => (
@@ -59,7 +59,7 @@ export default function VideoClient() {
             <h1 className="nav-text text-2xl text-black/90 mb-2 ml-4" style={{letterSpacing: '0.1em'}}>VIDEO GALLERY &lt;</h1>
           </div>
 
-          <ClientOnlyMasonryGallery models={videoMedia} />
+          <MasonryGallery models={videoMedia} />
         </div>
       </main>
       <DebugPanel />

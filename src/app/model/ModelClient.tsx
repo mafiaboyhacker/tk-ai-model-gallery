@@ -7,8 +7,8 @@ import Header from '@/components/Header'
 import DebugPanel from '@/components/DebugPanel'
 
 // 🚀 Dynamic import with SSR completely disabled
-const ClientOnlyMasonryGallery = dynamic(
-  () => import('@/components/ClientOnlyMasonryGallery'),
+const MasonryGallery = dynamic(
+  () => import('@/components/MasonryGallery'),
   {
     ssr: false,
     loading: () => (
@@ -76,7 +76,7 @@ export default function ModelClient() {
 
           {isLoaded ? (
             imageModels.length > 0 ? (
-              <ClientOnlyMasonryGallery models={imageModels} />
+              <MasonryGallery models={imageModels} />
             ) : (
               <div className="text-center py-16">
                 <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
